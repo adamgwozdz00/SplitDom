@@ -41,3 +41,29 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# from 10x-astro-starter
+# build output
+dist/
+
+# generated types
+.astro/
+
+# dependencies
+node_modules/
+
+# logs
+pnpm-debug.log*
+
+# environment variables
+.env
+.env.production
+
+# cloudflare
+.dev.vars
+.wrangler/
+
+# macOS-specific files
+
+# jetbrains setting folder
+.idea/
