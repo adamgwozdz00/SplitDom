@@ -1,29 +1,24 @@
 ---
-starter_id: next
+starter_id: 10x-astro-starter
 package_manager: npm
 project_name: splitdom
 hints:
   language_family: js
   team_size: solo
-  deployment_target: vercel
+  deployment_target: cloudflare-pages
   ci_provider: github-actions
   ci_default_flow: auto-deploy-on-merge
-  bootstrapper_confidence: verified
-  path_taken: custom
+  bootstrapper_confidence: first-class
+  path_taken: standard
   quality_override: false
-  self_check_answers:
-    typed: true
-    from_official_starter: true
-    conventions: true
-    docs_current: true
-    can_judge_agent: false
+  self_check_answers: null
   has_auth: true
   has_payments: false
   has_realtime: false
   has_ai: false
-  has_background_jobs: true
+  has_background_jobs: false
 ---
 
 ## Why this stack
 
-SplitDom is a solo, after-hours, 3-week MVP for splitting household expenses, with must-have auth (FR-001) and automatic month-end period closing (FR-005). The registry's default for (web-app, js) is the 10x Astro Starter on Cloudflare's edge runtime, but its edge constraints on long-running tasks don't fit FR-005's scheduled closing cleanly, so the pick moved to Next.js instead of adding manual workarounds to the default. Next.js clears all four agent-friendly gates (typed, convention-based, popular in training data, well-documented) and carries a verified bootstrapper confidence, so scaffolding should be smooth. It deploys to Vercel by default, whose built-in Cron Jobs cover the scheduled period-closing need without standing up a separate server — a good match for a solo, short-timeline build. Payments and realtime are out of scope per the PRD's Non-Goals and nice-to-have priorities. CI runs on GitHub Actions with auto-deploy-on-merge, the standard solo-team default. The self-check came back clean on four of five points; only "can judge agent consistency with Next.js conventions" was marked not-yet-true, which is a single gap and didn't trigger a switch-back nudge.
+SplitDom is a solo, after-hours, 3-week MVP for splitting household expenses, with must-have auth (FR-001) and no background-job requirement — the closing of a billing period (FR-015) is now a manual action taken by the group's creator, not a scheduled task, after the earlier automatic month-end closing (which had forced Next.js/Vercel to get Cron Jobs) was replaced. With that constraint gone, the registry's default for `(web-app, js)` — the 10x Astro Starter (Astro + Supabase + Cloudflare) — is back in play and was accepted as the standard-path recommendation. It clears all four agent-friendly gates (typed, convention-based, popular in training, well-documented), carries `first-class` bootstrapper confidence, and bundles auth + Postgres + edge deploy out of the box, which fits a short solo timeline better than assembling those pieces separately. Its one historical gotcha — the edge runtime's poor fit for long-running background tasks — no longer applies, since nothing in the MVP needs a scheduled job. Deployment targets Cloudflare Pages (the starter's own default). CI runs on GitHub Actions with auto-deploy-on-merge. Payments, realtime, and AI are out of scope per the PRD's Non-Goals and nice-to-have priorities. This choice replaces the prior Next.js/Vercel pick and requires a fresh bootstrap.

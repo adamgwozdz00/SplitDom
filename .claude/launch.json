@@ -1,0 +1,11 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    {
+      "name": "splitdom-dev",
+      "runtimeExecutable": "bash",
+      "runtimeArgs": ["-c", "export PATH=\"/Users/adamgwozdz/.nvm/versions/node/v22.14.0/bin:$PATH\" && exec npm run dev"],
+      "port": 4321
+    }
+  ]
+}

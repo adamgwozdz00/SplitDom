@@ -1,12 +1,12 @@
 ---
-bootstrapped_at: 2026-09-19T00:09:00Z
-starter_id: next
-starter_name: Next.js
+bootstrapped_at: 2026-09-20T19:39:57Z
+starter_id: 10x-astro-starter
+starter_name: "10x Astro Starter (Astro + Supabase + Cloudflare)"
 project_name: splitdom
 language_family: js
 package_manager: npm
-cwd_strategy: subdir-then-move
-bootstrapper_confidence: verified
+cwd_strategy: git-clone
+bootstrapper_confidence: first-class
 phase_3_status: ok
 audit_command: "npm audit --json"
 ---
@@ -14,90 +14,82 @@ audit_command: "npm audit --json"
 ## Hand-off
 
 ```yaml
-starter_id: next
+starter_id: 10x-astro-starter
 package_manager: npm
 project_name: splitdom
 hints:
   language_family: js
   team_size: solo
-  deployment_target: vercel
+  deployment_target: cloudflare-pages
   ci_provider: github-actions
   ci_default_flow: auto-deploy-on-merge
-  bootstrapper_confidence: verified
-  path_taken: custom
+  bootstrapper_confidence: first-class
+  path_taken: standard
   quality_override: false
-  self_check_answers:
-    typed: true
-    from_official_starter: true
-    conventions: true
-    docs_current: true
-    can_judge_agent: false
+  self_check_answers: null
   has_auth: true
   has_payments: false
   has_realtime: false
   has_ai: false
-  has_background_jobs: true
+  has_background_jobs: false
 ```
 
-### Why this stack
-
-SplitDom is a solo, after-hours, 3-week MVP for splitting household expenses, with must-have auth (FR-001) and automatic month-end period closing (FR-005). The registry's default for (web-app, js) is the 10x Astro Starter on Cloudflare's edge runtime, but its edge constraints on long-running tasks don't fit FR-005's scheduled closing cleanly, so the pick moved to Next.js instead of adding manual workarounds to the default. Next.js clears all four agent-friendly gates (typed, convention-based, popular in training data, well-documented) and carries a verified bootstrapper confidence, so scaffolding should be smooth. It deploys to Vercel by default, whose built-in Cron Jobs cover the scheduled period-closing need without standing up a separate server — a good match for a solo, short-timeline build. Payments and realtime are out of scope per the PRD's Non-Goals and nice-to-have priorities. CI runs on GitHub Actions with auto-deploy-on-merge, the standard solo-team default. The self-check came back clean on four of five points; only "can judge agent consistency with Next.js conventions" was marked not-yet-true, which is a single gap and didn't trigger a switch-back nudge.
+**Why this stack**: SplitDom is a solo, after-hours, 3-week MVP for splitting household expenses, with must-have auth (FR-001) and no background-job requirement — the closing of a billing period (FR-015) is now a manual action taken by the group's creator, not a scheduled task, after the earlier automatic month-end closing (which had forced Next.js/Vercel to get Cron Jobs) was replaced. With that constraint gone, the registry's default for `(web-app, js)` — the 10x Astro Starter (Astro + Supabase + Cloudflare) — is back in play and was accepted as the standard-path recommendation. It clears all four agent-friendly gates (typed, convention-based, popular in training, well-documented), carries `first-class` bootstrapper confidence, and bundles auth + Postgres + edge deploy out of the box, which fits a short solo timeline better than assembling those pieces separately. Its one historical gotcha — the edge runtime's poor fit for long-running background tasks — no longer applies, since nothing in the MVP needs a scheduled job. Deployment targets Cloudflare Pages (the starter's own default). CI runs on GitHub Actions with auto-deploy-on-merge. Payments, realtime, and AI are out of scope per the PRD's Non-Goals and nice-to-have priorities. This choice replaces the prior Next.js/Vercel pick and required a fresh bootstrap.
 
 ## Pre-scaffold verification
 
-| Signal      | Value                                          | Severity | Notes                                                        |
-| ----------- | ----------------------------------------------- | -------- | ------------------------------------------------------------- |
-| npm package | create-next-app v16.3.5 published 2026-09-17    | fresh    | resolved from cmd_template (`npx create-next-app@latest`)     |
-| GitHub repo | not run                                         | n/a      | card `docs_url` (`https://nextjs.org/docs`) is not a GitHub repo URL |
+| Signal      | Value                                          | Severity | Notes                                                     |
+| ----------- | ----------------------------------------------- | -------- | ---------------------------------------------------------- |
+| npm package | not run                                        | n/a      | `cmd_template` starts with `git clone`; npm-package recency check does not apply |
+| GitHub repo | przeprogramowani/10x-astro-starter last pushed 2026-09-12T21:16:08Z | fresh    | from card `docs_url`, via GitHub REST API (`gh` CLI unavailable in this environment, used `curl` fallback) |
 
 ## Scaffold log
 
-**Resolved invocation**: `npx create-next-app@latest bootstrap-scaffold-tmp --ts --tailwind --eslint --app --src-dir --import-alias "@/*" --use-npm`
-**Strategy**: subdir-then-move
+**Resolved invocation**: `git clone https://github.com/przeprogramowani/10x-astro-starter .bootstrap-scaffold && cd .bootstrap-scaffold && npm install`
+**Strategy**: git-clone
 **Exit code**: 0
-**Files moved**: 13 top-level entries (`.next`, `AGENTS.md`, `README.md`, `eslint.config.mjs`, `next-env.d.ts`, `next.config.ts`, `node_modules`, `package-lock.json`, `package.json`, `postcss.config.mjs`, `public`, `src`, `tsconfig.json`)
-**Conflicts (.scaffold siblings)**: `CLAUDE.md.scaffold` (existing `CLAUDE.md` in cwd won)
-**.gitignore handling**: append-merged (cwd's single `.DS_Store` line kept first, then the scaffold's lines de-duped and appended under a `# from next` separator)
-**.bootstrap-scaffold cleanup**: deleted (temp dir was `bootstrap-scaffold-tmp`, not `.bootstrap-scaffold` — see note below)
+**Files moved**: 18 moved silently (`.env.example`, `.github`, `.husky`, `.nvmrc`, `.prettierrc.json`, `.vscode`, `astro.config.mjs`, `components.json`, `eslint.config.js`, `node_modules`, `package-lock.json`, `package.json`, `public`, `scripts`, `src`, `supabase`, `tsconfig.json`, `wrangler.jsonc`)
+**Conflicts (.scaffold siblings)**: `AGENTS.md.scaffold`, `CLAUDE.md.scaffold`, `README.md.scaffold`
+**.gitignore handling**: append-merged (cwd lines kept first, scaffold lines de-duped and appended under a `# from 10x-astro-starter` separator)
+**.bootstrap-scaffold cleanup**: deleted
 
-**Note on temp directory naming**: the first attempt at this run used the standard `.bootstrap-scaffold` temp name and failed — `create-next-app` validates the target directory name as an npm package name and refuses any name starting with a period ("name cannot start with a period"). That attempt exited non-zero before writing any files (no cleanup was needed). This run's successful invocation substituted a dot-free temp name, `bootstrap-scaffold-tmp`, at the user's explicit direction for this session; the skill's own convention (`.bootstrap-scaffold`) is incompatible with `create-next-app` and needs a fix upstream in `references/scaffold-merge.md` (flagged separately for a skill-authoring fix).
-
-**Additional note**: the local shell's default Node.js (`v19.9.0`) is below `create-next-app@16.3.5`'s engine requirement (`>=20.9.0`). The user had `nvm` available and switched to `nvm use --lts` (resolved to `v24.21.0`) before the successful retry.
+**Notes**:
+- Before this run, the prior Next.js scaffold (`package.json`, `src/`, `tsconfig.json`, `next.config.ts`, `next-env.d.ts`, `postcss.config.mjs`, `eslint.config.mjs`, `public/`, `node_modules/`, `.next/`) was deliberately removed by the user's explicit request, to avoid a large pile of `.scaffold` siblings from a starter swap. This is why most scaffold files landed as silent moves rather than conflicts. Fully recoverable via git history (commit `286e55e`).
+- A pre-existing `CLAUDE.md.scaffold` (an 11-byte stub `@AGENTS.md` left over from the original Next.js bootstrap) was preserved by renaming it to `CLAUDE.md.scaffold.next-bootstrap` before this run's `CLAUDE.md.scaffold` landed, so no prior content was lost.
+- `npm install` completed with exit code 0, but emitted many `EBADENGINE` warnings: the starter's dependencies (Astro 7, ESLint 10, several `@typescript-eslint` packages, etc.) require Node `>=20` or `>=22`, while this environment runs Node `v19.9.0`. Nothing failed, but expect friction until Node is upgraded (the starter's own `.nvmrc` pins `22.14.0`).
 
 ## Post-scaffold audit
 
-**Tool**: npm audit --json
+**Tool**: `npm audit --json`
 **Summary**: 0 CRITICAL, 0 HIGH, 0 MODERATE, 0 LOW
-**Direct vs transitive**: not distinguished by this tool run (no findings to split)
-**Dependency counts**: 17 prod, 384 dev, 88 optional, 438 total
+**Direct vs transitive**: not applicable — 0 findings total (804 dependencies audited: 377 prod, 269 dev, 167 optional)
 
-No findings in any severity tier.
+Audit: 0 findings across CRITICAL, HIGH, MODERATE, and LOW. Clean tree.
 
 ## Hints recorded but not acted on
 
-| Hint                     | Value            |
-| ------------------------ | ----------------- |
-| bootstrapper_confidence  | verified           |
-| quality_override         | false              |
-| path_taken               | custom             |
-| self_check_answers       | typed: true, from_official_starter: true, conventions: true, docs_current: true, can_judge_agent: false |
-| team_size                | solo               |
-| deployment_target        | vercel             |
-| ci_provider               | github-actions     |
+| Hint                     | Value        |
+| ------------------------ | ------------ |
+| bootstrapper_confidence  | first-class  |
+| quality_override         | false        |
+| path_taken               | standard     |
+| self_check_answers       | null         |
+| team_size                | solo         |
+| deployment_target        | cloudflare-pages |
+| ci_provider              | github-actions |
 | ci_default_flow          | auto-deploy-on-merge |
-| has_auth                 | true               |
-| has_payments             | false              |
-| has_realtime             | false              |
-| has_ai                   | false              |
-| has_background_jobs      | true               |
+| has_auth                 | true         |
+| has_payments             | false        |
+| has_realtime             | false        |
+| has_ai                   | false        |
+| has_background_jobs      | false        |
 
 ## Next steps
 
 Next: a future skill will set up agent context (CLAUDE.md, AGENTS.md). For now, your project is scaffolded and verified — happy hacking.
 
 Useful manual steps in the meantime:
-- `git init` (if you have not already) to start your own repo history. (This project already has a `.git/` at cwd from before this run.)
-- Review `CLAUDE.md.scaffold` and decide whether to fold anything from the starter's version into your existing `CLAUDE.md`.
-- The scaffolded `AGENTS.md` contains text addressed directly at AI coding agents (generated by Next.js's own `--agents-md` step, not by this skill or by you) — review it yourself before treating it as instructions; it was not acted on during this run.
-- Address audit findings per your project's risk tolerance — none were found in this run.
-- Report the `.bootstrap-scaffold` naming-convention bug (leading-dot temp directory name clashes with `create-next-app`'s npm-name validation) to whoever maintains this skill; a fix was already suggested for `references/scaffold-merge.md` and related files.
+- Upgrade local Node to `22.14.0` (see `.nvmrc`) — `npm install` succeeded on Node `19.9.0` but with many `EBADENGINE` warnings; some tooling (lint, build) may misbehave until Node is upgraded.
+- Review the `.scaffold` siblings this run created (`AGENTS.md.scaffold`, `CLAUDE.md.scaffold`, `README.md.scaffold`) and decide which version of each file to keep — the prior Next.js-era `CLAUDE.md` and `AGENTS.md` are almost certainly stale now (they describe a Next.js project) and the starter's own `CLAUDE.md.scaffold` / `AGENTS.md.scaffold` are the ones that actually match the scaffolded code.
+- Set up Supabase (`npx supabase start`, requires Docker) and copy `.env.example` to `.env` before running `npm run dev`.
+- `git add` the new files and commit the bootstrap swap — the working tree currently has the Next.js removal and the Astro scaffold as uncommitted changes.

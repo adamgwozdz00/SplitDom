@@ -1,109 +1,115 @@
 ---
 project: splitdom
-researched_at: 2026-09-19
-recommended_platform: netlify
+researched_at: 2026-09-20
+recommended_platform: cloudflare
 runner_up: vercel
 context_type: mvp
 tech_stack:
   language: typescript
-  framework: nextjs-app-router
-  runtime: nodejs
+  framework: astro
+  runtime: cloudflare-workers
 ---
 
-## Rekomendacja
+## Recommendation
 
-**Wdrożenie na Netlify.**
+**Deploy on Cloudflare Workers.**
 
-Netlify spełnia wszystkie pięć kryteriów przyjazności dla agentów, jego darmowe Scheduled Functions pokrywają FR-005 (automatyczne zamykanie okresu rozliczeniowego na koniec miesiąca) bez dodatkowej usługi, a oficjalny serwer MCP (GA) daje agentowi ustrukturyzowany dostęp do wdrożeń i logów. To wybór świadomie dokonany po kontroli błędu potwierdzenia: pierwotnym liderem rankingu był Vercel, ale po zidentyfikowaniu ryzyk (granica ToS planu Hobby, brak wbudowanych alertów o nieudanym uruchomieniu crona, zależność od poolingu połączeń Neon) użytkownik zdecydował się zamienić rekomendację na Netlify, akceptując w zamian ryzyko związane z tym, że wsparcie Next.js App Router opiera się na oficjalnym, ale zewnętrznym względem samego frameworka adapterze.
+Cloudflare is the only platform researched that clears all five agent-friendly criteria with a plain Pass, and it is also the native, zero-adapter-tax target of the already-bootstrapped 10x Astro Starter (`@astrojs/cloudflare`). This is a revised decision: the prior research round (2026-09-19) recommended Netlify specifically because SplitDom's billing-period closing was an automatic, calendar-scheduled task requiring Scheduled Functions/Cron Jobs, which pushed the pick away from Cloudflare's edge constraints on long-running tasks. That requirement no longer exists — closing a billing period (FR-015) is now a manual action the group's creator performs in the UI — so the platform decision was re-run from scratch rather than patched, and Cloudflare's edge model is no longer a liability.
 
-## Porównanie platform
+## Platform Comparison
 
-Ocena względem pięciu kryteriów z `references/agent-friendly-criteria.md`: CLI-first, zarządzana/serverless infrastruktura, dokumentacja czytelna dla agentów, stabilne API wdrożeniowe, serwer MCP/integracja. Skala: Spełnia / Częściowo / Nie spełnia.
+Scored against the five criteria in `references/agent-friendly-criteria.md`: CLI-first, managed/serverless, agent-readable docs, stable deployment API, MCP/integration. Scale: Pass / Partial / Fail.
 
-**Filtry twarde**: żadna platforma nie została odrzucona filtrem twardym — SplitDom nie wymaga połączeń długożyjących (WebSockets/long-polling), a wszystkie sześć platform obsługuje TypeScript/Node.js/Next.js w jakiejś formie.
+**Hard filters**: none applied. SplitDom does not need persistent connections (WebSockets/long-polling) per the developer interview, and all six candidate platforms support the project's stack (Astro 7 SSR via an official or documented adapter, TypeScript, external Supabase). No platform was dropped before scoring.
 
-| Platforma | CLI-first | Zarządzana/serverless | Dokumentacja dla agentów | Stabilne API wdrożeń | MCP/integracja | Uwaga kluczowa |
+| Platform | CLI-first | Managed/serverless | Agent-readable docs | Stable deploy API | MCP/integration | Key note |
 |---|---|---|---|---|---|---|
-| **Netlify** | Spełnia | Spełnia | Spełnia | Spełnia | Spełnia | Adapter `@netlify/plugin-nextjs` (GA), ale z historią drobnych niezgodności przy dużych wersjach Next.js |
-| **Vercel** | Spełnia | Spełnia | Spełnia | Spełnia | Spełnia | Natywne środowisko Next.js (twórca frameworka), zero podatku adaptera |
-| **Cloudflare (Workers/Pages)** | Spełnia | Spełnia | Spełnia (najlepsza w stawce) | Spełnia | Spełnia | Wymaga adaptera OpenNext; limit 10ms CPU na darmowym planie ciasny dla SSR |
-| **Railway** | Częściowo | Spełnia | Spełnia | Spełnia | Spełnia | Brak CLI-owego rollbacku do dowolnej wersji; brak darmowego planu (próg ~10-20 USD/mies.) |
-| **Render** | Spełnia | Spełnia | Spełnia | Spełnia | Spełnia | Darmowy Postgres wygasa po 30 dniach — krócej niż trwa samo MVP |
-| **Fly.io** | Częściowo | Częściowo | Spełnia | Spełnia | Częściowo | Brak natywnego crona — wymaga obejścia (Supercronic/scheduled machine) |
+| **Cloudflare** | Pass | Pass | Pass | Pass | Pass | `wrangler` covers deploy/rollback/tail end-to-end; native Astro adapter (no third-party tax) |
+| **Vercel** | Pass | Pass | Pass | Pass | Partial | MCP is public beta (as of 2026-09-20); native Astro adapter; Hobby plan's non-commercial ToS clause is a soft risk for a multi-housemate app |
+| **Render** | Partial | Pass | Pass | Pass | Pass | No dedicated CLI rollback (dashboard/API only); otherwise clean, predictable flat pricing |
+| **Netlify** | Partial | Pass | Pass | Pass | Pass | No dedicated CLI rollback (UI/API only); credit-based pricing (post-Sept-2025) is less predictable than a flat tier; history of adapter breaking changes between minor versions |
+| **Railway** | Partial | Pass | Pass | Pass | Partial | Rollback to an arbitrary deployment is dashboard-only; MCP is Railway's own "public testing" label; no free tier; Astro SSR needs manual adapter setup (no auto-detect) |
+| **Fly.io** | Partial | Pass | Partial | Pass | Partial | Docs source is HTML, not markdown/MDX (llms.txt exists but is thinner); MCP explicitly marked experimental; no official Astro+Fly starter — you own and maintain the Dockerfile; no free tier since Oct 2024 |
 
-Wagi miękkie z wywiadu z użytkownikiem: brak połączeń długożyjących (bez filtra twardego), priorytet minimalizacji kosztów (penalizuje Railway i płatne warstwy Render/Cloudflare), brak istniejącej znajomości platform (brak remisów do rozstrzygnięcia), ruch jednoregionalny (brak premii za sieć edge), zewnętrzny dostawca bazy danych akceptowalny (nie penalizuje platform bez własnego Postgresa).
+Soft weights from the developer interview: no persistent-connection requirement (no hard filter triggered), cost vs. DX roughly equal priority (doesn't strongly favor or penalize any platform, though it keeps the no-free-tier platforms — Fly.io, Railway — at a real, if minor, disadvantage), no existing platform familiarity (no tie-break bias), single-region traffic (edge-native reach is a non-factor, not a tiebreaker either way), external Supabase acceptable (removes any pressure toward platforms with their own co-located database).
 
-Cztery platformy (Netlify, Vercel, Cloudflare, Render) uzyskały komplet "Spełnia" na pięciu kryteriach — różnicę robi dopasowanie do FR-005 i realne ryzyko wdrożeniowe specyficzne dla Next.js, opisane niżej. Fly.io odpada z krótkiej listy: nie ma natywnego mechanizmu harmonogramu, więc FR-005 wymagałby dokładnie takiego ręcznego obejścia, jakie było powodem odrzucenia pierwotnej kombinacji Astro/Cloudflare na etapie wyboru stacku.
+Four platforms (Cloudflare, Vercel, Render, Netlify) score 4-or-5-of-5 Pass; the difference comes down to which single criterion carries a Partial. CLI-first and stable-deploy-API are the two criteria weighted heavily per `agent-friendly-criteria.md`; MCP/integration is explicitly light-weight unless top picks tie on everything else. That weighting is why Vercel (Partial only on the light-weight MCP criterion) outranks Render and Netlify (both Partial on the heavily-weighted CLI-first criterion, specifically missing a CLI rollback subcommand).
 
-### Platformy na skróconej liście
+### Platforms on the shortlist
 
-#### 1. Netlify (rekomendowana)
+#### 1. Cloudflare (Recommended)
 
-Darmowe Scheduled Functions (`@monthly`, `0 0 1 * *` UTC) realizują FR-005 na każdym planie, łącznie z darmowym — zero dodatkowej usługi. Oficjalny serwer MCP (GA od czerwca 2025, github.com/netlify/netlify-mcp) obejmuje wdrożenia, zmienne środowiskowe i logi. CLI ma pełne pokrycie (`netlify deploy`, rollback, `netlify logs --follow` dodane w 2026). Ryzyko: wsparcie App Router idzie przez `@netlify/plugin-nextjs` (oparty o OpenNext) — oficjalnie wspierany i aktywnie utrzymywany, ale społeczność zgłaszała w latach 2024-2026 przejściowe niezgodności przy dużych aktualizacjach Next.js (patrz kontrola błędu potwierdzenia niżej). Nowy, kredytowy model darmowego planu (300 kredytów/mies., 15 kredytów za wdrożenie produkcyjne, bez trybu nadwyżki) to dodatkowy czynnik do monitorowania przy częstym wdrażaniu wieczorami.
+Clears every criterion with a plain Pass and is the native deployment target the chosen starter (10x Astro Starter) already ships with — zero adapter tax, `wrangler deploy`/`wrangler rollback`/`wrangler tail` cover the full operational loop, and Cloudflare publishes the best-in-class agent-readable docs of the six platforms researched (`llms.txt` + `llms-full.txt` + per-page markdown, GA). Free tier covers 100k requests/day; realistic cost for SplitDom's SSR workload is $0-5/month (see Risk Register for the CPU-cap caveat). Its historical weakness — edge runtimes being a poor fit for long-running background tasks — is now moot, since FR-015 replaced the scheduled monthly close with a manual user action.
 
 #### 2. Vercel (runner-up)
 
-Pierwotny lider rankingu — twórca Next.js, więc zero podatku adaptera; Cron Jobs (GA) trywialnie pokrywają FR-005 nawet na darmowym planie Hobby (minimalna częstotliwość raz dziennie, więc harmonogram miesięczny mieści się z zapasem); oficjalny, niebeta serwer MCP. Odrzucony na etapie kontroli błędu potwierdzenia z powodu: niejasnej granicy ToS planu Hobby przy użyciu niekomercyjnym przez wielu domowników, braku wbudowanego alertu o nieudanym uruchomieniu crona (ryzykowne dla wymogu PRD, że salda muszą się zawsze zgadzać) oraz zależności od poolera połączeń Neon (Vercel Postgres zostało wycofane na rzecz Neon w 2024/2025) jako dodatkowej warstwy do poprawnego skonfigurowania.
+The most mature, battle-tested option for Astro SSR (native adapter maintained inside the `withastro/astro` monorepo), with GA docs-as-markdown and a deterministic CLI. Its only scoring gap is that Vercel's MCP server is still public beta. The Hobby (free) tier's "no financial gain" clause is a soft, non-scoring risk worth a manual read given SplitDom is shared among housemates, even without direct monetization.
 
-#### 3. Cloudflare Workers + Pages
+#### 3. Render
 
-Najlepsza dokumentacja czytelna dla agentów (`llms.txt`, markdown przez content negotiation) i najtańszy płatny plan (5 USD/mies. płasko, bez opłat za transfer). Natywny mechanizm Cron Triggers czysto pokrywa FR-005. Traci miejsce na liście głównie przez podatek adaptera: Next.js App Router nie działa natywnie — wymaga `@opennextjs/cloudflare` (dojrzały, ale z udokumentowanym tarciem przy integracji NextAuth/`jose`, błąd `[unenv] https.request is not implemented yet!` w polyfillach `nodejs_compat`) oraz limitu 10ms czasu CPU na darmowym planie, który badanie oceniło jako "genuinely tight" dla SSR w Next.js.
+Clean, predictable pricing with no credit system (free with cold starts, or $7/month flat for always-on) and a GA, well-documented MCP server. Its one gap is the heavily-weighted CLI-first criterion: rollback is dashboard/API-only, with no dedicated CLI subcommand, unlike Cloudflare's single-command `wrangler rollback`.
 
-## Kontrola błędu potwierdzenia: Netlify
+## Anti-Bias Cross-Check: Cloudflare
 
-### Diabelski adwokat — słabości
+### Devil's Advocate — Weaknesses
 
-1. Adapter `@netlify/plugin-nextjs` (oparty o OpenNext) to warstwa Netlify, nie natywne środowisko uruchomieniowe Next.js — społeczność zgłaszała w latach 2024-2025 realne, choć przejściowe, awarie powiązane z dużymi aktualizacjami wersji (spowolnienia/timeouty na 14.1, błędy 500 przy bezpośrednim wejściu/odświeżeniu strony po migracji na App Router, inna kolejność wykonania middleware niż w standardowym Next.js). Przy solowym, 3-tygodniowym projekcie bez zapasu czasu, trafienie na taki problem oznacza dni spędzone na debugowaniu adaptera zamiast budowania funkcji.
-2. Nowy, kredytowy model darmowego planu (dla kont założonych po ok. wrześniu 2025) daje 300 kredytów/miesiąc bez trybu nadwyżki — każde wdrożenie produkcyjne kosztuje 15 kredytów, czyli limit to ok. 20 wdrożeń/miesiąc, zanim zużyje się cokolwiek na transfer czy funkcje. Przy aktywnym kodowaniu wieczorami (kilka wdrożeń na sesję) budżet może się wyczerpać szybciej niż oczekiwano, a strona zostaje wtedy wstrzymana do następnego cyklu — dokładnie wtedy, gdy Scheduled Function miałaby się uruchomić.
-3. Brak własnej, zarządzanej bazy Postgres — SplitDom i tak zależy od zewnętrznego dostawcy (Neon/Supabase) z tymi samymi pułapkami poolingu połączeń co przy Vercelu (surowy connection string wyczerpie pulę połączeń pod współbieżnymi wywołaniami funkcji). Zmiana platformy z Vercela na Netlify nie eliminuje tej klasy ryzyka.
-4. Scheduled Functions uruchamiają się wyłącznie na opublikowanym wdrożeniu produkcyjnym, nigdy w podglądach (deploy previews) — logika FR-005 nie ma środowiska do pełnego testu end-to-end przed produkcją, co jest ryzykowne dla funkcji bezpośrednio wpływającej na gwarancję PRD, że kwoty długu muszą się zawsze zgadzać.
-5. **Ustalenie z bieżącego badania (19.09.2026)**: wsparcie Netlify dla Next.js 16 zostało ogłoszone dopiero dzisiaj w oficjalnym changelogu — czyli nie ma jeszcze żadnej realnej historii eksploatacyjnej na tej konkretnej kombinacji wersji. Co więcej, na forum wsparcia Netlify widnieje nierozwiązane zgłoszenie: build Next.js 16.0.3 z Turbopackiem failuje na Edge Functions z błędem `Failed to load external module pino` przy przetwarzaniu middleware — support Netlify potwierdził brak sposobu na wyłączenie obsługi Edge Middleware i zasugerował unikanie zależności CommonJS (nie-ESM). To bezpośrednio dotyczy SplitDom, bo FR-001 (logowanie przez zewnętrznego dostawcę tożsamości) niemal na pewno będzie wymagało middleware do ochrony tras, a biblioteki auth (np. NextAuth/Auth.js) często pociągają za sobą zależności logujące typu `pino`.
+1. **CPU-time billing mismatch.** The free tier caps at 10ms CPU per invocation, but Astro SSR routinely burns 10-20ms — meaning the "free" plan is likely to be exceeded by real SSR traffic almost immediately, silently forcing the $5/month Workers Paid plan. This isn't obvious until the app is deployed and starts throwing `1015` (CPU exceeded) errors.
+2. **Open, unresolved adapter bug** ([withastro/astro#14540](https://github.com/withastro/astro/issues/14540)): the Cloudflare adapter doesn't reliably pick up `wrangler.jsonc` vars at build time, forcing env vars to be duplicated into `.env.development`/`.env.production`. A solo developer on a 3-week timeline could lose real hours debugging an env var that "works locally but not in prod" before discovering this is a known adapter bug, not a config mistake.
+3. **Pages→Workers migration churn.** Cloudflare itself now tells new 2026 projects to target Workers directly rather than Pages. Tutorials, Stack Overflow answers, and AI training data still skew toward the older Pages-centric mental model — a stale-knowledge trap for both the developer and any AI agent assisting on the project.
+4. **`nodejs_compat`/CommonJS friction.** Supabase's JS SDK and other auth/utility libraries sometimes ship CommonJS, which needs pre-bundling or the `nodejs_compat` flag to run correctly on the `workerd` runtime — a class of error specific to Workers that won't surface in local `astro dev` testing (which runs on Node, not `workerd`).
+5. **No escape hatch.** If Workers' CPU or memory model ever becomes a genuine blocker, there's no "add more resources" lever the way there is on Fly.io/Railway/Render — the fix is migrating adapters, not turning a dial.
 
-### Analiza przedwyroczna (pre-mortem) — jak mogłoby się to nie udać
+### Pre-Mortem — How This Could Fail
 
-Zespół wdrożył SplitDom na Netlify w trzy tygodnie, ciesząc się, że darmowe Scheduled Functions załatwiają miesięczne zamykanie okresu bez dodatkowych kosztów. Cztery miesiące później Next.js wydał kolejną łatkę z drobną zmianą API middleware; adapter Netlify nie nadążył z aktualizacją równie szybko jak zwykle, a strona logowania zaczęła zwracać sporadyczne błędy 500 po odświeżeniu — dokładnie ten wzorzec, który społeczność zgłaszała wcześniej przy przejściach na nowe wersje frameworka. Deweloper spędził cały weekend, próbując odróżnić błąd własnej aplikacji od błędu adaptera, zamiast pracować nad funkcją niestandardowego podziału wydatków. Równolegle aktywne iterowanie (kilka wdrożeń każdego wieczoru) niepostrzeżenie zużyło miesięczny limit 300 kredytów w połowie miesiąca — konto zostało wstrzymane na kilka dni tuż przed zaplanowanym zamknięciem okresu, a Scheduled Function nigdy się nie uruchomiła, bo strona była spauzowana. Dług dwóch grup rozliczeniowych pozostał otwarty do ręcznej korekty. Wniosek: nikt nie zmapował ryzyka "adapter opóźniony względem nowej wersji Next.js" ani nie monitorował zużycia kredytów w czasie rzeczywistym — oba ryzyka były znane od dnia decyzji, ale żadne nie miało przypisanej konkretnej kontroli.
+SplitDom shipped on Cloudflare Workers in three weeks, and free-tier hosting felt like a win. A month in, the developer added the balance-calculation page with a few Supabase queries per request; SSR routes started intermittently returning `1015` (CPU-exceeded) errors under nothing more than normal single-household usage, because Astro SSR routinely burns 10-20ms of CPU against a 10ms free-tier ceiling nobody had budgeted for. Diagnosing it took a weekend, since the error only appeared in production, never in local `astro dev`. Around the same time, an environment variable added for a new feature worked locally but silently failed in the deployed Worker — the known-but-undocumented-in-tutorials `wrangler.jsonc` pickup bug, costing another evening. By the time both were fixed, the developer had spent more hours debugging Workers-specific runtime quirks than building the custom-split feature the PRD had deferred to nice-to-have. Nobody had mapped "Workers CPU billing model" or "adapter env-var bug" as risks at decision time — both were discoverable in minutes of the same research that produced this document, but weren't weighted because the platform looked obviously right on paper.
 
-### Nieznane niewiadome
+### Unknown Unknowns
 
-- Netlify przeniosło konta założone po ok. wrześniu 2025 na nowy, kredytowy model rozliczeń bez trybu nadwyżki (overage) — strona jest wtedy wstrzymywana do następnego cyklu zamiast przełączana na płatne doliczanie, co nie jest oczywiste z samej strony cennika.
-- Scheduled Functions uruchamiają się wyłącznie na opublikowanym wdrożeniu produkcyjnym, nigdy w podglądach — nie da się przetestować logiki zamykania okresu end-to-end przed wypchnięciem na produkcję, a ta informacja nie jest wyeksponowana w głównej dokumentacji Scheduled Functions.
-- Wsparcie dla Next.js 16 na Netlify zostało ogłoszone dopiero w dniu tego badania (19.09.2026) — SplitDom ma w `package.json` dokładnie tę wersję (16.3.5), więc projekt startuje na kombinacji platforma+wersja frameworka bez żadnej sprawdzonej historii produkcyjnej, a otwarte zgłoszenie o błędzie budowania z Turbopackiem i middleware (prawdopodobnie zależności auth typu `pino`) nie ma potwierdzonego obejścia ze strony supportu Netlify.
-- Middleware w adapterze Netlify może wykonywać się w innej kolejności niż w standardowym Next.js (zgłoszenia społeczności z 2024-2025) — kod middleware napisany i przetestowany lokalnie na `next dev` może zachowywać się inaczej po wdrożeniu.
-- Brak własnej, natywnej bazy Postgres oznacza, że dokładnie te same pułapki poolingu połączeń (Neon/Supabase) co na Vercelu przenoszą się na Netlify — zmiana platformy hostingowej nie eliminuje tego ryzyka, mimo że mogłoby się tak wydawać na pierwszy rzut oka.
+- `astro dev` runs on Node, not `workerd` — local testing never exercises the real Workers CPU limits, `nodejs_compat` restrictions, or the `wrangler.jsonc` env-var bug. "Works on my machine" is a weaker signal on this stack than usual.
+- Cloudflare is actively deprecating "Pages" as the recommended path in favor of "Workers with static assets" for 2026 projects — most existing tutorials and AI training data still skew toward the older Pages-centric mental model.
+- CPU time is cumulative across *all* awaited work in a request, including parallel `Promise.all()` calls — a common performance instinct ("parallelize the Supabase queries") does not reduce CPU billing the way it reduces wall-clock time on a traditional server.
+- `wrangler rollback` is instant and version-pinned (a genuine strength), but it rolls back the Worker code only, not any Supabase schema/migration state — a bad deploy paired with a bad migration still needs a manual, unautomated database fix. This is a general risk across every platform researched, not Cloudflare-specific, but easy to assume "rollback" means full safety.
+- Cloudflare's GA MCP server ecosystem (13+ servers) manages Cloudflare itself (DNS, Workers config, KV) via Claude — it is not an app-level integration for SplitDom's own features. Easy to over-read as more relevant to this project than it actually is.
 
-## Historia operacyjna
+**Decision**: after reviewing these findings, the risks were judged manageable for MVP scope (a $5/month contingency plan and known workarounds exist for both concrete bugs) and Cloudflare was kept as the recommendation. Risks are carried into the register below rather than triggering a platform swap.
 
-- **Podgląd wdrożeń**: każdy branch/PR na GitHubie automatycznie dostaje własny URL podglądu (Deploy Preview) generowany przez Netlify po pushu, bez dodatkowej konfiguracji; URL-e podglądu są domyślnie publiczne, więc dla gałęzi z danymi zbliżonymi do produkcyjnych warto rozważyć ochronę hasłem/Netlify Access. Scheduled Functions (w tym logika FR-005) **nie uruchamiają się** na podglądach — tylko na opublikowanym wdrożeniu produkcyjnym.
-- **Sekrety**: zmienne środowiskowe (dane OAuth, connection string do bazy) trzymane w Netlify Environment Variables per-site i per-context (production / deploy-preview / branch-deploy), ustawiane przez `netlify env:set` lub w panelu — nie trafiają do repozytorium. Rotacja polega na aktualizacji wartości w Netlify i ponownym wdrożeniu, aby weszła w życie w uruchomionych funkcjach.
-- **Rollback**: `netlify rollback` lub wybór wcześniejszego wdrożenia w CLI/panelu przywraca poprzednią wersję produkcyjną w ciągu sekund. Migracje bazy danych **nie cofają się automatycznie** — rollback samego kodu bez cofnięcia migracji schematu może zostawić bazę niespójną ze starszą wersją aplikacji, więc migracje wymagają osobnego, ręcznego planu wycofania.
-- **Zatwierdzanie**: rutynowe wdrożenia na produkcję po mergu do głównej gałęzi mogą przebiegać automatycznie (CI/CD z GitHub Actions, zgodnie z `tech-stack.md`); rotacja głównych sekretów (sekret NextAuth, dane dostępowe do bazy) oraz jakiekolwiek zmiany planu rozliczeniowego pozostają czynnościami wykonywanymi ręcznie przez człowieka.
-- **Logi**: `netlify logs --follow` do logów na żywo (funkcja dodana w 2026), `netlify logs:function <nazwa>` dla logów konkretnej funkcji; oficjalny serwer MCP Netlify (github.com/netlify/netlify-mcp) pozwala agentowi odpytywać status wdrożeń i logi w sposób ustrukturyzowany zamiast parsować wyjście CLI.
+## Operational Story
 
-## Rejestr ryzyk
+- **Preview deploys**: Cloudflare Workers Builds, connected to the GitHub repo, generates a preview deployment with its own URL for every push to a non-production branch/PR — no extra configuration beyond connecting the repo (GA).
+- **Secrets**: `wrangler secret put <NAME>` stores encrypted secrets (e.g. `SUPABASE_KEY`) in Cloudflare's vault, readable only by the deployed Worker; local dev secrets go in `.dev.vars` (gitignored, already covered by the merged `.gitignore`). Non-secret env vars live in `wrangler.jsonc`. Rotation = re-run `wrangler secret put` with the new value, then redeploy.
+- **Rollback**: `wrangler rollback [deployment-id]` reverts the live Worker to a prior version in seconds — deterministic and scriptable. It does **not** revert Supabase schema/migrations, so a migration-paired deploy needs a separate, manually-verified DB rollback step.
+- **Approval**: routine deploys on merge to main can run unattended via GitHub Actions + `wrangler deploy` (matches `tech-stack.md`'s `auto-deploy-on-merge`). Rotating the Supabase service-role key, deleting Cloudflare/Supabase resources, or changing the billing plan remain manual, human-only actions.
+- **Logs**: `wrangler tail` streams live logs (note: samples/drops under heavy traffic, per research — a non-issue at SplitDom's scale). Cloudflare's GA MCP servers offer structured, agent-queryable access to deployment and observability data as an alternative to parsing CLI output, though they manage Cloudflare infrastructure, not SplitDom's own application data.
 
-| Ryzyko | Źródło | Prawdopodobieństwo | Wpływ | Mitygacja |
+## Risk Register
+
+| Risk | Source | Likelihood | Impact | Mitigation |
 |---|---|---|---|---|
-| Build z Turbopackiem na Next.js 16 failuje na Netlify Edge Functions, gdy middleware/zależności auth (np. `pino`) nie są w pełni ESM — otwarte, nierozwiązane zgłoszenie na forum wsparcia bez potwierdzonego obejścia | Ustalenie badawcze | Ś | W | Przed implementacją pełnego FR-001 wdrożyć minimalny middleware-placeholder na Netlify i zweryfikować, że build przechodzi; jeśli nie, zbudować bez `--turbopack` (`next build` domyślnym webpackiem) jako plan B |
-| Niezgodność adaptera `@netlify/plugin-nextjs` z nową wersją Next.js po dużej aktualizacji (błędy 500, spowolnienia, inna kolejność middleware) | Diabelski adwokat | Ś | Ś | Przypiąć dokładną wersję Next.js i śledzić changelog `@netlify/plugin-nextjs` przed każdą aktualizacją; testować upgrade na osobnym branchu przed mergem do produkcji |
-| Wyczerpanie miesięcznego limitu 300 kredytów przez częste wdrożenia produkcyjne podczas aktywnego kodowania wieczorami (15 kredytów/wdrożenie ≈ 20 wdrożeń/mies.) | Diabelski adwokat | Ś | W | Iterować na podglądach (deploy previews) i wdrażać na produkcję dopiero po ukończeniu partii zmian; monitorować zużycie kredytów w panelu Netlify |
-| Scheduled Function (FR-005) nie ma środowiska do testu end-to-end przed produkcją, bo nie uruchamia się na podglądach | Nieznane niewiadome | Ś | W | Napisać dedykowany test jednostkowy/integracyjny wywołujący handler scheduled function bezpośrednio (bez czekania na harmonogram), uruchamiany w CI przed każdym wdrożeniem |
-| Brak własnej zarządzanej bazy Postgres — zależność od poolowanego connection stringa zewnętrznego dostawcy (Neon/Supabase); surowy connection string wyczerpie połączenia pod współbieżnością | Ustalenie badawcze | Ś | Ś | Od pierwszego dnia używać connection stringa z poolerem (Neon PgBouncer / Supabase Supavisor transaction mode); udokumentować to w README projektu |
-| 30-sekundowy limit czasu wykonania Scheduled Functions może być niewystarczający, jeśli zamykanie okresu kiedyś obejmie wiele grup w jednym uruchomieniu | Diabelski adwokat | N | Ś | Zaprojektować handler tak, by przetwarzał grupy niezależnie i dało się go łatwo podzielić na wiele mniejszych wywołań, jeśli limit zostanie kiedyś osiągnięty |
-| Granica ToS planu Hobby / niekomercyjnego użycia (dotyczy Vercela jako runner-upa, warto mieć na uwadze przy ewentualnej migracji) | Diabelski adwokat (z pierwszej kontroli, Vercel) | N | Ś | Nie dotyczy Netlify bezpośrednio — odnotowane jako kontekst decyzji, gdyby projekt kiedyś migrował z powrotem na Vercel |
+| Astro SSR (10-20ms CPU/request) likely exceeds the free tier's 10ms CPU cap, causing `1015` errors under real traffic | Devil's advocate | H | M | Budget for the $5/month Workers Paid plan from day one; monitor CPU time via `wrangler tail`/observability during early testing |
+| Open adapter bug: `wrangler.jsonc` env vars not reliably picked up at build time ([astro#14540](https://github.com/withastro/astro/issues/14540)) | Devil's advocate / Research finding | M | M | Duplicate env vars into `.env.development`/`.env.production` per Astro's Cloudflare docs; verify every new env var against a deployed preview, not just local dev |
+| Stale tutorials/training data reference the deprecated Cloudflare Pages path instead of Workers | Devil's advocate / Unknown unknowns | M | L | Cross-check any Cloudflare guidance against current `wrangler` docs (`llms.txt`) rather than older Pages-era tutorials; the starter already targets Workers directly |
+| `nodejs_compat`/CommonJS friction with Supabase SDK or other auth libraries on the `workerd` runtime | Devil's advocate | M | M | Confirm `nodejs_compat` is enabled (starter default); test the full Supabase auth flow on a deployed preview early, not only in local `astro dev` |
+| No resource "dial" if Workers' CPU/memory model becomes a hard blocker for a future feature | Devil's advocate | L | M | Not a near-term MVP concern given no background jobs; revisit only if a future feature needs sustained compute |
+| Local `astro dev` runs on Node, not `workerd` — doesn't exercise real Workers constraints | Unknown unknowns | M | M | Test every change touching middleware, env access, or Node APIs on a deployed Cloudflare preview before merging |
+| `Promise.all()` parallelization does not reduce cumulative CPU billing the way it reduces wall-clock time | Unknown unknowns | L | L | Keep in mind when optimizing Supabase query patterns; don't assume parallel calls are "free" on CPU billing |
+| `wrangler rollback` reverts Worker code only, not Supabase schema/migrations | Unknown unknowns | M | M | Treat DB migrations as a separate, manually-verified rollback step; avoid pairing a schema-breaking migration with a code deploy when avoidable |
+| Cloudflare's GA MCP servers manage Cloudflare infrastructure, not SplitDom's own application data | Unknown unknowns | L | L | Don't over-rely on MCP as an app-level integration; treat it as an infra-ops convenience only |
 
-*Prawdopodobieństwo/Wpływ: N = niskie, Ś = średnie, W = wysokie.*
+*Likelihood/Impact: L = low, M = medium, H = high.*
 
-## Pierwsze kroki
+## Getting Started
 
-1. Zainstalować Netlify CLI (`npm i -g netlify-cli`) i zalogować się (`netlify login`), następnie połączyć repozytorium (`netlify init`) — Netlify automatycznie wykryje Next.js 16.3.5 i zainstaluje adapter `@netlify/plugin-nextjs`, bez potrzeby ręcznej konfiguracji `netlify.toml` dla podstawowego działania.
-2. Przed implementacją FR-001 wdrożyć na Netlify minimalny middleware-placeholder (bez pełnej logiki auth) i zweryfikować, że build z Turbopackiem przechodzi na Edge Functions — jeśli napotka się błąd `Failed to load external module` znany z otwartego zgłoszenia na forum Netlify, zbudować bez flagi `--turbopack` jako obejście.
-3. Skonfigurować zewnętrzną bazę Postgres (np. Neon) z connection stringiem **poolowanym** (PgBouncer/transaction mode) od pierwszego dnia i ustawić go w Netlify Environment Variables osobno dla kontekstu production i deploy-preview (`netlify env:set`).
-4. Zaimplementować Scheduled Function dla FR-005 (`export const config = { schedule: "@monthly" }`, odpowiadające `0 0 1 * *` UTC) razem z osobnym testem jednostkowym wywołującym handler bezpośrednio, ponieważ scheduled functions nie uruchamiają się na podglądach.
-5. Włączyć `netlify logs --follow` i skonfigurować oficjalny serwer MCP Netlify do bieżącego, ustrukturyzowanego odpytywania stanu wdrożeń podczas dalszej implementacji.
+The project is already bootstrapped from the 10x Astro Starter, which ships pre-wired for this exact platform.
 
-## Poza zakresem
+1. Confirm `wrangler` is available (`npx wrangler --version` — it's already a starter dependency) and authenticate: `npx wrangler login`.
+2. Create or link a Supabase project, then copy `.env.example` to `.env` (Node/local dev) and populate `.dev.vars` (Cloudflare local dev) with `SUPABASE_URL` and `SUPABASE_KEY`, per the starter's own `CLAUDE.md`.
+3. Verify `nodejs_compat` is set in `wrangler.jsonc` (starter default) and do an early end-to-end test of the Supabase auth flow (FR-001) on a deployed preview, not only locally — this is the fastest way to catch the `nodejs_compat`/CommonJS and env-var-pickup risks from the register above before they block later work.
+4. Connect the GitHub repo to Cloudflare Workers Builds for automatic preview deployments per PR and auto-deploy-on-merge to production (matching `tech-stack.md`'s CI/CD hints).
+5. Run `npx wrangler deploy` for the first production deploy, then set the real secrets with `wrangler secret put SUPABASE_KEY` (and any others) rather than relying on `wrangler.jsonc` plain vars for anything sensitive.
 
-Tego badania nie obejmowało:
-- Konfiguracja obrazów Dockerowych
-- Konfiguracja pipeline'ów CI/CD (poza samym faktem, że `tech-stack.md` zakłada GitHub Actions z auto-deploy-on-merge)
-- Architektura na skalę produkcyjną (multi-region, wysoka dostępność, disaster recovery)
+## Out of Scope
+
+This research did not cover:
+- Docker image configuration
+- CI/CD pipeline setup (beyond noting that `tech-stack.md` assumes GitHub Actions with auto-deploy-on-merge)
+- Production-scale architecture (multi-region, high availability, disaster recovery)
