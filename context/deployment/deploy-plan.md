@@ -48,15 +48,28 @@ Audit trail for the first production deployment, produced in Plan Mode and appro
 10. Set production Worker secrets: `npx wrangler secret put SUPABASE_URL`, `npx wrangler secret put SUPABASE_KEY`.
 11. Merge the PR — every subsequent merge to `main` auto-builds and auto-deploys via the `deploy` job.
 
-## Status as of this plan
+## Status: DEPLOYED (updated 2026-09-21)
 
-Steps 1–5 (automated) are implemented on branch `chore/cloudflare-deploy-setup`, not yet merged. Steps 1–11 (manual) have **not** been performed yet — no Cloudflare/Supabase account is wired up, no secrets exist, no Worker has been deployed. This file will need a follow-up entry once the first live deploy actually happens (deployed URL, deploy timestamp, Worker name).
+All automated and manual steps above are complete:
 
-## Verification (once manual steps are complete)
+- Steps 1–5 (automated) merged via [PR #1](https://github.com/adamgwozdz00/SplitDom/pull/1).
+- Steps 1–11 (manual) all performed: Cloudflare + Supabase CLI auth done, scoped API token created, real Supabase project linked (`rpbroqavksbvezskqhlz`, region `eu-west-1`), all 4 GitHub secrets set (`CLOUDFLARE_API_TOKEN`, `CLOUDFLARE_ACCOUNT_ID`, `SUPABASE_URL`, `SUPABASE_KEY`), first manual `wrangler deploy` done, production Worker secrets set, PR merged.
+- **Live URL**: https://10x-astro-starter.adamgwozdz.workers.dev
+- Every merge to `main` now auto-builds and auto-deploys via the `deploy` job (verified working across [PR #2](https://github.com/adamgwozdz00/SplitDom/pull/2) and [PR #3](https://github.com/adamgwozdz00/SplitDom/pull/3)).
 
-- `gh run list` — confirm `ci` + `smoke` + `deploy` jobs pass on `main`.
-- Visit the deployed Worker URL and exercise the full Supabase auth flow (FR-001) live — `astro dev` runs on Node, not `workerd`, so this is the first real test of that path (see risk register in `infrastructure.md`).
-- `npx wrangler tail` briefly after first real traffic — watch for `1015` (CPU-cap) errors, a known risk for Astro SSR on the free tier per `infrastructure.md`'s risk register.
+### Post-deploy findings (from live end-to-end testing, not caught by CI)
+
+1. **Supabase Auth Site URL was still the platform default `http://localhost:3000`** — never customized for production, so email-confirmation links redirected to a dead localhost with `otp_expired`/`access_denied`. Fixed manually in Supabase Dashboard → Authentication → URL Configuration: `site_url` → `https://10x-astro-starter.adamgwozdz.workers.dev`, `additional_redirect_urls` → `https://10x-astro-starter.adamgwozdz.workers.dev/**`. Not something `wrangler`/CI could have caught — it's a Supabase-side project setting, invisible to the deploy pipeline. Companion fix: `supabase/config.toml`'s local `site_url` was also wrong (port 3000 instead of Astro's actual dev port 4321) — fixed in PR #2.
+2. **No app code handled the post-confirmation redirect** — `src/pages/index.astro` was still the unmodified Astro starter placeholder; the `?code=`/`?error=` params from Supabase's verify endpoint were never read, so users landed "Not signed in" even after a valid confirmation. Fixed in PR #3: new `src/pages/auth/callback.ts` calls `exchangeCodeForSession`, `signup.ts` now passes `emailRedirectTo`.
+3. **Known limitation, accepted as-is (decision below)**: Supabase's default email-confirmation flow uses PKCE, which requires the `code_verifier` (stored in a cookie set during `signUp`) to be present in the browser that opens the confirmation link. If a user signs up in one browser/device and opens the confirmation email in another (a very plausible pattern for a household-expense app — phone Gmail app vs. desktop browser), `exchangeCodeForSession` fails with "PKCE code verifier not found in storage". Verified via a same-cookie-jar `curl` reproduction against local Supabase (signup → confirmation email → verify → `/auth/callback?code=`, all with one cookie jar): the full chain returns `302` to `/dashboard` with a valid session when the cookie is present, confirming `/auth/callback`'s `exchangeCodeForSession` logic itself is correct and the failure is specifically the cross-browser/cross-device case. This is a product/UX decision (PKCE vs. implicit flow for email confirmations, or an explicit "resend/re-request" recovery path), not a deploy-pipeline or app-logic defect.
+
+**Decision (2026-09-21, project owner)**: keep PKCE as-is for MVP. Accepted trade-off: users who confirm their email on a different browser/device than the one they signed up on will hit "PKCE code verifier not found in storage" and need to sign up again (or a future recovery flow). Revisit if this turns out to affect real users in practice.
+
+## Verification (performed)
+
+- `gh run list` — `ci` + `smoke` + `deploy` all pass on `main` (confirmed across the initial deploy and both follow-up PRs).
+- Full Supabase signup flow exercised live (FR-001): registration → confirmation email → verify → (after fixes above) landing on `/dashboard` in the same-browser case. Cross-browser PKCE case still fails as described above.
+- No `1015` (CPU-cap) errors observed during testing.
 
 ## Out of scope
 
