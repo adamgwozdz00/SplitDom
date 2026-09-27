@@ -325,22 +325,22 @@ Run the tests in CI, gate deploys on them, push migrations to the hosted databas
 
 #### Automated
 
-- [x] 2.1 Unit project runs (no tests yet) and exits 0: `npm test`
-- [x] 2.2 Database tests pass against local Supabase: `npm run test:db`
-- [x] 2.3 Lint passes: `npm run lint`
-- [x] 2.4 Type check passes: `npx astro check`
+- [x] 2.1 Unit project runs (no tests yet) and exits 0: `npm test` — c7a0443
+- [x] 2.2 Database tests pass against local Supabase: `npm run test:db` — c7a0443
+- [x] 2.3 Lint passes: `npm run lint` — c7a0443
+- [x] 2.4 Type check passes: `npx astro check` — c7a0443
 
 #### Manual
 
-- [x] 2.5 With local Supabase stopped, `npm run test:db` fails fast with the "Local Supabase is not running" message
-- [x] 2.6 Temporarily adding a migration with a table without RLS makes `npm run test:db` fail and name that table (then revert the migration and `npm run db:reset`)
-- [x] 2.7 No leftover `isolation-*@example.com` users in local Studio after a test run
+- [x] 2.5 With local Supabase stopped, `npm run test:db` fails fast with the "Local Supabase is not running" message — c7a0443
+- [x] 2.6 Temporarily adding a migration with a table without RLS makes `npm run test:db` fail and name that table (then revert the migration and `npm run db:reset`) — c7a0443
+- [x] 2.7 No leftover `isolation-*@example.com` users in local Studio after a test run — c7a0443
 
 ### Phase 3: CI/CD Wiring and Documentation
 
 #### Automated
 
-- [ ] 3.1 Workflow file is valid and lint passes: `npm run lint`
+- [x] 3.1 Workflow file is valid and lint passes: `npm run lint`
 - [ ] 3.2 PR CI run is green for `ci`, `smoke` and `db-test`: `gh pr checks`
 - [ ] 3.3 After merge, the `deploy` job succeeds including the `db push` step: `gh run list --workflow CI --branch main --limit 1`
 - [ ] 3.4 Hosted database lists the baseline migration as applied: `npx supabase migration list --linked`
