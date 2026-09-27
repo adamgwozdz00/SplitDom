@@ -71,6 +71,21 @@ All automated and manual steps above are complete:
 - Full Supabase signup flow exercised live (FR-001): registration → confirmation email → verify → (after fixes above) landing on `/dashboard` in the same-browser case. Cross-browser PKCE case still fails as described above.
 - No `1015` (CPU-cap) errors observed during testing.
 
+## Database migrations in the deploy (added 2026-09-27, change `db-migrations-and-isolation`, F-01)
+
+Schema changes live in `supabase/migrations/` as Supabase CLI migrations and reach the hosted project `rpbroqavksbvezskqhlz` only through CI:
+
+- **Order in the `deploy` job**: `npm ci` → `npx supabase link --project-ref $SUPABASE_PROJECT_ID` → `npx supabase db push --yes` → `npm run build` → `wrangler deploy`. If the push fails, the job stops before the Worker is deployed, so the previous Worker keeps running against the unchanged schema.
+- **Concurrency**: `deploy` runs in the `deploy-production` concurrency group (`cancel-in-progress: false`), so two quick merges push migrations one after the other, never in parallel.
+- **Gates**: `deploy` needs `ci` (lint, unit tests, type check, build), `smoke`, and `db-test`. `db-test` starts local Supabase with the CLI from `devDependencies`, applies all migrations, runs `npm run test:db` (two-user harness + RLS guard), and fails if `src/db/database.types.ts` differs from `npm run db:types` output.
+- **Secrets** (GitHub Actions only, used only by `deploy`, which runs only on push to `main`; never given to the Worker or to PR jobs):
+  - `SUPABASE_ACCESS_TOKEN` — Supabase personal access token for `supabase link` / `db push`
+  - `SUPABASE_DB_PASSWORD` — hosted database password
+  - `SUPABASE_PROJECT_ID` — `rpbroqavksbvezskqhlz`
+- **Rollback policy — forward-only**: `wrangler rollback` reverts the Worker, not the database. Never edit a pushed migration; fix mistakes with a new corrective migration, and keep each migration compatible with the previously deployed Worker (expand before contract). There are no down migrations.
+- **`private` schema convention**: the baseline migration creates schema `private` (not in `api.schemas`, so invisible to PostgREST; `usage` granted to `authenticated` only). `security definer` helpers used in RLS policies belong there.
+- The Worker keeps using only `SUPABASE_URL` + the anon `SUPABASE_KEY`; it never gets DDL or service-role credentials.
+
 ## Out of scope
 
 Multi-region HA, Docker, and anything beyond first MVP deploy — per `infrastructure.md`'s own scope boundary.
