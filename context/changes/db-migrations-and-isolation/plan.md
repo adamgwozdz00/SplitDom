@@ -310,31 +310,31 @@ Run the tests in CI, gate deploys on them, push migrations to the hosted databas
 
 #### Automated
 
-- [x] 1.1 Local database rebuilds from migrations without errors: `npm run db:reset`
-- [x] 1.2 Types regenerate with no diff: `npm run db:types && git diff --exit-code src/db/database.types.ts`
-- [x] 1.3 Lint passes: `npm run lint`
-- [x] 1.4 Type check passes: `npx astro check`
-- [x] 1.5 Production build passes: `npm run build`
+- [x] 1.1 Local database rebuilds from migrations without errors: `npm run db:reset` — b61913a
+- [x] 1.2 Types regenerate with no diff: `npm run db:types && git diff --exit-code src/db/database.types.ts` — b61913a
+- [x] 1.3 Lint passes: `npm run lint` — b61913a
+- [x] 1.4 Type check passes: `npx astro check` — b61913a
+- [x] 1.5 Production build passes: `npm run build` — b61913a
 
 #### Manual
 
-- [x] 1.6 `private` schema exists locally and is absent from the REST API: visible in Studio's schema list, not listed in `api.schemas`
-- [x] 1.7 Existing auth flow still works locally: `npm run dev` + `npm run smoke` passes
+- [x] 1.6 `private` schema exists locally and is absent from the REST API: visible in Studio's schema list, not listed in `api.schemas` — b61913a
+- [x] 1.7 Existing auth flow still works locally: `npm run dev` + `npm run smoke` passes — b61913a
 
 ### Phase 2: Vitest Runner and Two-User Isolation Harness
 
 #### Automated
 
-- [ ] 2.1 Unit project runs (no tests yet) and exits 0: `npm test`
-- [ ] 2.2 Database tests pass against local Supabase: `npm run test:db`
-- [ ] 2.3 Lint passes: `npm run lint`
-- [ ] 2.4 Type check passes: `npx astro check`
+- [x] 2.1 Unit project runs (no tests yet) and exits 0: `npm test`
+- [x] 2.2 Database tests pass against local Supabase: `npm run test:db`
+- [x] 2.3 Lint passes: `npm run lint`
+- [x] 2.4 Type check passes: `npx astro check`
 
 #### Manual
 
-- [ ] 2.5 With local Supabase stopped, `npm run test:db` fails fast with the "Local Supabase is not running" message
-- [ ] 2.6 Temporarily adding a migration with a table without RLS makes `npm run test:db` fail and name that table (then revert the migration and `npm run db:reset`)
-- [ ] 2.7 No leftover `isolation-*@example.com` users in local Studio after a test run
+- [x] 2.5 With local Supabase stopped, `npm run test:db` fails fast with the "Local Supabase is not running" message
+- [x] 2.6 Temporarily adding a migration with a table without RLS makes `npm run test:db` fail and name that table (then revert the migration and `npm run db:reset`)
+- [x] 2.7 No leftover `isolation-*@example.com` users in local Studio after a test run
 
 ### Phase 3: CI/CD Wiring and Documentation
 
