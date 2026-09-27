@@ -1,6 +1,6 @@
 import { fixupPluginRules } from "@eslint/compat";
 import eslint from "@eslint/js";
-import { defineConfig, includeIgnoreFile } from "eslint/config";
+import { defineConfig, globalIgnores, includeIgnoreFile } from "eslint/config";
 import eslintPluginPrettier from "eslint-plugin-prettier/recommended";
 import eslintPluginAstro from "eslint-plugin-astro";
 import pluginReact from "eslint-plugin-react";
@@ -79,6 +79,8 @@ const scriptsConfig = defineConfig({
 
 export default defineConfig(
   includeIgnoreFile(gitignorePath),
+  // Vendored agent tooling (10xDevs skills), not application code.
+  globalIgnores([".claude/"]),
   baseConfig,
   reactConfig,
   eslintPluginAstro.configs["flat/recommended"],
