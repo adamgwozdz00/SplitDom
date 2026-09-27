@@ -41,7 +41,7 @@ People who share household costs — partners or roommates — settle shared exp
 
 | ID   | Change ID                     | Outcome (user can …)                                                                | Prerequisites | PRD refs                   | Status   |
 | ---- | ----------------------------- | ----------------------------------------------------------------------------------- | ------------- | -------------------------- | -------- |
-| F-01 | db-migrations-and-isolation   | (foundation) schema changes ship repo → hosted DB; two-user test harness + RLS guard | —             | NFR-3, Guardrails          | planning |
+| F-01 | db-migrations-and-isolation   | (foundation) schema changes ship repo → hosted DB; two-user test harness + RLS guard | —             | NFR-3, Guardrails          | in-progress |
 | S-01 | external-identity-sign-in     | user can sign in with an external identity provider                                 | —             | FR-001                     | ready    |
 | S-02 | create-settlement-group       | user can create a settlement group, becomes its host, and it has an open period     | F-01          | FR-002                     | proposed |
 | S-03 | invite-member-by-link         | user can invite someone with a link/code, and that person joins the group           | S-02          | FR-003                     | proposed |
@@ -88,7 +88,7 @@ Foundations below assume these are present and do NOT re-scaffold them.
 - **Unknowns:**
   - ~~Are migrations applied to the hosted database automatically on merge, or manually by the owner?~~ Resolved 2026-09-27: automatically, `supabase db push` in the `deploy` job before `wrangler deploy`.
 - **Risk:** Sequenced first because the baseline has no schema or migration path at all; the risk is scope creep into designing the whole schema up front — this foundation delivers only the pipeline, the test harness and the RLS guard, not the domain tables.
-- **Status:** planning
+- **Status:** in-progress
 
 ## Slices
 
