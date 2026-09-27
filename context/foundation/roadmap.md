@@ -3,7 +3,7 @@ project: SplitDom
 version: 1
 status: draft
 created: 2026-09-26
-updated: 2026-09-26
+updated: 2026-09-27
 prd_version: 1
 main_goal: speed
 top_blocker: time
@@ -41,7 +41,7 @@ People who share household costs — partners or roommates — settle shared exp
 
 | ID   | Change ID                     | Outcome (user can …)                                                                | Prerequisites | PRD refs                   | Status   |
 | ---- | ----------------------------- | ----------------------------------------------------------------------------------- | ------------- | -------------------------- | -------- |
-| F-01 | db-migrations-and-isolation   | (foundation) schema changes ship repo → hosted DB; two-user isolation check exists  | —             | NFR-3, Guardrails          | ready    |
+| F-01 | db-migrations-and-isolation   | (foundation) schema changes ship repo → hosted DB; two-user test harness + RLS guard | —             | NFR-3, Guardrails          | planning |
 | S-01 | external-identity-sign-in     | user can sign in with an external identity provider                                 | —             | FR-001                     | ready    |
 | S-02 | create-settlement-group       | user can create a settlement group, becomes its host, and it has an open period     | F-01          | FR-002                     | proposed |
 | S-03 | invite-member-by-link         | user can invite someone with a link/code, and that person joins the group           | S-02          | FR-003                     | proposed |
@@ -78,7 +78,7 @@ Foundations below assume these are present and do NOT re-scaffold them.
 
 ### F-01: Database migrations and group-isolation check
 
-- **Outcome:** (foundation) schema changes are authored in the repo and applied the same way to the local and the hosted database, and a repeatable two-user check proves that one user cannot read another group's data — ready for each group-scoped slice to extend.
+- **Outcome:** (foundation) schema changes are authored in the repo and applied the same way to the local and the hosted database (pushed to production before each Worker deploy), and a reusable two-user test harness plus a guard that fails CI on any public table without row-level security are ready for each group-scoped slice to prove that one user cannot read another group's data. No domain tables — they emerge from S-02's domain model.
 - **Change ID:** db-migrations-and-isolation
 - **PRD refs:** NFR-3, Success Criteria § Guardrails (per-group privacy)
 - **Unlocks:** S-02 (first persisted domain data), and the per-group isolation verification path that S-02, S-03, S-04, S-06 extend.
@@ -86,9 +86,9 @@ Foundations below assume these are present and do NOT re-scaffold them.
 - **Parallel with:** S-01
 - **Blockers:** —
 - **Unknowns:**
-  - Are migrations applied to the hosted database automatically on merge, or manually by the owner? — Owner: user. Block: no.
-- **Risk:** Sequenced first because the baseline has no schema or migration path at all; the risk is scope creep into designing the whole schema up front — this foundation delivers only the pipeline and the isolation check, not the domain tables.
-- **Status:** ready
+  - ~~Are migrations applied to the hosted database automatically on merge, or manually by the owner?~~ Resolved 2026-09-27: automatically, `supabase db push` in the `deploy` job before `wrangler deploy`.
+- **Risk:** Sequenced first because the baseline has no schema or migration path at all; the risk is scope creep into designing the whole schema up front — this foundation delivers only the pipeline, the test harness and the RLS guard, not the domain tables.
+- **Status:** planning
 
 ## Slices
 
@@ -108,7 +108,7 @@ Foundations below assume these are present and do NOT re-scaffold them.
 
 ### S-02: Create a settlement group
 
-- **Outcome:** user can create a settlement group, becomes its permanent host, and the group starts with one open billing period.
+- **Outcome:** user can create a settlement group, becomes its permanent host, and the group starts with one open billing period; the group's tables come from this slice's domain model and ship with the first two-user isolation test (user B cannot read user A's group), built on the F-01 harness.
 - **Change ID:** create-settlement-group
 - **PRD refs:** FR-002
 - **Prerequisites:** F-01
@@ -216,7 +216,7 @@ Mirrored on GitHub: milestone [M-1](https://github.com/adamgwozdz00/SplitDom/mil
 | ---------- | --------------------------- | ------------------------------------------------------------ | --------------------- | -------------------------------------------------------- |
 | F-01       | db-migrations-and-isolation | Set up DB migrations and a two-user group-isolation check    | yes                   | [#5](https://github.com/adamgwozdz00/SplitDom/issues/5) · Run `/10x-plan db-migrations-and-isolation` |
 | S-01       | external-identity-sign-in   | Sign in with an external identity provider                   | yes                   | [#6](https://github.com/adamgwozdz00/SplitDom/issues/6) · Run `/10x-plan external-identity-sign-in`; pick provider |
-| S-02       | create-settlement-group     | Create a settlement group with its first open period         | no                    | [#7](https://github.com/adamgwozdz00/SplitDom/issues/7) · Needs F-01 |
+| S-02       | create-settlement-group     | Create a settlement group with its first open period         | no                    | [#7](https://github.com/adamgwozdz00/SplitDom/issues/7) · Needs F-01; writes the first two-user isolation test |
 | S-03       | invite-member-by-link       | Invite a member to the group by link/code                    | no                    | [#8](https://github.com/adamgwozdz00/SplitDom/issues/8) · Needs S-02 |
 | S-04       | add-expense-see-balances    | Add an expense split equally and show member balances        | no                    | [#9](https://github.com/adamgwozdz00/SplitDom/issues/9) · Needs S-03 and the debt-granularity decision |
 | S-05       | edit-own-expense-rules      | Enforce edit/delete rules for an author's own expenses       | no                    | [#10](https://github.com/adamgwozdz00/SplitDom/issues/10) · Needs S-04 |
