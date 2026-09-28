@@ -63,6 +63,11 @@ const steps = [
     () => request("/api/auth/google", { method: "POST" }),
     { status: 302, check: checkGoogleRedirect },
   ],
+  [
+    "callback reports cancelled provider consent",
+    () => request("/auth/callback?error=access_denied&error_description="),
+    { status: 302, location: "/auth/signin?error=Sign-in%20was%20cancelled" },
+  ],
   ["dashboard redirects anonymous user", () => request("/dashboard"), { status: 302, location: "/auth/signin" }],
   [
     "signup creates account",
@@ -77,7 +82,7 @@ const steps = [
   [
     "signin accepts correct password",
     () => request("/api/auth/signin", { method: "POST", form: { email, password } }),
-    { status: 302, location: "/" },
+    { status: 302, location: "/dashboard" },
   ],
   ["dashboard renders for signed-in user", () => request("/dashboard"), { status: 200 }],
   ["signout clears session", () => request("/api/auth/signout", { method: "POST" }), { status: 302, location: "/" }],

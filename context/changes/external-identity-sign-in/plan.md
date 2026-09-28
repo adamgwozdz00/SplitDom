@@ -45,7 +45,7 @@ Verify with: `npm run lint`, `npx astro check`, `npm run build`, `npm run smoke`
 - No user profile table or storing of the Google name/avatar. Tables emerge from the slices that need them (S-02 onward).
 - No `supabase config push` or other automation of hosted auth settings. The hosted provider is enabled by hand in the Dashboard, like `site_url` was, because `config push` would also push the local `site_url`.
 - No unit test with a mocked Supabase client. The smoke step covers the redirect; the full Google round trip is manual.
-- No change to where email/password sign-in lands (`/`) or to `src/pages/auth/callback.ts`.
+- No other change to `src/pages/auth/callback.ts` than the cancelled-consent handling added in Phase 2 (#5). (Email/password sign-in originally stayed on `/`; changed to `/dashboard` during Phase 2 at the user's request, see Phase 2 #4.)
 - No Google branding verification (logo on the consent screen). Only non-sensitive scopes (`openid`, `email`, `profile`) are used, so publishing In production needs no Google review.
 
 ## Implementation Approach
@@ -153,6 +153,22 @@ Show the Google option on both auth pages and complete the first real Google rou
 **Intent**: Create the credentials both Supabase instances use.
 
 **Contract**: In Google Cloud Console (a project for SplitDom): configure the OAuth consent screen (External, app name "SplitDom", scopes `openid`, `email`, `profile`, publishing status **In production**). Create an OAuth client of type "Web application" with authorized redirect URIs `https://rpbroqavksbvezskqhlz.supabase.co/auth/v1/callback` and `http://127.0.0.1:54321/auth/v1/callback`. Put the client id and secret into `supabase/.env` (from `supabase/.env.example`) and restart local Supabase.
+
+#### 4. Email/password sign-in lands on the dashboard (added during implementation)
+
+**File**: `src/pages/api/auth/signin.ts`, `scripts/smoke.mjs`
+
+**Intent**: Added at the user's request during Phase 2 manual testing: after a successful email/password sign-in the user lands on `/dashboard`, the same place Google sign-in lands, instead of `/`.
+
+**Contract**: `POST /api/auth/signin` success → `302 /dashboard` (errors unchanged). The smoke step "signin accepts correct password" expects `location: "/dashboard"`.
+
+#### 5. Cancelled Google consent shows an error (added during implementation)
+
+**File**: `src/pages/auth/callback.ts`, `scripts/smoke.mjs`
+
+**Intent**: Found in manual test 2.7: when the user cancels on Google's consent screen, Google returns only `error=access_denied`, and Supabase forwards it as `/auth/callback?error=access_denied&error_description=` (empty description). The callback only reacted to a non-empty `error_description`, so the user landed on `/auth/signin` with no message. The plan's assumption that the callback needed no change was wrong for this case.
+
+**Contract**: A non-empty `error_description` is shown as before. Otherwise a non-empty `error` redirects to `/auth/signin?error=<message>`, where `access_denied` becomes "Sign-in was cancelled" and other codes are shown as is. New smoke step "callback reports cancelled provider consent": `GET /auth/callback?error=access_denied&error_description=` → `302 /auth/signin?error=Sign-in%20was%20cancelled`.
 
 ### Success Criteria:
 
@@ -268,33 +284,33 @@ No database migration. Google users land in Supabase's `auth.users` / `auth.iden
 
 #### Automated
 
-- [x] 1.1 Linting passes: `npm run lint`
-- [x] 1.2 Type checking passes: `npx astro check`
-- [x] 1.3 Production build succeeds: `npm run build`
-- [x] 1.4 Local Supabase starts with the Google variables unset
-- [x] 1.5 Smoke test passes, including the new Google redirect step: `npm run smoke`
+- [x] 1.1 Linting passes: `npm run lint` — 9b60d2c
+- [x] 1.2 Type checking passes: `npx astro check` — 9b60d2c
+- [x] 1.3 Production build succeeds: `npm run build` — 9b60d2c
+- [x] 1.4 Local Supabase starts with the Google variables unset — 9b60d2c
+- [x] 1.5 Smoke test passes, including the new Google redirect step: `npm run smoke` — 9b60d2c
 - [ ] 1.6 CI is green on the PR (`ci`, `smoke`, `db-test`)
 
 #### Manual
 
-- [x] 1.7 `POST /api/auth/google` redirects to the local Supabase Google authorize URL with the localhost callback
+- [x] 1.7 `POST /api/auth/google` redirects to the local Supabase Google authorize URL with the localhost callback — 9b60d2c
 
 ### Phase 2: Google Button and Local End-to-End Sign-In
 
 #### Automated
 
-- [ ] 2.1 Linting passes: `npm run lint`
-- [ ] 2.2 Type checking passes: `npx astro check`
-- [ ] 2.3 Production build succeeds: `npm run build`
-- [ ] 2.4 Smoke test still passes: `npm run smoke`
+- [x] 2.1 Linting passes: `npm run lint`
+- [x] 2.2 Type checking passes: `npx astro check`
+- [x] 2.3 Production build succeeds: `npm run build`
+- [x] 2.4 Smoke test still passes: `npm run smoke`
 
 #### Manual
 
-- [ ] 2.5 Sign-in and sign-up pages show Continue with Google, an "or" divider and the unchanged email form
-- [ ] 2.6 Local Google round trip lands on `/dashboard` with the Google email; sign out works
-- [ ] 2.7 Cancelling Google consent shows an error on `/auth/signin`
-- [ ] 2.8 Google sign-in with an existing confirmed email/password address links into the same user
-- [ ] 2.9 Email/password sign-up and sign-in still work locally
+- [x] 2.5 Sign-in and sign-up pages show Continue with Google, an "or" divider and the unchanged email form
+- [x] 2.6 Local Google round trip lands on `/dashboard` with the Google email; sign out works
+- [x] 2.7 Cancelling Google consent shows an error on `/auth/signin`
+- [x] 2.8 Google sign-in with an existing confirmed email/password address links into the same user
+- [x] 2.9 Email/password sign-up and sign-in still work locally
 
 ### Phase 3: Production Enablement and Documentation
 
