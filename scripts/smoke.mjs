@@ -35,8 +35,34 @@ async function request(path, { method = "GET", form } = {}) {
   return { status: response.status, location: response.headers.get("location") ?? "" };
 }
 
+// Asserts the Google sign-in redirect without contacting Google: Supabase's authorize URL, the
+// callback as redirect_to, a PKCE challenge, and the code-verifier cookie the callback reads.
+function checkGoogleRedirect(actual, cookies) {
+  let url;
+  try {
+    url = new URL(actual.location);
+  } catch {
+    return `location is not an absolute URL: ${actual.location}`;
+  }
+  if (!url.pathname.endsWith("/auth/v1/authorize")) return `unexpected path ${url.pathname}`;
+  if (url.searchParams.get("provider") !== "google") return `provider=${url.searchParams.get("provider")}`;
+  const redirectTo = url.searchParams.get("redirect_to");
+  if (redirectTo !== `${BASE_URL}/auth/callback`) return `redirect_to=${redirectTo}`;
+  const method = url.searchParams.get("code_challenge_method");
+  if (method !== "s256") return `code_challenge_method=${method}`;
+  if (![...cookies.keys()].some((name) => name.endsWith("-auth-token-code-verifier"))) {
+    return "no *-auth-token-code-verifier cookie set";
+  }
+  return true;
+}
+
 const steps = [
   ["home renders", () => request("/"), { status: 200 }],
+  [
+    "google signin redirects to Supabase authorize",
+    () => request("/api/auth/google", { method: "POST" }),
+    { status: 302, check: checkGoogleRedirect },
+  ],
   ["dashboard redirects anonymous user", () => request("/dashboard"), { status: 302, location: "/auth/signin" }],
   [
     "signup creates account",
@@ -61,13 +87,16 @@ const steps = [
 let failed = 0;
 for (const [name, run, expected] of steps) {
   const actual = await run();
+  const checkResult = expected.check ? expected.check(actual, jar) : true;
   const ok =
     actual.status === expected.status &&
-    (expected.location === undefined || actual.location.startsWith(expected.location));
+    (expected.location === undefined || actual.location.startsWith(expected.location)) &&
+    checkResult === true;
   console.log(`${ok ? "PASS" : "FAIL"}  ${name}  -> ${actual.status} ${actual.location}`);
   if (!ok) {
     failed++;
     console.log(`      expected ${expected.status} ${expected.location ?? ""}`);
+    if (checkResult !== true) console.log(`      check failed: ${checkResult}`);
   }
 }
 
