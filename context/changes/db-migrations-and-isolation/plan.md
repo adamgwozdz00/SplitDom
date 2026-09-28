@@ -340,13 +340,13 @@ Run the tests in CI, gate deploys on them, push migrations to the hosted databas
 
 #### Automated
 
-- [x] 3.1 Workflow file is valid and lint passes: `npm run lint`
-- [ ] 3.2 PR CI run is green for `ci`, `smoke` and `db-test`: `gh pr checks`
-- [ ] 3.3 After merge, the `deploy` job succeeds including the `db push` step: `gh run list --workflow CI --branch main --limit 1`
-- [ ] 3.4 Hosted database lists the baseline migration as applied: `npx supabase migration list --linked`
+- [x] 3.1 Workflow file is valid and lint passes: `npm run lint` — 72b0e01
+- [x] 3.2 PR CI run is green for `ci`, `smoke` and `db-test`: `gh pr checks` — 72b0e01
+- [x] 3.3 After merge, the `deploy` job succeeds including the `db push` step: `gh run list --workflow CI --branch main --limit 1` — 72b0e01
+- [x] 3.4 Hosted database lists the baseline migration as applied: `npx supabase migration list --linked` — 72b0e01
 
 #### Manual
 
-- [ ] 3.5 Before merge: the three new secrets are set (`gh secret list`), and `npx supabase migration list --linked` shows no remote migrations yet
-- [ ] 3.6 After merge: the production app still signs in and reaches `/dashboard` at https://10x-astro-starter.adamgwozdz.workers.dev
-- [ ] 3.7 `CLAUDE.md` and `deploy-plan.md` read correctly as the guide for S-02's first group-scoped table
+- [x] 3.5 Before merge: the three new secrets are set (`gh secret list`), and `npx supabase migration list --linked` shows no remote migrations yet — 72b0e01
+- [x] 3.6 After merge: the production app still signs in and reaches `/dashboard` at https://10x-astro-starter.adamgwozdz.workers.dev — 72b0e01
+- [x] 3.7 `CLAUDE.md` and `deploy-plan.md` read correctly as the guide for S-02's first group-scoped table — 72b0e01
