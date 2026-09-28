@@ -58,6 +58,7 @@ function checkGoogleRedirect(actual, cookies) {
 
 const steps = [
   ["home renders", () => request("/"), { status: 200 }],
+  ["privacy page renders", () => request("/privacy"), { status: 200 }],
   [
     "google signin redirects to Supabase authorize",
     () => request("/api/auth/google", { method: "POST" }),
