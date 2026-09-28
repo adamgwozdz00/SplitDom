@@ -1,0 +1,72 @@
+---
+import Layout from "@/layouts/Layout.astro";
+
+const lastUpdated = "2026-09-28";
+---
+
+<Layout title="Privacy policy">
+  <div class="bg-cosmic flex min-h-screen items-center justify-center p-4">
+    <div class="w-full max-w-2xl rounded-2xl border border-white/10 bg-white/10 p-8 text-white backdrop-blur-xl">
+      <h1 class="mb-2 bg-gradient-to-r from-blue-200 to-purple-200 bg-clip-text text-center text-2xl font-bold text-transparent">
+        Privacy policy
+      </h1>
+      <p class="mb-6 text-center text-sm text-blue-100/60">Last updated: {lastUpdated}</p>
+
+      <div class="space-y-5 text-sm leading-relaxed text-blue-100/80">
+        <section>
+          <h2 class="mb-1 font-semibold text-white">What we collect</h2>
+          <ul class="list-disc space-y-1 pl-5">
+            <li>Your email address, used for your account.</li>
+            <li>
+              If you sign in with Google: your Google account id, name and profile picture, which our authentication
+              provider stores with your account.
+            </li>
+            <li>The household expense data you and your group members enter in the app.</li>
+          </ul>
+        </section>
+
+        <section>
+          <h2 class="mb-1 font-semibold text-white">Why we collect it</h2>
+          <p>Only to sign you in and to run SplitDom, the expense-splitting app you use with your household.</p>
+        </section>
+
+        <section>
+          <h2 class="mb-1 font-semibold text-white">Where it is processed</h2>
+          <p>Data is stored by Supabase in the EU (region eu-west-1). The app runs on Cloudflare Workers.</p>
+        </section>
+
+        <section>
+          <h2 class="mb-1 font-semibold text-white">Sharing</h2>
+          <p>We do not sell your data or share it with third parties beyond the processors named above.</p>
+        </section>
+
+        <section>
+          <h2 class="mb-1 font-semibold text-white">Cookies</h2>
+          <p>No tracking or advertising cookies. The only cookies are the ones that keep you signed in.</p>
+        </section>
+
+        <section>
+          <h2 class="mb-1 font-semibold text-white">Deleting your data</h2>
+          <p>
+            To request deletion of your account and data, open an issue in the{" "}
+            <a
+              href="https://github.com/adamgwozdz00/SplitDom/issues"
+              class="text-purple-300 hover:underline"
+              target="_blank"
+              rel="noopener noreferrer"
+            >
+              SplitDom GitHub repository
+            </a>{" "}
+            and it will be deleted.
+          </p>
+        </section>
+      </div>
+
+      <p class="mt-8 text-center text-sm text-blue-100/60">
+        <a href="/" class="text-purple-300 hover:underline">
+          Back to SplitDom
+        </a>
+      </p>
+    </div>
+  </div>
+</Layout>

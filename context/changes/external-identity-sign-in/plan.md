@@ -221,6 +221,14 @@ Enable Google on the hosted Supabase project, document the setup and the new aut
 
 **Contract**: `README.md` — the Status line mentions Google sign-in; the Auth Routes table gains `POST /api/auth/google`; local setup explains copying `supabase/.env.example` to `supabase/.env` for Google (optional: email/password works without it). `CLAUDE.md` — the Status paragraph and `src/pages/api/` description mention the Google endpoint. `.env.example` — unchanged unless a Worker variable is added (none is expected: the Worker never sees Google secrets).
 
+#### 4. Privacy policy page (added during implementation)
+
+**Files**: `src/pages/privacy.astro` (new), `src/pages/auth/signin.astro`, `src/pages/auth/signup.astro`, `scripts/smoke.mjs`
+
+**Intent**: Found while publishing the Google consent screen: Google requires a homepage URL and a privacy policy URL to switch the app to In production, even for non-sensitive scopes. The owner published with `https://10x-astro-starter.adamgwozdz.workers.dev/privacy`, which did not exist yet. Add a short, public, static privacy policy page there so the consent-screen link resolves.
+
+**Contract**: `GET /privacy` renders publicly (not protected by `src/middleware.ts`) with `Layout` and the same card styling as the auth pages. It is plain English and states: what is collected (email address; from Google sign-in also the Google account id, name and avatar that Supabase stores; the household expense data users enter), why (sign-in and running the expense-splitting app), where it is processed (Supabase in the EU, eu-west-1; Cloudflare Workers), that nothing is sold or shared with third parties beyond those processors, that no tracking or advertising cookies are used (only auth session cookies), how to request deletion (contact through the project's GitHub issues, https://github.com/adamgwozdz00/SplitDom/issues; no personal email address on the page), and a "Last updated" date. The auth pages' footer gets a small "Privacy" link to `/privacy`. New smoke step "privacy page renders": `GET /privacy` → `200`.
+
 ### Success Criteria:
 
 #### Automated Verification:
@@ -228,6 +236,7 @@ Enable Google on the hosted Supabase project, document the setup and the new aut
 - Linting and formatting pass: `npm run lint`
 - CI is green on the PR (`ci`, `smoke`, `db-test`)
 - After merge, the `deploy` job on `main` succeeds
+- Privacy page renders in the smoke test: `npm run smoke`
 
 #### Manual Verification:
 
@@ -235,6 +244,7 @@ Enable Google on the hosted Supabase project, document the setup and the new aut
 - Production round trip on https://10x-astro-starter.adamgwozdz.workers.dev: Continue with Google → consent → `/dashboard` with the Google email, on a desktop browser and on a phone
 - A Google account that is not the owner's (for example a household member's) can sign in, confirming the consent screen is In production
 - Email/password sign-in still works on production
+- The privacy policy link on the Google consent screen opens the `/privacy` page on production, and the owner accepts its text
 
 **Implementation Note**: After completing this phase and all automated verification passes, pause here for manual confirmation from the human that the manual testing was successful before proceeding.
 
@@ -299,26 +309,27 @@ No database migration. Google users land in Supabase's `auth.users` / `auth.iden
 
 #### Automated
 
-- [x] 2.1 Linting passes: `npm run lint`
-- [x] 2.2 Type checking passes: `npx astro check`
-- [x] 2.3 Production build succeeds: `npm run build`
-- [x] 2.4 Smoke test still passes: `npm run smoke`
+- [x] 2.1 Linting passes: `npm run lint` — ab93c97
+- [x] 2.2 Type checking passes: `npx astro check` — ab93c97
+- [x] 2.3 Production build succeeds: `npm run build` — ab93c97
+- [x] 2.4 Smoke test still passes: `npm run smoke` — ab93c97
 
 #### Manual
 
-- [x] 2.5 Sign-in and sign-up pages show Continue with Google, an "or" divider and the unchanged email form
-- [x] 2.6 Local Google round trip lands on `/dashboard` with the Google email; sign out works
-- [x] 2.7 Cancelling Google consent shows an error on `/auth/signin`
-- [x] 2.8 Google sign-in with an existing confirmed email/password address links into the same user
-- [x] 2.9 Email/password sign-up and sign-in still work locally
+- [x] 2.5 Sign-in and sign-up pages show Continue with Google, an "or" divider and the unchanged email form — ab93c97
+- [x] 2.6 Local Google round trip lands on `/dashboard` with the Google email; sign out works — ab93c97
+- [x] 2.7 Cancelling Google consent shows an error on `/auth/signin` — ab93c97
+- [x] 2.8 Google sign-in with an existing confirmed email/password address links into the same user — ab93c97
+- [x] 2.9 Email/password sign-up and sign-in still work locally — ab93c97
 
 ### Phase 3: Production Enablement and Documentation
 
 #### Automated
 
-- [ ] 3.1 Linting and formatting pass: `npm run lint`
+- [x] 3.1 Linting and formatting pass: `npm run lint`
 - [ ] 3.2 CI is green on the PR (`ci`, `smoke`, `db-test`)
 - [ ] 3.3 After merge, the `deploy` job on `main` succeeds
+- [x] 3.8 Privacy page renders in the smoke test: `npm run smoke`
 
 #### Manual
 
@@ -326,3 +337,4 @@ No database migration. Google users land in Supabase's `auth.users` / `auth.iden
 - [ ] 3.5 Production Google round trip works on desktop and phone
 - [ ] 3.6 A non-owner Google account can sign in on production
 - [ ] 3.7 Email/password sign-in still works on production
+- [ ] 3.9 The consent-screen privacy link opens `/privacy` on production and its text is accepted
