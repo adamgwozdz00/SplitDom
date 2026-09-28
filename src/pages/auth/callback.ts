@@ -3,10 +3,17 @@ import { createClient } from "@/lib/supabase";
 
 export const GET: APIRoute = async (context) => {
   const code = context.url.searchParams.get("code");
+  const errorCode = context.url.searchParams.get("error");
   const errorDescription = context.url.searchParams.get("error_description");
 
   if (errorDescription) {
     return context.redirect(`/auth/signin?error=${encodeURIComponent(errorDescription)}`);
+  }
+
+  // Google sends only `error=access_denied` when the user cancels consent, so the description arrives empty.
+  if (errorCode) {
+    const message = errorCode === "access_denied" ? "Sign-in was cancelled" : errorCode;
+    return context.redirect(`/auth/signin?error=${encodeURIComponent(message)}`);
   }
 
   if (!code) {
