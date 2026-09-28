@@ -3,7 +3,7 @@ project: SplitDom
 version: 1
 status: draft
 created: 2026-09-26
-updated: 2026-09-27
+updated: 2026-09-28
 prd_version: 1
 main_goal: speed
 top_blocker: time
@@ -41,9 +41,9 @@ People who share household costs — partners or roommates — settle shared exp
 
 | ID   | Change ID                     | Outcome (user can …)                                                                | Prerequisites | PRD refs                   | Status   |
 | ---- | ----------------------------- | ----------------------------------------------------------------------------------- | ------------- | -------------------------- | -------- |
-| F-01 | db-migrations-and-isolation   | (foundation) schema changes ship repo → hosted DB; two-user test harness + RLS guard | —             | NFR-3, Guardrails          | in-progress |
+| F-01 | db-migrations-and-isolation   | (foundation) schema changes ship repo → hosted DB; two-user test harness + RLS guard | —             | NFR-3, Guardrails          | done |
 | S-01 | external-identity-sign-in     | user can sign in with an external identity provider                                 | —             | FR-001                     | ready    |
-| S-02 | create-settlement-group       | user can create a settlement group, becomes its host, and it has an open period     | F-01          | FR-002                     | proposed |
+| S-02 | create-settlement-group       | user can create a settlement group, becomes its host, and it has an open period     | F-01          | FR-002                     | ready |
 | S-03 | invite-member-by-link         | user can invite someone with a link/code, and that person joins the group           | S-02          | FR-003                     | proposed |
 | S-04 | add-expense-see-balances      | member can add an expense split equally and immediately see every member's balance  | S-03          | US-01, FR-004, FR-005      | blocked  |
 | S-05 | edit-own-expense-rules        | expense author can edit or delete their own expense only while it is still editable | S-04          | FR-005                     | proposed |
@@ -88,7 +88,7 @@ Foundations below assume these are present and do NOT re-scaffold them.
 - **Unknowns:**
   - ~~Are migrations applied to the hosted database automatically on merge, or manually by the owner?~~ Resolved 2026-09-27: automatically, `supabase db push` in the `deploy` job before `wrangler deploy`.
 - **Risk:** Sequenced first because the baseline has no schema or migration path at all; the risk is scope creep into designing the whole schema up front — this foundation delivers only the pipeline, the test harness and the RLS guard, not the domain tables.
-- **Status:** in-progress
+- **Status:** done
 
 ## Slices
 
@@ -116,7 +116,7 @@ Foundations below assume these are present and do NOT re-scaffold them.
 - **Blockers:** —
 - **Unknowns:** —
 - **Risk:** Establishes the one-group-per-user rule and the host role that S-09 relies on; getting the host assignment wrong here would ripple into period closing.
-- **Status:** proposed
+- **Status:** ready
 
 ### S-03: Invite a member by link or code
 
@@ -214,9 +214,9 @@ Mirrored on GitHub: milestone [M-1](https://github.com/adamgwozdz00/SplitDom/mil
 
 | Roadmap ID | Change ID                   | Suggested issue title                                        | Ready for `/10x-plan` | Notes                                                    |
 | ---------- | --------------------------- | ------------------------------------------------------------ | --------------------- | -------------------------------------------------------- |
-| F-01       | db-migrations-and-isolation | Set up DB migrations and a two-user group-isolation check    | yes                   | [#5](https://github.com/adamgwozdz00/SplitDom/issues/5) · Run `/10x-plan db-migrations-and-isolation` |
+| F-01       | db-migrations-and-isolation | Set up DB migrations and a two-user group-isolation check    | done                  | [#5](https://github.com/adamgwozdz00/SplitDom/issues/5) · Delivered in [PR #18](https://github.com/adamgwozdz00/SplitDom/pull/18) |
 | S-01       | external-identity-sign-in   | Sign in with an external identity provider                   | yes                   | [#6](https://github.com/adamgwozdz00/SplitDom/issues/6) · Run `/10x-plan external-identity-sign-in`; pick provider |
-| S-02       | create-settlement-group     | Create a settlement group with its first open period         | no                    | [#7](https://github.com/adamgwozdz00/SplitDom/issues/7) · Needs F-01; writes the first two-user isolation test |
+| S-02       | create-settlement-group     | Create a settlement group with its first open period         | yes                   | [#7](https://github.com/adamgwozdz00/SplitDom/issues/7) · Run `/10x-plan create-settlement-group`; writes the first two-user isolation test with `createTwoUsers()` |
 | S-03       | invite-member-by-link       | Invite a member to the group by link/code                    | no                    | [#8](https://github.com/adamgwozdz00/SplitDom/issues/8) · Needs S-02 |
 | S-04       | add-expense-see-balances    | Add an expense split equally and show member balances        | no                    | [#9](https://github.com/adamgwozdz00/SplitDom/issues/9) · Needs S-03 and the debt-granularity decision |
 | S-05       | edit-own-expense-rules      | Enforce edit/delete rules for an author's own expenses       | no                    | [#10](https://github.com/adamgwozdz00/SplitDom/issues/10) · Needs S-04 |
