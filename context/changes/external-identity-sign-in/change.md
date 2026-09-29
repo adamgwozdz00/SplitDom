@@ -1,9 +1,9 @@
 ---
 change_id: external-identity-sign-in
 title: Sign in with an external identity provider (S-01)
-status: implementing
+status: implemented
 created: 2026-09-28
-updated: 2026-09-28
+updated: 2026-09-29
 archived_at: null
 ---
 
