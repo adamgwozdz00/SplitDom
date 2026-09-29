@@ -299,7 +299,7 @@ No database migration. Google users land in Supabase's `auth.users` / `auth.iden
 - [x] 1.3 Production build succeeds: `npm run build` — 9b60d2c
 - [x] 1.4 Local Supabase starts with the Google variables unset — 9b60d2c
 - [x] 1.5 Smoke test passes, including the new Google redirect step: `npm run smoke` — 9b60d2c
-- [ ] 1.6 CI is green on the PR (`ci`, `smoke`, `db-test`)
+- [x] 1.6 CI is green on the PR (`ci`, `smoke`, `db-test`)
 
 #### Manual
 
@@ -326,15 +326,15 @@ No database migration. Google users land in Supabase's `auth.users` / `auth.iden
 
 #### Automated
 
-- [x] 3.1 Linting and formatting pass: `npm run lint`
-- [ ] 3.2 CI is green on the PR (`ci`, `smoke`, `db-test`)
-- [ ] 3.3 After merge, the `deploy` job on `main` succeeds
-- [x] 3.8 Privacy page renders in the smoke test: `npm run smoke`
+- [x] 3.1 Linting and formatting pass: `npm run lint` — d4d9b7f
+- [x] 3.2 CI is green on the PR (`ci`, `smoke`, `db-test`)
+- [x] 3.3 After merge, the `deploy` job on `main` succeeds
+- [x] 3.8 Privacy page renders in the smoke test: `npm run smoke` — d4d9b7f
 
 #### Manual
 
-- [ ] 3.4 Hosted Supabase shows Google enabled before merge
-- [ ] 3.5 Production Google round trip works on desktop and phone
-- [ ] 3.6 A non-owner Google account can sign in on production
-- [ ] 3.7 Email/password sign-in still works on production
-- [ ] 3.9 The consent-screen privacy link opens `/privacy` on production and its text is accepted
+- [x] 3.4 Hosted Supabase shows Google enabled before merge
+- [x] 3.5 Production Google round trip works on desktop and phone
+- [x] 3.6 A non-owner Google account can sign in on production
+- [x] 3.7 Email/password sign-in still works on production
+- [x] 3.9 The consent-screen privacy link opens `/privacy` on production and its text is accepted
