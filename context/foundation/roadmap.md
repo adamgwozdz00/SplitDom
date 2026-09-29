@@ -3,7 +3,7 @@ project: SplitDom
 version: 1
 status: draft
 created: 2026-09-26
-updated: 2026-09-28
+updated: 2026-09-29
 prd_version: 1
 main_goal: speed
 top_blocker: time
@@ -42,7 +42,7 @@ People who share household costs — partners or roommates — settle shared exp
 | ID   | Change ID                     | Outcome (user can …)                                                                | Prerequisites | PRD refs                   | Status   |
 | ---- | ----------------------------- | ----------------------------------------------------------------------------------- | ------------- | -------------------------- | -------- |
 | F-01 | db-migrations-and-isolation   | (foundation) schema changes ship repo → hosted DB; two-user test harness + RLS guard | —             | NFR-3, Guardrails          | done |
-| S-01 | external-identity-sign-in     | user can sign in with an external identity provider                                 | —             | FR-001                     | in-progress |
+| S-01 | external-identity-sign-in     | user can sign in with an external identity provider                                 | —             | FR-001                     | done |
 | S-02 | create-settlement-group       | user can create a settlement group, becomes its host, and it has an open period     | F-01          | FR-002                     | ready |
 | S-03 | invite-member-by-link         | user can invite someone with a link/code, and that person joins the group           | S-02          | FR-003                     | proposed |
 | S-04 | add-expense-see-balances      | member can add an expense split equally and immediately see every member's balance  | S-03          | US-01, FR-004, FR-005      | blocked  |
@@ -104,7 +104,7 @@ Foundations below assume these are present and do NOT re-scaffold them.
   - ~~Which single identity provider for MVP (PRD says "one provider" but does not name it)?~~ Resolved 2026-09-28: Google.
   - ~~Does the existing email/password sign-in stay available (it is FR-013, nice-to-have, but already built)?~~ Resolved 2026-09-28: yes, it stays alongside Google sign-in.
 - **Risk:** Off the critical path because email/password sign-in already works for development; it also sidesteps the accepted cross-device email-confirmation limitation, which matters for a household app used on phones.
-- **Status:** in-progress
+- **Status:** done
 
 ### S-02: Create a settlement group
 
