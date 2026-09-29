@@ -4,7 +4,7 @@ A web app for splitting shared household expenses among roommates and partners: 
 
 **Live:** https://10x-astro-starter.adamgwozdz.workers.dev (auto-deployed on every merge to `main`)
 
-**Status:** only authentication exists so far — email + password sign-up/sign-in, email confirmation via a PKCE callback, and a protected `/dashboard`. Groups, expenses, balances, settlement and period closing are still to be built. See the [roadmap](context/foundation/roadmap.md) and the public [SplitDom Roadmap](https://github.com/users/adamgwozdz00/projects/6) board.
+**Status:** only authentication exists so far — Google sign-in, email + password sign-up/sign-in, email confirmation via a PKCE callback, and a protected `/dashboard`. Groups, expenses, balances, settlement and period closing are still to be built. See the [roadmap](context/foundation/roadmap.md) and the public [SplitDom Roadmap](https://github.com/users/adamgwozdz00/projects/6) board.
 
 ## Tech Stack
 
@@ -60,6 +60,8 @@ npm run dev
 
 Local Supabase has email confirmation disabled, so you can sign in right after signing up. Supabase Studio runs at http://localhost:54323. Stop the stack with `npx supabase stop`.
 
+Optional — Google sign-in locally: copy `supabase/.env.example` to `supabase/.env`, fill `SUPABASE_AUTH_EXTERNAL_GOOGLE_CLIENT_ID` / `SUPABASE_AUTH_EXTERNAL_GOOGLE_SECRET` with the Google OAuth client (setup in [`context/deployment/deploy-plan.md`](context/deployment/deploy-plan.md), "Google sign-in"), and restart local Supabase (`npx supabase stop && npx supabase start`). Without it everything else works; only the Google button fails.
+
 ## Available Scripts
 
 - `npm run dev` — start the dev server (http://localhost:4321)
@@ -78,7 +80,7 @@ A husky pre-commit hook runs lint-staged (eslint --fix / prettier). No unit test
 .
 ├── src/
 │ ├── pages/ # Astro routes
-│ │ ├── api/auth/ # sign-up, sign-in, sign-out endpoints
+│ │ ├── api/auth/ # sign-up, sign-in, sign-out, Google endpoints
 │ │ └── auth/ # auth pages + PKCE callback (callback.ts)
 │ ├── components/ # Astro & React components (ui/ = shadcn/ui, auth/ = auth forms)
 │ ├── layouts/ # Astro layouts
@@ -92,17 +94,19 @@ A husky pre-commit hook runs lint-staged (eslint --fix / prettier). No unit test
 
 ## Auth Routes
 
-| Route                 | Description                                                  |
-| --------------------- | ------------------------------------------------------------ |
-| `/auth/signup`        | Email/password sign-up form                                  |
-| `/auth/signin`        | Email/password sign-in form                                  |
-| `/auth/confirm-email` | Post-signup "check your inbox" page                          |
-| `/auth/callback`      | Exchanges the email-confirmation code for a session (PKCE)   |
-| `/dashboard`          | Protected page (redirects to `/auth/signin` when signed out) |
+| Route                   | Description                                                                                                             |
+| ----------------------- | ----------------------------------------------------------------------------------------------------------------------- |
+| `/auth/signup`          | Sign-up page: Continue with Google, or the email/password form                                                          |
+| `/auth/signin`          | Sign-in page: Continue with Google, or the email/password form (both land on `/dashboard`)                              |
+| `POST /api/auth/google` | Starts Google sign-in: redirects to Supabase's Google authorize URL (PKCE)                                              |
+| `/auth/confirm-email`   | Post-signup "check your inbox" page                                                                                     |
+| `/auth/callback`        | Exchanges the PKCE code for a session (email confirmation and Google return); a cancelled Google consent shows an error |
+| `/dashboard`            | Protected page (redirects to `/auth/signin` when signed out)                                                            |
+| `/privacy`              | Public privacy policy (linked from the Google consent screen and the auth pages)                                        |
 
 Protected paths are listed in `PROTECTED_ROUTES` in `src/middleware.ts`.
 
-Known limitation: confirming the sign-up email in a different browser or device than the one used to sign up fails (missing PKCE code verifier) — accepted for the MVP, see [`context/deployment/deploy-plan.md`](context/deployment/deploy-plan.md).
+Known limitation: confirming the sign-up email in a different browser or device than the one used to sign up fails (missing PKCE code verifier) — accepted for the MVP, see [`context/deployment/deploy-plan.md`](context/deployment/deploy-plan.md). Signing in with Google using the same address confirms the account and is the recovery path.
 
 ## CI and Deployment
 
