@@ -1,0 +1,54 @@
+---
+import Layout from "@/layouts/Layout.astro";
+import GroupCard from "@/components/groups/GroupCard.astro";
+import { createGroupService, groupErrorMessage, GROUPS_LOAD_FAILED_MESSAGE } from "@/lib/groups";
+import { createClient } from "@/lib/supabase";
+
+const { user } = Astro.locals;
+// The middleware redirects anonymous requests, so reaching here without a user is a wiring bug.
+if (!user) {
+  throw new Error("/groups/[id] rendered without a signed-in user");
+}
+
+const supabase = createClient(Astro.request.headers, Astro.cookies);
+const result = supabase
+  ? await createGroupService(supabase).getForMember({ groupId: Astro.params.id ?? "", userId: user.id })
+  : null;
+
+const group = result && "data" in result ? result.data : null;
+// A non-member and a non-existent id look the same: 404. Any other failure is shown with status 200, never a 500.
+const notFound = result !== null && "error" in result && result.error.code === "group_not_found";
+if (notFound) {
+  Astro.response.status = 404;
+}
+---
+
+<Layout title={group ? group.name.value : notFound ? groupErrorMessage("group_not_found") : "Group"}>
+  <div class="bg-cosmic flex min-h-screen items-center justify-center p-4">
+    <div class="w-full max-w-md rounded-2xl border border-white/10 bg-white/10 p-8 text-white backdrop-blur-xl">
+      {group ? (
+        <GroupCard group={group} userId={user.id} />
+      ) : (
+        <>
+          {notFound ? (
+            <h1 class="bg-gradient-to-r from-blue-200 to-purple-200 bg-clip-text text-3xl font-bold text-transparent">
+              {groupErrorMessage("group_not_found")}
+            </h1>
+          ) : (
+            <>
+              <h1 class="mb-4 bg-gradient-to-r from-blue-200 to-purple-200 bg-clip-text text-3xl font-bold text-transparent">
+                Group
+              </h1>
+              <p role="alert" class="rounded-lg border border-red-500/30 bg-red-900/30 px-3 py-2 text-sm text-red-300">
+                {GROUPS_LOAD_FAILED_MESSAGE}
+              </p>
+            </>
+          )}
+          <a href="/dashboard" class="mt-6 inline-block text-sm text-purple-300 hover:underline">
+            Back to dashboard
+          </a>
+        </>
+      )}
+    </div>
+  </div>
+</Layout>

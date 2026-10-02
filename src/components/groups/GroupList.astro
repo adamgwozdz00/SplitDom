@@ -1,0 +1,35 @@
+---
+import type { Group } from "@/lib/groups";
+
+interface Props {
+  groups: Group[];
+  userId: string;
+}
+
+const { groups, userId } = Astro.props;
+---
+
+{groups.length === 0 ? (
+  <p class="rounded-xl border border-white/10 bg-white/5 px-4 py-3 text-sm text-blue-100/70">
+    You don't belong to any group yet
+  </p>
+) : (
+  <ul class="space-y-2">
+    {groups.map((group) => (
+      <li>
+        <a
+          href={`/groups/${group.id}`}
+          class="block rounded-xl border border-white/10 bg-white/5 px-4 py-3 transition-colors hover:bg-white/10"
+        >
+          <span class="flex items-center justify-between gap-3">
+            <span class="font-semibold break-words text-white">{group.name.value}</span>
+            {group.isHost(userId) && (
+              <span class="shrink-0 rounded-full bg-purple-500/20 px-2 py-0.5 text-xs text-purple-200">Host</span>
+            )}
+          </span>
+          <span class="mt-1 block text-sm text-blue-100/60">Open period: {group.openPeriod.month.label()}</span>
+        </a>
+      </li>
+    ))}
+  </ul>
+)}
