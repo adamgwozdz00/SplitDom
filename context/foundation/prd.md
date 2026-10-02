@@ -72,8 +72,8 @@ Osoba współdzieląca koszty gospodarstwa domowego z innymi — małżonek/part
 ### Konto i grupa rozliczeniowa
 - FR-001: Użytkownik może zalogować się przy użyciu zewnętrznego dostawcy tożsamości. Priority: must-have
   > Socrates: Counter-argument considered: "poleganie wyłącznie na jednym zewnętrznym dostawcy tożsamości wyklucza osoby bez konta u tego dostawcy." Resolution: MVP zaczyna od jednego dostawcy tożsamości; logowanie e-mail+hasło jako alternatywa przechodzi do nice-to-have (FR-013).
-- FR-002: Użytkownik może utworzyć grupę rozliczeniową ("mieszkanie"). W MVP użytkownik należy tylko do jednej grupy naraz. Priority: must-have
-  > Socrates: Counter-argument considered: "jedna osoba może chcieć dzielić koszty i z małżonkiem, i ze współlokatorami naraz — brak obsługi wielu grup." Resolution: świadome uproszczenie na MVP — jedna grupa na użytkownika; wielość grup poza zakresem MVP.
+- FR-002: Użytkownik może utworzyć grupę rozliczeniową ("mieszkanie"). Użytkownik może tworzyć dowolną liczbę grup i należeć do wielu grup naraz. Priority: must-have
+  > Socrates: Counter-argument considered: "jedna osoba może chcieć dzielić koszty i z małżonkiem, i ze współlokatorami naraz — brak obsługi wielu grup." Resolution: pierwotnie świadome uproszczenie na MVP (jedna grupa na użytkownika); zmienione 2026-10-02 podczas planowania S-02 — użytkownik może tworzyć wiele grup i należeć do wielu grup, a grupę wybiera się w aplikacji (osobna strona każdej grupy).
 - FR-003: Użytkownik może zaprosić inną osobę do grupy, generując link/kod zaproszenia, który samodzielnie wysyła wybranym przez siebie kanałem (e-mail, SMS, komunikator). Priority: must-have
   > Socrates: Counter-argument considered: "wysyłka e-maila zaproszenia z serwera aplikacji to dodatkowa zależność zewnętrzna." Resolution: zastąpione generowaniem linku/kodu zaproszenia do ręcznego wysłania — bez integracji z serwisem mailowym po stronie aplikacji.
 
