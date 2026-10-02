@@ -3,7 +3,7 @@ project: SplitDom
 version: 1
 status: draft
 created: 2026-09-26
-updated: 2026-09-29
+updated: 2026-10-02
 prd_version: 1
 main_goal: speed
 top_blocker: time
@@ -43,7 +43,7 @@ People who share household costs — partners or roommates — settle shared exp
 | ---- | ----------------------------- | ----------------------------------------------------------------------------------- | ------------- | -------------------------- | -------- |
 | F-01 | db-migrations-and-isolation   | (foundation) schema changes ship repo → hosted DB; two-user test harness + RLS guard | —             | NFR-3, Guardrails          | done |
 | S-01 | external-identity-sign-in     | user can sign in with an external identity provider                                 | —             | FR-001                     | done |
-| S-02 | create-settlement-group       | user can create a settlement group, becomes its host, and it has an open period     | F-01          | FR-002                     | ready |
+| S-02 | create-settlement-group       | user can create a settlement group, becomes its host, and it has an open period     | F-01          | FR-002                     | in-progress |
 | S-03 | invite-member-by-link         | user can invite someone with a link/code, and that person joins the group           | S-02          | FR-003                     | proposed |
 | S-04 | add-expense-see-balances      | member can add an expense split equally and immediately see every member's balance  | S-03          | US-01, FR-004, FR-005      | blocked  |
 | S-05 | edit-own-expense-rules        | expense author can edit or delete their own expense only while it is still editable | S-04          | FR-005                     | proposed |
@@ -115,8 +115,8 @@ Foundations below assume these are present and do NOT re-scaffold them.
 - **Parallel with:** S-01
 - **Blockers:** —
 - **Unknowns:** —
-- **Risk:** Establishes the one-group-per-user rule and the host role that S-09 relies on; getting the host assignment wrong here would ripple into period closing.
-- **Status:** ready
+- **Risk:** Establishes the host role and the membership-based group access that S-09 and every later slice rely on; getting the host assignment wrong here would ripple into period closing. (FR-002 changed 2026-10-02: a user may create and belong to many groups.)
+- **Status:** in-progress
 
 ### S-03: Invite a member by link or code
 
@@ -127,7 +127,7 @@ Foundations below assume these are present and do NOT re-scaffold them.
 - **Parallel with:** S-01
 - **Blockers:** —
 - **Unknowns:**
-  - What happens when the invited person already belongs to another group (MVP allows one group per user)? — Owner: user. Block: no.
+  - ~~What happens when the invited person already belongs to another group?~~ Resolved 2026-10-02: no longer applies — FR-002 now allows a user to belong to many groups, so the invitee simply joins one more.
   - Does an invite expire or work only once? — Owner: user. Block: no.
 - **Risk:** Required before the north star because US-01 needs two members; it is the first flow where a second real user touches the group, so it is where the isolation check first matters for strangers.
 - **Status:** proposed
@@ -204,7 +204,7 @@ Foundations below assume these are present and do NOT re-scaffold them.
 - **Parallel with:** S-01, S-06, S-07
 - **Blockers:** —
 - **Unknowns:**
-  - Which timezone defines "the calendar month has ended"? — Owner: user. Block: no.
+  - ~~Which timezone defines "the calendar month has ended"?~~ Resolved 2026-10-02 (S-02 planning): Europe/Warsaw; timestamps stay in UTC, and `BillingMonth` in `src/lib/groups/` is the single place that maps a moment to its billing month.
 - **Risk:** The most rule-heavy slice (host-only, month ended, host's debts paid, exactly one new open period); placed last because it consumes the edit-lock and paid-debt rules from S-05 and S-08.
 - **Status:** proposed
 
