@@ -18,4 +18,16 @@ export class GroupName {
     }
     return { data: new GroupName(value) };
   }
+
+  /**
+   * Rebuilds a name that was already accepted and stored. The creation rule is not applied again:
+   * the database still holds names written before a rule changed or past the aggregate, and one such
+   * name must not make the user's groups unreadable.
+   */
+  static fromStored(value: string): GroupName {
+    if (value.length === 0) {
+      throw new Error("GroupName.fromStored: empty stored name");
+    }
+    return new GroupName(value);
+  }
 }

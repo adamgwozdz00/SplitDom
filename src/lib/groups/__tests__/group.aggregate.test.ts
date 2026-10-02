@@ -93,11 +93,18 @@ describe("Group", () => {
       expect(() => Group.restore(snapshot)).toThrow();
     });
 
-    it("throws on an invalid stored name", () => {
+    it("restores a stored name as it is, without applying the creation rule again", () => {
       const snapshot = aGroup().toSnapshot();
-      snapshot.name = "   ";
+      snapshot.name = "\u200B";
 
-      expect(() => Group.restore(snapshot)).toThrow(/invalid stored name/);
+      expect(Group.restore(snapshot).name.value).toBe("\u200B");
+    });
+
+    it("throws on an empty stored name", () => {
+      const snapshot = aGroup().toSnapshot();
+      snapshot.name = "";
+
+      expect(() => Group.restore(snapshot)).toThrow(/empty stored name/);
     });
   });
 });

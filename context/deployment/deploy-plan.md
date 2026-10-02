@@ -105,6 +105,15 @@ Google is the must-have sign-in path (FR-001); email/password (FR-013) stays nex
 - **Cancelled consent**: Google returns only `error=access_denied`, which Supabase forwards as `/auth/callback?error=access_denied&error_description=` (empty description). `/auth/callback` turns it into `/auth/signin?error=Sign-in was cancelled`; the smoke test covers it.
 - **Landing page**: both Google and email/password sign-in land on `/dashboard` (email/password used to land on `/`).
 
+## Settlement groups (added 2026-10-02, change `create-settlement-group`, S-02)
+
+The migration `settlement_groups` adds `groups`, `group_members` and `billing_periods`. The tables have RLS on with no policies and no `anon`/`authenticated` grants. Signed-in users reach them only through the `security definer` persistence functions `create_group`, `list_my_groups` and `get_my_group`. The migration only adds objects, so it is compatible with the previously deployed Worker.
+
+Known constraints on deleting a user (accepted for now, revisit before any account-deletion or GDPR flow):
+
+- **A host cannot be deleted.** `groups.host_id` references `auth.users` without cascade, because a group's host never changes. Deleting a user who hosts a group (Dashboard or `auth.admin.deleteUser`) fails with a foreign-key error, which GoTrue reports as "Database error deleting user".
+- **A member's membership disappears silently.** `group_members.user_id` cascades, so deleting a non-host member removes them from the group outside the `Group` aggregate. This is harmless while groups hold no expenses. Revisit it in S-04, once expenses and balances reference members.
+
 ## Out of scope
 
 Multi-region HA, Docker, and anything beyond first MVP deploy — per `infrastructure.md`'s own scope boundary.
