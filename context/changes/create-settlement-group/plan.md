@@ -501,27 +501,27 @@ The migration only adds new tables and functions, so it is compatible with the p
 
 #### Automated
 
-- [x] 2.1 Migration applies on a clean database: `npm run db:reset`
-- [x] 2.2 Generated types are up to date: `npm run db:types` leaves `git diff --exit-code src/db/database.types.ts` clean
-- [x] 2.3 Database tests pass, including the RLS guard and the new isolation test: `npm run test:db`
-- [x] 2.4 Unit tests, type check and lint pass: `npm test`, `npx astro check`, `npm run lint`
+- [x] 2.1 Migration applies on a clean database: `npm run db:reset` — 285ce43
+- [x] 2.2 Generated types are up to date: `npm run db:types` leaves `git diff --exit-code src/db/database.types.ts` clean — 285ce43
+- [x] 2.3 Database tests pass, including the RLS guard and the new isolation test: `npm run test:db` — 285ce43
+- [x] 2.4 Unit tests, type check and lint pass: `npm test`, `npx astro check`, `npm run lint` — 285ce43
 
 #### Manual
 
-- [x] 2.5 The migration contains no business rules: functions only insert or select, and identity comes from `auth.uid()`
+- [x] 2.5 The migration contains no business rules: functions only insert or select, and identity comes from `auth.uid()` — 285ce43
 
 ### Phase 3: Endpoint, dashboard, group page, smoke and docs
 
 #### Automated
 
-- [ ] 3.1 Smoke test passes against a local production build: `npm run build && npm run preview`, then `npm run smoke`
-- [ ] 3.2 Unit and database tests pass: `npm test`, `npm run test:db`
-- [ ] 3.3 Type check, lint and build pass: `npx astro check`, `npm run lint`, `npm run build`
+- [x] 3.1 Smoke test passes against a local production build: `npm run build && npm run preview`, then `npm run smoke`
+- [x] 3.2 Unit and database tests pass: `npm test`, `npm run test:db`
+- [x] 3.3 Type check, lint and build pass: `npx astro check`, `npm run lint`, `npm run build`
 
 #### Manual
 
-- [ ] 3.4 On a phone-width browser, a new user creates a group on `/dashboard`, lands on its page and sees its name, "You are the host" and "Open period: <the current month in Europe/Warsaw>" (e.g. "October 2026")
-- [ ] 3.5 The same user creates a second group and sees both on `/dashboard`, each opening its own page
-- [ ] 3.6 A second browser signed in as another user sees an empty list on `/dashboard`, and gets 404 on the first user's `/groups/<id>` URL
-- [ ] 3.7 An empty name and a 61-character name (with `maxlength` removed via devtools) both come back with the name error
+- [x] 3.4 On a phone-width browser, a new user creates a group on `/dashboard`, lands on its page and sees its name, "You are the host" and "Open period: <the current month in Europe/Warsaw>" (e.g. "October 2026")
+- [x] 3.5 The same user creates a second group and sees both on `/dashboard`, each opening its own page
+- [x] 3.6 A second browser signed in as another user sees an empty list on `/dashboard`, and gets 404 on the first user's `/groups/<id>` URL
+- [x] 3.7 An empty name and a 61-character name (with `maxlength` removed via devtools) both come back with the name error
 - [ ] 3.8 After merge, the same flow works on production (https://10x-astro-starter.adamgwozdz.workers.dev)

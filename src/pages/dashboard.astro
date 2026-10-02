@@ -1,20 +1,56 @@
 ---
 import Layout from "@/layouts/Layout.astro";
+import CreateGroupForm from "@/components/groups/CreateGroupForm.astro";
+import GroupList from "@/components/groups/GroupList.astro";
+import { createGroupService, groupErrorMessage, GROUPS_LOAD_FAILED_MESSAGE } from "@/lib/groups";
+import { createClient } from "@/lib/supabase";
 
 const { user } = Astro.locals;
+// The middleware redirects anonymous requests, so reaching here without a user is a wiring bug.
+if (!user) {
+  throw new Error("/dashboard rendered without a signed-in user");
+}
+
+// Any failure to load (no Supabase, `unexpected`, `not_authenticated`) replaces the list, never a 500.
+const supabase = createClient(Astro.request.headers, Astro.cookies);
+const groups = supabase ? await createGroupService(supabase).listForMember(user.id) : null;
+
+// Only the mapped message is rendered, never the raw query value.
+const errorCode = Astro.url.searchParams.get("error");
+const formError = errorCode ? groupErrorMessage(errorCode) : null;
 ---
 
 <Layout title="Dashboard">
   <div class="bg-cosmic flex min-h-screen items-center justify-center p-4">
-    <div class="rounded-2xl border border-white/10 bg-white/10 p-8 text-center text-white backdrop-blur-xl">
+    <div class="w-full max-w-md rounded-2xl border border-white/10 bg-white/10 p-8 text-white backdrop-blur-xl">
       <h1 class="mb-4 bg-gradient-to-r from-blue-200 to-purple-200 bg-clip-text text-3xl font-bold text-transparent">
         Dashboard
       </h1>
       <p class="text-blue-100/80">
-        Welcome, <span class="font-semibold text-white">{user?.email}</span>
+        Welcome, <span class="font-semibold break-all text-white">{user.email}</span>
       </p>
-      <p class="mt-2 text-sm text-blue-100/50">This page is only for authenticated users.</p>
-      <form method="POST" action="/api/auth/signout" class="mt-6">
+
+      <section class="mt-6" aria-labelledby="your-groups">
+        <h2 id="your-groups" class="mb-3 text-lg font-semibold text-blue-100">
+          Your groups
+        </h2>
+        {groups && "data" in groups ? (
+          <GroupList groups={groups.data} userId={user.id} />
+        ) : (
+          <p role="alert" class="rounded-lg border border-red-500/30 bg-red-900/30 px-3 py-2 text-sm text-red-300">
+            {GROUPS_LOAD_FAILED_MESSAGE}
+          </p>
+        )}
+      </section>
+
+      <section class="mt-6" aria-labelledby="create-group">
+        <h2 id="create-group" class="mb-3 text-lg font-semibold text-blue-100">
+          Create group
+        </h2>
+        <CreateGroupForm error={formError} />
+      </section>
+
+      <form method="POST" action="/api/auth/signout" class="mt-8 text-center">
         <button
           type="submit"
           class="rounded-lg border border-white/20 bg-white/10 px-4 py-2 text-sm transition-colors hover:bg-white/20"
