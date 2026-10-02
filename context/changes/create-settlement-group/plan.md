@@ -65,26 +65,28 @@ The work goes domain first, then persistence, then the web layer.
 1. **Domain.** Build the domain in plain TypeScript with unit tests and no database:
    - value objects `GroupName` and `BillingMonth`;
    - the `Group` aggregate;
-   - the `createGroup`, `listMyGroups` and `getMyGroup` use cases behind a `GroupRepository` interface.
+   - `GroupService`, the aggregate's service and the only user of the `GroupRepository` interface, with `create`, `listForMember` and `getForMember`.
 2. **Persistence.** Add the tables, light constraints and three narrow persistence functions. Implement the Supabase repository against them, and prove isolation with `createTwoUsers()`.
 3. **Web layer.** Wire a form-POST endpoint, the dashboard list and the group page. Extend the smoke test, and update docs.
 
 Access is decided by membership in two places, with different jobs:
 - The persistence functions only ever return groups whose membership contains `auth.uid()`. That is identity scoping, so a direct browser call cannot read others' data.
-- The aggregate exposes `isMember(userId)`, and `getMyGroup` checks it, so the rule is also explicit in the domain.
+- The aggregate exposes `isMember(userId)`, and `GroupService.getForMember` and `listForMember` check it, so the rule is also explicit in the domain.
 
 "Exactly one open period" is an aggregate invariant, backed by a partial unique index.
 
+> **Implementation deviation (2026-10-02, Phase 1 review).** At the user's request the free-standing use cases (`createGroup`, `listMyGroups`, `getMyGroup`) were replaced by `GroupService` (`src/lib/groups/group.service.ts`): only the repository reads and writes the `Group` aggregate, and only `GroupService` uses the repository. There is no command/query layer for now. Also from the Phase 1 review (F2), `create_group` takes `p_host_id` as a safety backstop and refuses it unless it equals `auth.uid()`. The contracts below already reflect both changes; see `change.md` and `reviews/impl-review-phase-1.md`.
+
 ## Critical Implementation Details
 
-- **Identity comes from the token, not from parameters.** No persistence function accepts a host, member or user id.
-  - `create_group` writes `auth.uid()` as `host_id` and as the member.
+- **Identity comes from the token, not from parameters.** No persistence function accepts a member or user id for reading, and the host id is only accepted to be checked.
+  - `create_group` takes the aggregate's `p_host_id` and raises `42501` unless it equals `auth.uid()`, then writes it as `host_id` and as the member. This is a persistence backstop, not a business rule: the aggregate decides who the host is, and the database refuses to store an identity that is not the caller's, so the domain and the stored host can never silently diverge.
   - `list_my_groups` and `get_my_group` filter on membership of `auth.uid()`.
   - All three raise `not_authenticated` (errcode `28000`) when `auth.uid()` is null, so a missing session is never read as "no groups".
   - Everything else (group id, trimmed name, period id, month, and the creation instant) comes from the aggregate, so a direct browser call can only create the caller's own group. Constraints keep it well-formed.
 - **The month is computed in Europe/Warsaw, then formatted in UTC.** `BillingMonth.of(instant)` takes the calendar year and month of the instant in `Europe/Warsaw`; for example `2026-10-31T23:30:00Z` → November 2026. The label is produced from the `YYYY-MM-01` date in UTC, so it never shifts with the server timezone. Workers ship full ICU, so `Intl.DateTimeFormat` with `timeZone: "Europe/Warsaw"` works at the edge.
 - **The aggregate's clock is stored.** `create_group` takes `p_now` and uses it for `created_at`, `joined_at` and `opened_at`, instead of the database's `now()`. The repository normalizes timestamps read back from Postgres (`…06.604123+00:00`) with `new Date(value).toISOString()` (`…06.604Z`).
-- **The clock and the id generator are injected** into the use case, so unit tests are deterministic. The endpoint passes `new Date()` and `() => crypto.randomUUID()`. The arrow keeps `crypto` as the receiver: workerd throws "Illegal invocation" for an unbound Web Crypto method, while Node does not, so only the smoke test would catch it.
+- **The clock and the id generator are injected** into `GroupService`'s constructor, so unit tests are deterministic. The endpoint passes `() => crypto.randomUUID()` and `() => new Date()`. The arrow keeps `crypto` as the receiver: workerd throws "Illegal invocation" for an unbound Web Crypto method, while Node does not, so only the smoke test would catch it.
 - **The groups module never imports `@/lib/supabase`.** That file imports `astro:env/server`, which the plain Vitest config cannot resolve. The repository receives a `SupabaseClient<Database>`; pages and the endpoint create it with `createClient(...)` and pass it in.
 
 ## Phase 1: Group domain model (TypeScript)
@@ -145,24 +147,19 @@ The `groups` module with its value objects, aggregate, use cases and error type,
 - `isHost(userId): boolean`, `isMember(userId): boolean`.
 - `toSnapshot(): GroupSnapshot`.
 
-#### 4. Use cases
+#### 4. Aggregate service
 
-**File**: `src/lib/groups/create-group.handler.ts`
+**File**: `src/lib/groups/group.service.ts`
 
-**Intent**: The "create a settlement group" application service. Any signed-in user may create any number of groups.
+**Intent**: The single entry point to the `Group` aggregate. Only the repository reads and writes the aggregate, and only `GroupService` uses the repository; it loads and saves groups and leaves the rules to the aggregate. Any signed-in user may create any number of groups. The membership rule is explicit in the domain.
 
-**Contract**: `createGroup(input: { name: string; userId: string; now: Date }, deps: { repository: GroupRepository; newId: () => string }): Promise<Result<{ groupId: string }>>`. Steps:
-1. Validate the name.
-2. `Group.create`.
-3. `repository.create`, passing its error through unchanged.
-
-**File**: `src/lib/groups/get-my-groups.handler.ts`
-
-**Intent**: Read use cases for the dashboard and the group page. The membership rule is explicit in the domain.
-
-**Contract**:
-- `listMyGroups(deps: { repository }): Promise<Result<Group[]>>` returns the groups sorted by `createdAt`, newest first.
-- `getMyGroup(input: { groupId: string; userId: string }, deps: { repository }): Promise<Result<Group>>`:
+**Contract**: `new GroupService(repository: GroupRepository, newId: () => string, clock: () => Date)`.
+- `create(input: { name: string; hostId: string }): Promise<Result<{ groupId: string }>>`. Steps:
+  1. Validate the name.
+  2. `Group.create` with two `newId()` calls (group, then period) and `clock()`.
+  3. `repository.create`, passing its error through unchanged.
+- `listForMember(userId: string): Promise<Result<Group[]>>` returns the groups where `isMember(userId)`, sorted by `createdAt`, newest first.
+- `getForMember(input: { groupId: string; userId: string }): Promise<Result<Group>>`:
   - if the repository finds nothing, or `!group.isMember(userId)`, it returns `group_not_found` with `context: { groupId }`;
   - a malformed `groupId` (not a UUID) also returns `group_not_found` without calling the repository.
 
@@ -170,7 +167,7 @@ The `groups` module with its value objects, aggregate, use cases and error type,
 
 **File**: `src/lib/groups/group-error.messages.ts`, `src/lib/groups/index.ts`
 
-**Intent**: After a redirect, only the error code survives, so the module owns the user-facing message for each code. The barrel exports the public API (use cases, `Group`, `BillingMonth`, `GroupName`, `groupErrorMessage`, types). The Supabase repository is added to it in Phase 2. The barrel never imports `@/lib/supabase`.
+**Intent**: After a redirect, only the error code survives, so the module owns the user-facing message for each code. The barrel exports the public API (`GroupService`, `Group`, `BillingMonth`, `GroupName`, `groupErrorMessage`, types). The Supabase repository is added to it in Phase 2. The barrel never imports `@/lib/supabase`.
 
 **Contract**: `groupErrorMessage(code: string): string`. It returns English messages:
 - `invalid_group_name` → "Group name must be 1–60 characters";
@@ -179,9 +176,9 @@ The `groups` module with its value objects, aggregate, use cases and error type,
 
 #### 6. Unit tests
 
-**File**: `src/lib/groups/__tests__/group-name.value.test.ts`, `billing-month.value.test.ts`, `group.aggregate.test.ts`, `create-group.handler.test.ts`, `get-my-groups.handler.test.ts`
+**File**: `src/lib/groups/__tests__/group-name.value.test.ts`, `billing-month.value.test.ts`, `group.aggregate.test.ts`, `group.service.test.ts`
 
-**Intent**: Prove every rule without a database. The handler tests use an in-memory fake `GroupRepository`.
+**Intent**: Prove every rule without a database. The service tests use an in-memory fake `GroupRepository`.
 
 **Contract**: The cases are listed under Testing Strategy → Unit Tests.
 
@@ -238,10 +235,11 @@ Tables with light constraints and deny-all RLS, three narrow persistence functio
   - `enable row level security`, with no policies;
   - `revoke all … from anon, authenticated`;
   - a `comment on table` naming the aggregate they persist.
-- `public.create_group(p_group_id uuid, p_name text, p_period_id uuid, p_period_month date, p_now timestamptz) returns void`:
+- `public.create_group(p_group_id uuid, p_name text, p_host_id uuid, p_period_id uuid, p_period_month date, p_now timestamptz) returns void`:
   - `security definer`, `set search_path = ''`;
   - raises `not_authenticated` with `errcode = '28000'` if `auth.uid()` is null;
-  - inserts the group (host `auth.uid()`), the membership (`auth.uid()`) and the period in one statement block, so it runs in one transaction;
+  - raises with `errcode = '42501'` if `p_host_id` is distinct from `auth.uid()` (persistence backstop: it only stores the caller's own identity);
+  - inserts the group (host `p_host_id`), the membership (`p_host_id`) and the period in one statement block, so it runs in one transaction;
   - uses `p_now` for `created_at`, `joined_at` and `opened_at`;
   - does nothing else.
 - `public.list_my_groups() returns jsonb`:
@@ -271,13 +269,14 @@ Tables with light constraints and deny-all RLS, three narrow persistence functio
 
 **Contract**:
 - `createSupabaseGroupRepository(client: SupabaseClient<Database>): GroupRepository`. It imports only `@supabase/supabase-js` types and `@/db`, never `@/lib/supabase`.
-- `create` calls `rpc("create_group", …)` with values taken from `group.toSnapshot()` (`p_now` = `createdAt`).
+- `create` calls `rpc("create_group", …)` with values taken from `group.toSnapshot()` (`p_host_id` = `hostId`, `p_now` = `createdAt`).
 - `listGroupsOfCurrentUser` calls `rpc("list_my_groups")`.
 - `findGroupOfCurrentUser(groupId)` calls `rpc("get_my_group", { p_group_id })` and maps `null` to `{ data: null }`.
 - Both readers map snake_case JSON to `GroupSnapshot`, normalize timestamps with `new Date(value).toISOString()`, and call `Group.restore`.
 - Error mapping:
   - `28000` → `not_authenticated`;
-  - anything else, including a `Group.restore` failure → `unexpected`, with `context: { dbCode }`.
+  - anything else → `unexpected`, with `context: { dbCode }`;
+  - any value thrown while mapping or restoring a snapshot (`Group.restore` throws `Error`, `BillingMonth.fromDate` throws `RangeError`, malformed JSON can throw `TypeError`) is caught inside the repository and returned as `unexpected` with `context: { groupId }`, never left to escape as a raw 500. One corrupt group fails the whole list by design (it is a data-integrity bug, not a user error); the `(group_id, user_id)` primary key keeps duplicate members out.
 
 #### 4. Persistence and isolation tests
 
@@ -319,9 +318,9 @@ The user-facing flow (a dashboard list with a create form, and a group page), a 
 **Intent**: Form POST that runs the use case for the signed-in user, in the same redirect style as the auth routes.
 
 **Contract**:
-- `POST` reads the `name` form field and calls `createGroup` with:
-  - `userId = locals.user.id`, `now = new Date()`, `newId = () => crypto.randomUUID()` (never the bare method reference; see Critical Implementation Details);
-  - the Supabase repository built from `createClient(...)`.
+- `POST` reads the `name` form field and calls `service.create({ name, hostId: locals.user.id })` on `new GroupService(repository, () => crypto.randomUUID(), () => new Date())`:
+  - the id generator is the arrow, never the bare method reference (see Critical Implementation Details);
+  - the repository is the Supabase repository built from `createClient(...)`.
 - On success it redirects 302 to `/groups/<groupId>`. On error it redirects 302 to `/dashboard?error=<code>`. If Supabase is not configured, it redirects to `/dashboard?error=unexpected`.
 
 **File**: `src/middleware.ts`
@@ -334,7 +333,7 @@ The user-facing flow (a dashboard list with a create form, and a group page), a 
 
 **File**: `src/pages/dashboard.astro`, `src/components/groups/CreateGroupForm.astro`, `src/components/groups/GroupList.astro`
 
-**Intent**: `/dashboard` calls `listMyGroups` and shows:
+**Intent**: `/dashboard` calls `GroupService.listForMember(user.id)` and shows:
 - the list of groups, each a link to `/groups/<id>` with its name, "Host" when `isHost(user.id)`, and the open period label; or "You don't belong to any group yet" when there are none;
 - below it, always, the create form (name input with `required`, `maxlength="60"`, submit to `/api/groups`), with the error from `?error=` shown through `groupErrorMessage`.
 
@@ -349,7 +348,7 @@ If loading fails (no Supabase client, or `unexpected`/`not_authenticated`), the 
 **Intent**: The home of one group: name as the heading, "You are the host" when `isHost(user.id)`, "Open period: <BillingMonth label>", and a link back to `/dashboard`.
 
 **Contract**:
-- It calls `getMyGroup({ groupId: params.id, userId: locals.user.id })`.
+- It calls `GroupService.getForMember({ groupId: params.id, userId: locals.user.id })`.
 - `group_not_found` → 404 (Astro `Astro.response.status = 404` with a "Group not found" message), the same for a non-member and a non-existent id.
 - `unexpected` or `not_authenticated`, or no Supabase client → "Couldn't load your groups, try again" with status 200.
 
@@ -383,7 +382,7 @@ If loading fails (no Supabase client, or `unexpected`/`not_authenticated`), the 
 - **Status:** groups exist (create, list, group page).
 - **Structure:** add `src/lib/groups/` (domain module), `src/pages/api/groups/`, `src/pages/groups/`, `src/components/groups/`.
 - **Code Conventions:**
-  - a new bullet: "Domain logic — business rules and invariants live in TypeScript aggregates and use cases in `src/lib/<module>/`; database functions only persist and load, scoped to `auth.uid()`, and constraints are backstops only";
+  - a new bullet: "Domain logic — business rules and invariants live in TypeScript aggregates in `src/lib/<module>/`; only the repository reads and writes an aggregate, and only the aggregate's service (e.g. `GroupService`) uses the repository; database functions only persist and load, scoped to `auth.uid()`, and constraints are backstops only";
   - the Dates bullet becomes "stored in UTC; a domain module formats its own dates (e.g. `BillingMonth.label()`); no ad-hoc `new Date().toISOString()`".
 - **Database changes:** a group-scoped table gets RLS on with no policies and revoked `anon`/`authenticated` grants. Access goes through narrow `security definer` persistence functions (`search_path = ''`, execute granted to `authenticated` only) that filter on the caller's membership. Its `*.db.test.ts` proves user B cannot read A's data through those functions and that direct table access is denied. These persistence functions live directly in `public` (superseding the thin-`public`-wrapper-over-`private` split proposed in `invite-member-by-link/research.md`), and the Supabase Advisor lints 0029 (`authenticated_security_definer_function_executable`) and 0008 (`rls_enabled_no_policy`) are expected for them and their tables by design.
 
@@ -427,13 +426,13 @@ If loading fails (no Supabase client, or `unexpected`/`not_authenticated`), the 
   - `isHost`, `isMember`;
   - `toSnapshot` → `restore` round-trips;
   - `restore` throws when the host is not a member or the open period is missing.
-- `createGroup`:
+- `GroupService.create`:
   - success saves one aggregate with the injected ids and clock;
   - a user who already has a group can create another;
   - an invalid name → `invalid_group_name` and no repository call;
   - a repository error passes through.
-- `listMyGroups` / `getMyGroup`:
-  - the list is sorted newest first;
+- `GroupService.listForMember` / `getForMember`:
+  - the list is sorted newest first, and leaves out groups where `isMember(userId)` is false;
   - an unknown id → `group_not_found`;
   - a group the repository returns but where `isMember(userId)` is false → `group_not_found`;
   - a malformed id → `group_not_found` without a repository call.
@@ -447,7 +446,7 @@ If loading fails (no Supabase client, or `unexpected`/`not_authenticated`), the 
 - B's `listGroupsOfCurrentUser` returns an empty list, and B's `findGroupOfCurrentUser(A's id)` returns `null` (isolation).
 - A, B and anon are refused direct access: `select` on `groups`, `group_members` and `billing_periods` returns an error with code `42501` and `data` null (grants are revoked, so it is an error, not an empty list). A direct `insert` into `group_members` for A's group by B also fails with `42501`.
 - `anon` cannot execute `create_group`, `list_my_groups` or `get_my_group`: each RPC fails with code `42501`.
-- `create_group` records the caller as host and member (there is no host parameter).
+- `create_group` with the caller's own `p_host_id` records the caller as host and member; with another user's id (B passing A's id) it fails with `42501` and writes nothing.
 - The RLS guard (`rls-guard.db.test.ts`) stays green with the three new tables.
 
 ### Manual Testing Steps:
@@ -483,14 +482,14 @@ The migration only adds new tables and functions, so it is compatible with the p
 
 #### Automated
 
-- [x] 1.1 Unit tests pass: `npm test`
-- [x] 1.2 Type check passes: `npx astro check`
-- [x] 1.3 Lint passes: `npm run lint`
-- [x] 1.4 `BillingMonth.of(new Date("2026-10-31T23:30:00Z")).toDate()` is `"2026-11-01"` and `.label()` is `"November 2026"` (unit test)
+- [x] 1.1 Unit tests pass: `npm test` — 3b7818d
+- [x] 1.2 Type check passes: `npx astro check` — 3b7818d
+- [x] 1.3 Lint passes: `npm run lint` — 3b7818d
+- [x] 1.4 `BillingMonth.of(new Date("2026-10-31T23:30:00Z")).toDate()` is `"2026-11-01"` and `.label()` is `"November 2026"` (unit test) — 3b7818d
 
 #### Manual
 
-- [x] 1.5 The module reads as the domain: rules are in `GroupName`, `BillingMonth`, `Group` and the use cases, with no generic helper files
+- [x] 1.5 The module reads as the domain: rules are in `GroupName`, `BillingMonth`, `Group` and the use cases, with no generic helper files — 3b7818d
 
 ### Phase 2: Persistence and group isolation
 

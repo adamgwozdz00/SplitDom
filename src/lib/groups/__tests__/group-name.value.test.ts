@@ -16,6 +16,12 @@ describe("GroupName", () => {
     });
   });
 
+  it.each(["\u200B", "\u200B\u2060\uFEFF"])("rejects a name of invisible characters only %j", (raw) => {
+    const result = GroupName.create(raw);
+
+    expect("error" in result && result.error.code).toBe("invalid_group_name");
+  });
+
   it("accepts 60 characters", () => {
     const result = GroupName.create("a".repeat(60));
 
