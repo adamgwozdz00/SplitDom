@@ -1,7 +1,7 @@
 ---
 change_id: create-settlement-group
 title: Create a settlement group with its first open period (S-02)
-status: implementing
+status: impl_reviewed
 created: 2026-10-02
 updated: 2026-10-02
 archived_at: null
@@ -26,3 +26,4 @@ Implementation deviation (2026-10-02, Phase 1 review, from the user):
   - `listMyGroups({ repository })` → `service.listForMember(userId)` (also filters on `isMember(userId)`);
   - `getMyGroup({ groupId, userId }, { repository })` → `service.getForMember({ groupId, userId })`.
 - No CQRS command/query layer for now; Phase 3's endpoint and pages call `GroupService` directly.
+- Phase 1 review (F2, 2026-10-02): `create_group` takes `p_host_id` from the aggregate and raises `42501` unless it equals `auth.uid()` — a persistence backstop so the domain's host and the stored host can never silently diverge. plan.md's contracts were updated to match (F1).
