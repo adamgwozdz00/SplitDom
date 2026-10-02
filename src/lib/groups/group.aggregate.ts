@@ -48,10 +48,6 @@ export class Group {
 
   /** Rebuilds a group from storage; throws when the stored data breaks an invariant. */
   static restore(snapshot: GroupSnapshot): Group {
-    const name = GroupName.create(snapshot.name);
-    if ("error" in name) {
-      throw new Error(`Group ${snapshot.id}: invalid stored name`);
-    }
     // Snapshots come from storage, so the type alone does not prove the open period exists.
     // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
     if (!snapshot.openPeriod) {
@@ -59,7 +55,7 @@ export class Group {
     }
     return new Group({
       id: snapshot.id,
-      name: name.data,
+      name: GroupName.fromStored(snapshot.name),
       hostId: snapshot.hostId,
       createdAt: parseInstant(snapshot.createdAt),
       members: snapshot.members.map((member) => ({

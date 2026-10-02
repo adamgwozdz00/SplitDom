@@ -142,7 +142,7 @@ The `groups` module with its value objects, aggregate, use cases and error type,
 
 **Contract**:
 - `Group.create({ id, name: GroupName, hostId, now: Date, periodId }): Group`. It sets the host as the only member (`joinedAt = now`) and opens one period for `BillingMonth.of(now)`, with `openedAt = now` and `createdAt = now`.
-- `Group.restore(snapshot: GroupSnapshot): Group` throws if an invariant does not hold (corrupt data, which surfaces as `unexpected`).
+- `Group.restore(snapshot: GroupSnapshot): Group` throws if an invariant does not hold (corrupt data, which surfaces as `unexpected`). The stored name is restored as it is (`GroupName.fromStored`, non-empty only); the creation rule in `GroupName.create` is not applied again, so a name stored past the aggregate or before a rule changed never makes a user's groups unreadable (Phase 2 review, F1).
 - Read-only getters: `id`, `name`, `hostId`, `members`, `openPeriod` (`{ id, month: BillingMonth, openedAt }`).
 - `isHost(userId): boolean`, `isMember(userId): boolean`.
 - `toSnapshot(): GroupSnapshot`.
@@ -227,7 +227,7 @@ Tables with light constraints and deny-all RLS, three narrow persistence functio
 - `public.billing_periods`:
   - `id uuid primary key`;
   - `group_id uuid not null references public.groups(id) on delete cascade`;
-  - `month date not null`;
+  - `month date not null check (extract(day from month) = 1)` (format backstop added in the Phase 2 review, F1: `create_group` is callable past the aggregate, and `BillingMonth` only restores `YYYY-MM-01`);
   - `opened_at timestamptz not null`;
   - `closed_at timestamptz` (null means open);
   - `unique (group_id, month)`, plus a partial unique index on `(group_id) where closed_at is null`.
@@ -448,6 +448,12 @@ If loading fails (no Supabase client, or `unexpected`/`not_authenticated`), the 
 - `anon` cannot execute `create_group`, `list_my_groups` or `get_my_group`: each RPC fails with code `42501`.
 - `create_group` with the caller's own `p_host_id` records the caller as host and member; with another user's id (B passing A's id) it fails with `42501` and writes nothing.
 - The RLS guard (`rls-guard.db.test.ts`) stays green with the three new tables.
+- Added in the Phase 2 review:
+  - B cannot `update` or `delete` A's `groups` or `billing_periods` rows (`42501`), and A's group is unchanged;
+  - the repository maps a caller without `auth.uid()` (service role) to `not_authenticated`;
+  - `create_group` cannot take over A's group by reusing its id, and cannot reuse A's period id (error, nothing written for B, A unchanged);
+  - a billing month that is not the first day of a month is refused (`23514`);
+  - a group whose name was stored past the aggregate (e.g. `"\u200B"`) is still listed for its member.
 
 ### Manual Testing Steps:
 
@@ -495,14 +501,14 @@ The migration only adds new tables and functions, so it is compatible with the p
 
 #### Automated
 
-- [ ] 2.1 Migration applies on a clean database: `npm run db:reset`
-- [ ] 2.2 Generated types are up to date: `npm run db:types` leaves `git diff --exit-code src/db/database.types.ts` clean
-- [ ] 2.3 Database tests pass, including the RLS guard and the new isolation test: `npm run test:db`
-- [ ] 2.4 Unit tests, type check and lint pass: `npm test`, `npx astro check`, `npm run lint`
+- [x] 2.1 Migration applies on a clean database: `npm run db:reset`
+- [x] 2.2 Generated types are up to date: `npm run db:types` leaves `git diff --exit-code src/db/database.types.ts` clean
+- [x] 2.3 Database tests pass, including the RLS guard and the new isolation test: `npm run test:db`
+- [x] 2.4 Unit tests, type check and lint pass: `npm test`, `npx astro check`, `npm run lint`
 
 #### Manual
 
-- [ ] 2.5 The migration contains no business rules: functions only insert or select, and identity comes from `auth.uid()`
+- [x] 2.5 The migration contains no business rules: functions only insert or select, and identity comes from `auth.uid()`
 
 ### Phase 3: Endpoint, dashboard, group page, smoke and docs
 
