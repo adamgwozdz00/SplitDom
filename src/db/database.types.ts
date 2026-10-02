@@ -9,13 +9,103 @@ export type Json =
 export type Database = {
   public: {
     Tables: {
-      [_ in never]: never
+      billing_periods: {
+        Row: {
+          closed_at: string | null
+          group_id: string
+          id: string
+          month: string
+          opened_at: string
+        }
+        Insert: {
+          closed_at?: string | null
+          group_id: string
+          id: string
+          month: string
+          opened_at: string
+        }
+        Update: {
+          closed_at?: string | null
+          group_id?: string
+          id?: string
+          month?: string
+          opened_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "billing_periods_group_id_fkey"
+            columns: ["group_id"]
+            isOneToOne: false
+            referencedRelation: "groups"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      group_members: {
+        Row: {
+          group_id: string
+          joined_at: string
+          user_id: string
+        }
+        Insert: {
+          group_id: string
+          joined_at: string
+          user_id: string
+        }
+        Update: {
+          group_id?: string
+          joined_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "group_members_group_id_fkey"
+            columns: ["group_id"]
+            isOneToOne: false
+            referencedRelation: "groups"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      groups: {
+        Row: {
+          created_at: string
+          host_id: string
+          id: string
+          name: string
+        }
+        Insert: {
+          created_at: string
+          host_id: string
+          id: string
+          name: string
+        }
+        Update: {
+          created_at?: string
+          host_id?: string
+          id?: string
+          name?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
     }
     Functions: {
-      [_ in never]: never
+      create_group: {
+        Args: {
+          p_group_id: string
+          p_host_id: string
+          p_name: string
+          p_now: string
+          p_period_id: string
+          p_period_month: string
+        }
+        Returns: undefined
+      }
+      get_my_group: { Args: { p_group_id: string }; Returns: Json }
+      list_my_groups: { Args: never; Returns: Json }
     }
     Enums: {
       [_ in never]: never
