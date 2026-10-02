@@ -5,10 +5,13 @@ const MESSAGES: Record<GroupErrorCode, string> = {
   invalid_group_name: "Group name must be 1–60 characters",
   group_not_found: "Group not found",
   not_authenticated: "Sign in to continue",
-  unexpected: "Couldn't load your groups, try again",
+  unexpected: "Something went wrong, try again",
 };
 
 const GENERIC_MESSAGE = "Something went wrong, try again";
+
+/** Shown in place of a group list or group page that could not be loaded, whatever the error code. */
+export const GROUPS_LOAD_FAILED_MESSAGE = "Couldn't load your groups, try again";
 
 function isGroupErrorCode(code: string): code is GroupErrorCode {
   return Object.hasOwn(MESSAGES, code);

@@ -2,6 +2,7 @@ import type { PostgrestError, SupabaseClient } from "@supabase/supabase-js";
 import type { Database, Json } from "@/db";
 import { Group } from "@/lib/groups/group.aggregate";
 import { groupError } from "@/lib/groups/group-error.messages";
+import { GroupService } from "@/lib/groups/group.service";
 import type { GroupError, GroupRepository, GroupSnapshot, Result } from "@/lib/groups/types";
 
 type JsonObject = Record<string, Json | undefined>;
@@ -53,6 +54,18 @@ export function createSupabaseGroupRepository(client: SupabaseClient<Database>):
       return data === null ? { data: null } : restore(data, groupId);
     },
   };
+}
+
+/**
+ * The GroupService for a request, persisting through the signed-in user's Supabase client. The id generator
+ * must stay an arrow: workerd throws "Illegal invocation" for an unbound crypto.randomUUID.
+ */
+export function createGroupService(client: SupabaseClient<Database>): GroupService {
+  return new GroupService(
+    createSupabaseGroupRepository(client),
+    () => crypto.randomUUID(),
+    () => new Date(),
+  );
 }
 
 function fromDbError(error: PostgrestError): GroupError {

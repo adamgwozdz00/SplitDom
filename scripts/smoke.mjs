@@ -1,10 +1,18 @@
-// Smoke test: proves the built app, the Cloudflare adapter and the Supabase auth flow still work together.
+// Smoke test: proves the built app, the Cloudflare adapter, the Supabase auth flow and the create-group flow work together.
 // Zero dependencies on purpose. Run against a live server: BASE_URL=http://localhost:4321 node scripts/smoke.mjs
+
+import { randomUUID } from "node:crypto";
 
 const BASE_URL = process.env.BASE_URL ?? "http://localhost:4321";
 const email = `smoke-${Date.now()}@example.com`;
 const password = "Smoke-Test-Passw0rd!";
 const jar = new Map();
+const stamp = Date.now();
+const groupA = `Smoke household A ${stamp}`;
+const groupB = `Smoke household B ${stamp}`;
+// Ids of the groups created by the run, in creation order; later steps read them.
+const groupIds = [];
+const GROUP_PAGE = /^\/groups\/([0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})$/;
 
 function cookieHeader() {
   return [...jar.entries()].map(([k, v]) => `${k}=${v}`).join("; ");
@@ -32,7 +40,29 @@ async function request(path, { method = "GET", form } = {}) {
     body: form ? new URLSearchParams(form).toString() : undefined,
   });
   storeCookies(response);
-  return { status: response.status, location: response.headers.get("location") ?? "" };
+  return { status: response.status, location: response.headers.get("location") ?? "", body: await response.text() };
+}
+
+function bodyContains(...texts) {
+  return (actual) => {
+    const missing = texts.filter((text) => !actual.body.includes(text));
+    return missing.length ? `body is missing ${missing.map((text) => JSON.stringify(text)).join(", ")}` : true;
+  };
+}
+
+// A created group redirects to its own page, with an id no earlier step has seen.
+function checkNewGroupPage(actual) {
+  const match = GROUP_PAGE.exec(actual.location);
+  if (!match) return `location is not /groups/<uuid>: ${actual.location}`;
+  if (groupIds.includes(match[1])) return `group id ${match[1]} was already used`;
+  groupIds.push(match[1]);
+  return true;
+}
+
+// Steps on group A need its id; without it they fail instead of silently requesting /groups/undefined.
+function requestGroupA() {
+  if (groupIds[0] === undefined) return Promise.resolve({ status: 0, location: "(group A was not created)", body: "" });
+  return request(`/groups/${groupIds[0]}`);
 }
 
 // Asserts the Google sign-in redirect without contacting Google: Supabase's authorize URL, the
@@ -86,8 +116,37 @@ const steps = [
     { status: 302, location: "/dashboard" },
   ],
   ["dashboard renders for signed-in user", () => request("/dashboard"), { status: 200 }],
+  [
+    "dashboard shows the create-group form",
+    () => request("/dashboard"),
+    { status: 200, check: bodyContains('action="/api/groups"') },
+  ],
+  [
+    "blank group name is rejected",
+    () => request("/api/groups", { method: "POST", form: { name: "   " } }),
+    { status: 302, location: "/dashboard?error=invalid_group_name" },
+  ],
+  [
+    "create group A redirects to its page",
+    () => request("/api/groups", { method: "POST", form: { name: groupA } }),
+    { status: 302, check: checkNewGroupPage },
+  ],
+  ["group A page shows its name", requestGroupA, { status: 200, check: bodyContains(groupA) }],
+  [
+    "create group B redirects to a different page",
+    () => request("/api/groups", { method: "POST", form: { name: groupB } }),
+    { status: 302, check: checkNewGroupPage },
+  ],
+  ["dashboard lists both groups", () => request("/dashboard"), { status: 200, check: bodyContains(groupA, groupB) }],
+  ["unknown group returns 404", () => request(`/groups/${randomUUID()}`), { status: 404 }],
   ["signout clears session", () => request("/api/auth/signout", { method: "POST" }), { status: 302, location: "/" }],
   ["dashboard redirects after signout", () => request("/dashboard"), { status: 302, location: "/auth/signin" }],
+  ["group page redirects after signout", requestGroupA, { status: 302, location: "/auth/signin" }],
+  [
+    "create group redirects after signout",
+    () => request("/api/groups", { method: "POST", form: { name: groupA } }),
+    { status: 302, location: "/auth/signin" },
+  ],
 ];
 
 let failed = 0;
