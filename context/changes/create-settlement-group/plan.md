@@ -514,14 +514,14 @@ The migration only adds new tables and functions, so it is compatible with the p
 
 #### Automated
 
-- [x] 3.1 Smoke test passes against a local production build: `npm run build && npm run preview`, then `npm run smoke`
-- [x] 3.2 Unit and database tests pass: `npm test`, `npm run test:db`
-- [x] 3.3 Type check, lint and build pass: `npx astro check`, `npm run lint`, `npm run build`
+- [x] 3.1 Smoke test passes against a local production build: `npm run build && npm run preview`, then `npm run smoke` — a12eaed
+- [x] 3.2 Unit and database tests pass: `npm test`, `npm run test:db` — a12eaed
+- [x] 3.3 Type check, lint and build pass: `npx astro check`, `npm run lint`, `npm run build` — a12eaed
 
 #### Manual
 
-- [x] 3.4 On a phone-width browser, a new user creates a group on `/dashboard`, lands on its page and sees its name, "You are the host" and "Open period: <the current month in Europe/Warsaw>" (e.g. "October 2026")
-- [x] 3.5 The same user creates a second group and sees both on `/dashboard`, each opening its own page
-- [x] 3.6 A second browser signed in as another user sees an empty list on `/dashboard`, and gets 404 on the first user's `/groups/<id>` URL
-- [x] 3.7 An empty name and a 61-character name (with `maxlength` removed via devtools) both come back with the name error
+- [x] 3.4 On a phone-width browser, a new user creates a group on `/dashboard`, lands on its page and sees its name, "You are the host" and "Open period: <the current month in Europe/Warsaw>" (e.g. "October 2026") — a12eaed
+- [x] 3.5 The same user creates a second group and sees both on `/dashboard`, each opening its own page — a12eaed
+- [x] 3.6 A second browser signed in as another user sees an empty list on `/dashboard`, and gets 404 on the first user's `/groups/<id>` URL — a12eaed
+- [x] 3.7 An empty name and a 61-character name (with `maxlength` removed via devtools) both come back with the name error — a12eaed
 - [ ] 3.8 After merge, the same flow works on production (https://10x-astro-starter.adamgwozdz.workers.dev)
