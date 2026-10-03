@@ -249,3 +249,4 @@ Mirrored on GitHub: milestone [M-1](https://github.com/adamgwozdz00/SplitDom/mil
 ## Done
 
 - **F-01: (foundation) schema changes are authored in the repo and applied the same way to the local and the hosted database (pushed to production before each Worker deploy), and a reusable two-user test harness plus a guard that fails CI on any public table without row-level security are ready for each group-scoped slice to prove that one user cannot read another group's data. No domain tables — they emerge from S-02's domain model.** — Archived 2026-10-03 → `context/archive/2026-09-27-db-migrations-and-isolation/`. Lesson: —.
+- **S-01: user can sign in with one external identity provider and land in the app signed in.** — Archived 2026-10-03 → `context/archive/2026-09-28-external-identity-sign-in/`. Lesson: —.
