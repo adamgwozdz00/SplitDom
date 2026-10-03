@@ -1,10 +1,10 @@
 ---
 change_id: db-migrations-and-isolation
 title: Database migrations pipeline and two-user isolation harness (F-01)
-status: implemented
+status: archived
 created: 2026-09-27
-updated: 2026-09-28
-archived_at: null
+updated: 2026-10-03
+archived_at: 2026-10-03T14:48:24Z
 ---
 
 ## Notes
