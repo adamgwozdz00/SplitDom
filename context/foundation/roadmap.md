@@ -3,7 +3,7 @@ project: SplitDom
 version: 1
 status: draft
 created: 2026-09-26
-updated: 2026-10-02
+updated: 2026-10-03
 prd_version: 1
 main_goal: speed
 top_blocker: time
@@ -43,8 +43,8 @@ People who share household costs — partners or roommates — settle shared exp
 | ---- | ----------------------------- | ----------------------------------------------------------------------------------- | ------------- | -------------------------- | -------- |
 | F-01 | db-migrations-and-isolation   | (foundation) schema changes ship repo → hosted DB; two-user test harness + RLS guard | —             | NFR-3, Guardrails          | done |
 | S-01 | external-identity-sign-in     | user can sign in with an external identity provider                                 | —             | FR-001                     | done |
-| S-02 | create-settlement-group       | user can create a settlement group, becomes its host, and it has an open period     | F-01          | FR-002                     | in-progress |
-| S-03 | invite-member-by-link         | user can invite someone with a link/code, and that person joins the group           | S-02          | FR-003                     | proposed |
+| S-02 | create-settlement-group       | user can create a settlement group, becomes its host, and it has an open period     | F-01          | FR-002                     | done |
+| S-03 | invite-member-by-link         | user can invite someone with a link/code, and that person joins the group           | S-02          | FR-003                     | ready |
 | S-04 | add-expense-see-balances      | member can add an expense split equally and immediately see every member's balance  | S-03          | US-01, FR-004, FR-005      | blocked  |
 | S-05 | edit-own-expense-rules        | expense author can edit or delete their own expense only while it is still editable | S-04          | FR-005                     | proposed |
 | S-06 | generate-transfer-details     | debtor can copy transfer details (account number, amount, title) for a debt         | S-04          | FR-007                     | proposed |
@@ -116,7 +116,7 @@ Foundations below assume these are present and do NOT re-scaffold them.
 - **Blockers:** —
 - **Unknowns:** —
 - **Risk:** Establishes the host role and the membership-based group access that S-09 and every later slice rely on; getting the host assignment wrong here would ripple into period closing. (FR-002 changed 2026-10-02: a user may create and belong to many groups.)
-- **Status:** in-progress
+- **Status:** done
 
 ### S-03: Invite a member by link or code
 
@@ -130,7 +130,7 @@ Foundations below assume these are present and do NOT re-scaffold them.
   - ~~What happens when the invited person already belongs to another group?~~ Resolved 2026-10-02: no longer applies — FR-002 now allows a user to belong to many groups, so the invitee simply joins one more.
   - Does an invite expire or work only once? — Owner: user. Block: no.
 - **Risk:** Required before the north star because US-01 needs two members; it is the first flow where a second real user touches the group, so it is where the isolation check first matters for strangers.
-- **Status:** proposed
+- **Status:** ready
 
 ### S-04: Add an expense and see balances
 
@@ -215,9 +215,9 @@ Mirrored on GitHub: milestone [M-1](https://github.com/adamgwozdz00/SplitDom/mil
 | Roadmap ID | Change ID                   | Suggested issue title                                        | Ready for `/10x-plan` | Notes                                                    |
 | ---------- | --------------------------- | ------------------------------------------------------------ | --------------------- | -------------------------------------------------------- |
 | F-01       | db-migrations-and-isolation | Set up DB migrations and a two-user group-isolation check    | done                  | [#5](https://github.com/adamgwozdz00/SplitDom/issues/5) · Delivered in [PR #18](https://github.com/adamgwozdz00/SplitDom/pull/18) |
-| S-01       | external-identity-sign-in   | Sign in with an external identity provider                   | yes                   | [#6](https://github.com/adamgwozdz00/SplitDom/issues/6) · Run `/10x-plan external-identity-sign-in`; pick provider |
-| S-02       | create-settlement-group     | Create a settlement group with its first open period         | yes                   | [#7](https://github.com/adamgwozdz00/SplitDom/issues/7) · Run `/10x-plan create-settlement-group`; writes the first two-user isolation test with `createTwoUsers()` |
-| S-03       | invite-member-by-link       | Invite a member to the group by link/code                    | no                    | [#8](https://github.com/adamgwozdz00/SplitDom/issues/8) · Needs S-02 |
+| S-01       | external-identity-sign-in   | Sign in with an external identity provider                   | done                  | [#6](https://github.com/adamgwozdz00/SplitDom/issues/6) · Delivered in [PR #20](https://github.com/adamgwozdz00/SplitDom/pull/20) |
+| S-02       | create-settlement-group     | Create a settlement group with its first open period         | done                  | [#7](https://github.com/adamgwozdz00/SplitDom/issues/7) · Delivered in [PR #23](https://github.com/adamgwozdz00/SplitDom/pull/23) |
+| S-03       | invite-member-by-link       | Invite a member to the group by link/code                    | yes                   | [#8](https://github.com/adamgwozdz00/SplitDom/issues/8) · Run `/10x-plan invite-member-by-link`; research in `context/changes/invite-member-by-link/research.md` |
 | S-04       | add-expense-see-balances    | Add an expense split equally and show member balances        | no                    | [#9](https://github.com/adamgwozdz00/SplitDom/issues/9) · Needs S-03 and the debt-granularity decision |
 | S-05       | edit-own-expense-rules      | Enforce edit/delete rules for an author's own expenses       | no                    | [#10](https://github.com/adamgwozdz00/SplitDom/issues/10) · Needs S-04 |
 | S-06       | generate-transfer-details   | Generate copyable transfer details for a debt                | no                    | [#11](https://github.com/adamgwozdz00/SplitDom/issues/11) · Needs S-04 |
@@ -247,3 +247,7 @@ Mirrored on GitHub: milestone [M-1](https://github.com/adamgwozdz00/SplitDom/mil
 ## Milestone History
 
 ## Done
+
+- **F-01: (foundation) schema changes are authored in the repo and applied the same way to the local and the hosted database (pushed to production before each Worker deploy), and a reusable two-user test harness plus a guard that fails CI on any public table without row-level security are ready for each group-scoped slice to prove that one user cannot read another group's data. No domain tables — they emerge from S-02's domain model.** — Archived 2026-10-03 → `context/archive/2026-09-27-db-migrations-and-isolation/`. Lesson: —.
+- **S-01: user can sign in with one external identity provider and land in the app signed in.** — Archived 2026-10-03 → `context/archive/2026-09-28-external-identity-sign-in/`. Lesson: —.
+- **S-02: user can create a settlement group, becomes its permanent host, and the group starts with one open billing period; the group's tables come from this slice's domain model and ship with the first two-user isolation test (user B cannot read user A's group), built on the F-01 harness.** — Archived 2026-10-03 → `context/archive/2026-10-02-create-settlement-group/`. Lesson: —.
