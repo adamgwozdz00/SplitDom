@@ -3,7 +3,7 @@ project: SplitDom
 version: 1
 status: draft
 created: 2026-09-26
-updated: 2026-10-02
+updated: 2026-10-03
 prd_version: 1
 main_goal: speed
 top_blocker: time
@@ -247,3 +247,5 @@ Mirrored on GitHub: milestone [M-1](https://github.com/adamgwozdz00/SplitDom/mil
 ## Milestone History
 
 ## Done
+
+- **F-01: (foundation) schema changes are authored in the repo and applied the same way to the local and the hosted database (pushed to production before each Worker deploy), and a reusable two-user test harness plus a guard that fails CI on any public table without row-level security are ready for each group-scoped slice to prove that one user cannot read another group's data. No domain tables — they emerge from S-02's domain model.** — Archived 2026-10-03 → `context/archive/2026-09-27-db-migrations-and-isolation/`. Lesson: —.
