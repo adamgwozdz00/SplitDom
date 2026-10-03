@@ -1,10 +1,10 @@
 ---
 change_id: create-settlement-group
 title: Create a settlement group with its first open period (S-02)
-status: impl_reviewed
+status: archived
 created: 2026-10-02
-updated: 2026-10-02
-archived_at: null
+updated: 2026-10-03
+archived_at: 2026-10-03T14:50:10Z
 ---
 
 ## Notes
