@@ -1,7 +1,9 @@
 ---
 import Layout from "@/layouts/Layout.astro";
 import GroupCard from "@/components/groups/GroupCard.astro";
+import InvitePanel from "@/components/invites/InvitePanel.astro";
 import { createGroupService, groupErrorMessage, GROUPS_LOAD_FAILED_MESSAGE } from "@/lib/groups";
+import { inviteErrorMessage, takeNewInvite } from "@/lib/invites";
 import { createClient } from "@/lib/supabase";
 
 const { user } = Astro.locals;
@@ -21,13 +23,26 @@ const notFound = result !== null && "error" in result && result.error.code === "
 if (notFound) {
   Astro.response.status = 404;
 }
+
+// The one-time invite link: taken (and deleted) from the cookie only for a group the user belongs to.
+const newInvite = group ? takeNewInvite(Astro.cookies, group.id) : null;
+const inviteUrl = newInvite ? `${Astro.url.origin}/invite/${newInvite.value}` : null;
+if (inviteUrl) {
+  // The link is shown once, so neither the browser nor a proxy may keep a copy of this page.
+  Astro.response.headers.set("Cache-Control", "no-store");
+}
+const errorParam = Astro.url.searchParams.get("error");
+const inviteError = group && errorParam ? inviteErrorMessage(errorParam) : null;
 ---
 
 <Layout title={group ? group.name.value : notFound ? groupErrorMessage("group_not_found") : "Group"}>
   <div class="bg-cosmic flex min-h-screen items-center justify-center p-4">
     <div class="w-full max-w-md rounded-2xl border border-white/10 bg-white/10 p-8 text-white backdrop-blur-xl">
       {group ? (
-        <GroupCard group={group} userId={user.id} />
+        <>
+          <GroupCard group={group} userId={user.id} />
+          <InvitePanel groupId={group.id} inviteUrl={inviteUrl} error={inviteError} />
+        </>
       ) : (
         <>
           {notFound ? (
