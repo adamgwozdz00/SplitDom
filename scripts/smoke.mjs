@@ -1,9 +1,17 @@
-// Smoke test: proves the built app, the Cloudflare adapter, the Supabase auth flow and the create-group flow work together.
-// Zero dependencies on purpose. Run against a live server: BASE_URL=http://localhost:4321 node scripts/smoke.mjs
+// Smoke test: proves the built app, the Cloudflare adapter, the Supabase auth flow and the create-group flow work together,
+// and that the database app-key gate judges direct Data API calls.
+// Zero dependencies on purpose. Run against a live server and local Supabase: `npm run smoke` (reads `.env`; BASE_URL
+// defaults to http://localhost:4321).
 
 import { randomBytes, randomUUID } from "node:crypto";
 
 const BASE_URL = process.env.BASE_URL ?? "http://localhost:4321";
+// The gate steps call Supabase directly, bypassing the app, with the same values the app uses.
+const { SUPABASE_URL, SUPABASE_KEY, SUPABASE_APP_KEY } = process.env;
+if (!SUPABASE_URL || !SUPABASE_KEY || !SUPABASE_APP_KEY) {
+  console.error("SUPABASE_URL, SUPABASE_KEY and SUPABASE_APP_KEY must be set (npm run smoke reads them from .env)");
+  process.exit(1);
+}
 const email = `smoke-${Date.now()}@example.com`;
 const password = "Smoke-Test-Passw0rd!";
 // The second user joins group A through the invite link.
@@ -112,6 +120,38 @@ function checkInviteLocation(suffix = "") {
 
 function checkGroupALocation(actual) {
   return actual.location === `/groups/${groupIds[0]}` ? true : `location is ${actual.location}`;
+}
+
+// Calls a persistence function straight through the Data API, as a user holding their token could.
+async function directRpc(name, { token = SUPABASE_KEY, headers = {} } = {}) {
+  const response = await fetch(`${SUPABASE_URL}/rest/v1/rpc/${name}`, {
+    method: "POST",
+    headers: { apikey: SUPABASE_KEY, Authorization: `Bearer ${token}`, "Content-Type": "application/json", ...headers },
+    body: "{}",
+  });
+  return { status: response.status, location: "", body: await response.text() };
+}
+
+// Observe mode: a request carrying `x-app-gate-probe` is answered with the gate's verdict on its `x-app-key`.
+function probeGate(appKey) {
+  return directRpc("list_my_groups", {
+    headers: { "x-app-gate-probe": "1", ...(appKey === undefined ? {} : { "x-app-key": appKey }) },
+  });
+}
+
+// The first smoke user's own access token, taken from Supabase Auth directly, not from the app.
+async function firstUserToken() {
+  const response = await fetch(`${SUPABASE_URL}/auth/v1/token?grant_type=password`, {
+    method: "POST",
+    headers: { apikey: SUPABASE_KEY, "Content-Type": "application/json" },
+    body: JSON.stringify({ email, password }),
+  });
+  const session = await response.json();
+  return session.access_token;
+}
+
+async function firstUserCallsDirectly() {
+  return directRpc("list_my_groups", { token: await firstUserToken() });
 }
 
 function checkGoogleRedirect(actual, cookies) {
@@ -245,6 +285,27 @@ const steps = [
     "anonymous join redirects to sign-in",
     () => request("/api/invites/redeem", { method: "POST", form: { token: inviteToken ?? "" } }),
     { status: 302, location: "/auth/signin" },
+  ],
+  [
+    "gate probe without a key reports missing",
+    () => probeGate(),
+    { status: 418, check: bodyContains("app gate: missing") },
+  ],
+  [
+    "gate probe with the app key reports ok",
+    () => probeGate(SUPABASE_APP_KEY),
+    { status: 418, check: bodyContains("app gate: ok") },
+  ],
+  [
+    "gate probe with a wrong key reports invalid",
+    () => probeGate("not-the-app-key"),
+    { status: 418, check: bodyContains("app gate: invalid") },
+  ],
+  // Observe mode lets direct calls through; enforcement turns this into a 403.
+  [
+    "signed-in user calling an RPC directly still gets data",
+    firstUserCallsDirectly,
+    { status: 200, check: bodyContains(groupA) },
   ],
 ];
 

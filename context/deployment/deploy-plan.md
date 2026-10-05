@@ -85,7 +85,7 @@ Schema changes live in `supabase/migrations/` as Supabase CLI migrations and rea
 - **IPv4 pooler (first-deploy finding, 2026-09-27)**: GitHub runners have no IPv6 and `db.<ref>.supabase.co` resolves only to IPv6, so `db push` must go through the session pooler (`aws-1-eu-west-1.pooler.supabase.com:5432`). `supabase link` writes that URL to `supabase/.temp/pooler-url`, but it swallows errors from the pooler API — with a token lacking **Connection Pooling: Read** the file is silently missing and `db push` fails with `IPv6 is not supported on your current network`. A 403 on `…/api-keys` (missing **API Key Secrets: Read**) fails `link` with `Authorization failed for the access token and project ref pair`. In both cases the deploy stopped before `wrangler deploy`, as designed.
 - **Rollback policy — forward-only**: `wrangler rollback` reverts the Worker, not the database. Never edit a pushed migration; fix mistakes with a new corrective migration, and keep each migration compatible with the previously deployed Worker (expand before contract). There are no down migrations.
 - **`private` schema convention**: the baseline migration creates schema `private` (not in `api.schemas`, so invisible to PostgREST; `usage` granted to `authenticated` only). `security definer` helpers used in RLS policies belong there.
-- The Worker keeps using only `SUPABASE_URL` + the anon `SUPABASE_KEY`; it never gets DDL or service-role credentials.
+- The Worker keeps using only `SUPABASE_URL`, the anon `SUPABASE_KEY` and, since `block-direct-data-api`, `SUPABASE_APP_KEY` (see "App key gate"); it never gets DDL or service-role credentials.
 
 ## Google sign-in (added 2026-09-28, change `external-identity-sign-in`, S-01)
 
@@ -119,6 +119,24 @@ Known constraints on deleting a user (accepted for now, revisit before any accou
 The migration `group_invites` adds one table (RLS on, no policies, no `anon`/`authenticated` grants) and the `security definer` functions `create_group_invite`, `get_group_invite` and `redeem_group_invite`. It only adds objects, so it is compatible with the previously deployed Worker. Invites need **no Supabase or Cloudflare configuration change**: no new secret, no redirect allow-list entry, and `redirectTo` / `emailRedirectTo` are unchanged. The invite to return to after sign-in travels in the `sd_pending_invite` cookie (`SameSite=Lax`, 24 h), which survives the top-level GET back from Google and from the confirmation email.
 
 Known limitation (accepted, same cause as "Post-deploy findings" 3): confirming the sign-up email in a different browser or device than the one that opened the invite link also loses the pending invite, because the cookie lives in the first browser. The invitee then opens the link again after signing in. Google sign-in remains the cross-device path.
+
+## App key gate (added 2026-10-05, change `block-direct-data-api`)
+
+A signed-in user can read their access token from the session cookie and call the Data API (`/rest/v1/rpc/*`) directly with the public anon key. The migration `app_gate` adds the PostgREST pre-request function `api_gate.check_app_request()`, which judges the `x-app-key` header against sha256 hashes in `private.app_keys`; the Worker sends the key from the Worker secret `SUPABASE_APP_KEY`. It ships in **observe mode**: it blocks nothing, and answers only requests carrying `x-app-gate-probe` with a 418 naming the verdict (`ok`, `missing`, `invalid`). A later migration enforces it (403) — through the hook if the production probe shows it fires, otherwise through a guard in every persistence function (evidence on whether `db_pre_request` fires on hosted Supabase conflicts; see `context/changes/block-direct-data-api/research.md`).
+
+Production steps (human; the key's value never goes into the repo, SQL history or chat):
+
+1. **Before merging the observe-mode PR**, check that nothing else is registered as a pre-request function (only one is possible), in the SQL editor: `select setconfig from pg_db_role_setting where setrole = 'authenticator'::regrole;` — no `pgrst.db_pre_request` entry expected.
+2. Generate the key and set the Worker secret (before the merge, otherwise the new Worker reports Supabase as not configured):
+   - `KEY=$(openssl rand -hex 32)`
+   - `npx wrangler secret put SUPABASE_APP_KEY` (paste `$KEY`)
+3. After the deploy, insert the key's hash, computed locally (`printf %s "$KEY" | shasum -a 256`), in the SQL editor: `insert into private.app_keys (key_hash, note) values (decode('<hex>', 'hex'), 'production <date>');`
+4. Probe (`<anon key>` = the production `SUPABASE_KEY`):
+   - `curl -s -X POST https://rpbroqavksbvezskqhlz.supabase.co/rest/v1/rpc/list_my_groups -H "apikey: <anon key>" -H "Authorization: Bearer <anon key>" -H "Content-Type: application/json" -H "x-app-gate-probe: 1" -d '{}'`
+   - 418 `app gate: missing` → the hook fires (enforce through the hook). `permission denied for function list_my_groups` with no 418, also after ~2 min and a retry → the hook does not fire (enforce through the per-function guard).
+   - Same request with `-H "x-app-key: $KEY"` → 418 `app gate: ok` confirms the stored hash matches the Worker's key.
+
+**Rotation**: insert the new key's hash (old and new are both valid), `wrangler secret put SUPABASE_APP_KEY` with the new key, confirm the app works, then `delete from private.app_keys where note = '<old note>';`.
 
 ## Out of scope
 
