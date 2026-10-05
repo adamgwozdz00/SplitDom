@@ -132,13 +132,6 @@ async function directRpc(name, { token = SUPABASE_KEY, headers = {} } = {}) {
   return { status: response.status, location: "", body: await response.text() };
 }
 
-// Observe mode: a request carrying `x-app-gate-probe` is answered with the gate's verdict on its `x-app-key`.
-function probeGate(appKey) {
-  return directRpc("list_my_groups", {
-    headers: { "x-app-gate-probe": "1", ...(appKey === undefined ? {} : { "x-app-key": appKey }) },
-  });
-}
-
 // The first smoke user's own access token, taken from Supabase Auth directly, not from the app.
 async function firstUserToken() {
   const response = await fetch(`${SUPABASE_URL}/auth/v1/token?grant_type=password`, {
@@ -150,8 +143,12 @@ async function firstUserToken() {
   return session.access_token;
 }
 
-async function firstUserCallsDirectly() {
-  return directRpc("list_my_groups", { token: await firstUserToken() });
+// The gate judges `x-app-key` on every Data API request; only the app's key gets through.
+async function firstUserCallsDirectly(appKey) {
+  return directRpc("list_my_groups", {
+    token: await firstUserToken(),
+    headers: appKey === undefined ? {} : { "x-app-key": appKey },
+  });
 }
 
 function checkGoogleRedirect(actual, cookies) {
@@ -287,24 +284,19 @@ const steps = [
     { status: 302, location: "/auth/signin" },
   ],
   [
-    "gate probe without a key reports missing",
-    () => probeGate(),
-    { status: 418, check: bodyContains("app gate: missing") },
+    "signed-in user calling an RPC directly without the app key is refused",
+    () => firstUserCallsDirectly(),
+    { status: 403, check: bodyContains('"code":"APPGATE"') },
   ],
   [
-    "gate probe with the app key reports ok",
-    () => probeGate(SUPABASE_APP_KEY),
-    { status: 418, check: bodyContains("app gate: ok") },
+    "signed-in user calling an RPC directly with a wrong key is refused",
+    () => firstUserCallsDirectly("not-the-app-key"),
+    { status: 403, check: bodyContains('"code":"APPGATE"') },
   ],
+  // Positive control: the same call with the app's key reaches the function and returns the user's data.
   [
-    "gate probe with a wrong key reports invalid",
-    () => probeGate("not-the-app-key"),
-    { status: 418, check: bodyContains("app gate: invalid") },
-  ],
-  // Observe mode lets direct calls through; enforcement turns this into a 403.
-  [
-    "signed-in user calling an RPC directly still gets data",
-    firstUserCallsDirectly,
+    "the same call with the app key gets data",
+    () => firstUserCallsDirectly(SUPABASE_APP_KEY),
     { status: 200, check: bodyContains(groupA) },
   ],
 ];
