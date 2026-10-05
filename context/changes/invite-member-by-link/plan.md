@@ -704,26 +704,26 @@ The migration is forward-only and additive: one new table, three new functions, 
 
 #### Automated
 
-- [x] 1.1 Unit tests pass: `npm test`
-- [x] 1.2 Type check passes: `npx astro check`
-- [x] 1.3 Lint passes: `npm run lint`
+- [x] 1.1 Unit tests pass: `npm test` — 9ad3838
+- [x] 1.2 Type check passes: `npx astro check` — 9ad3838
+- [x] 1.3 Lint passes: `npm run lint` — 9ad3838
 
 #### Manual
 
-- [x] 1.4 The rules (member-only creation, 7-day expiry, single use) are readable in `invite.aggregate.ts` alone, and `src/lib/invites/` imports nothing from `@/lib/supabase`
+- [x] 1.4 The rules (member-only creation, 7-day expiry, single use) are readable in `invite.aggregate.ts` alone, and `src/lib/invites/` imports nothing from `@/lib/supabase` — 9ad3838
 
 ### Phase 2: Persistence and isolation
 
 #### Automated
 
-- [ ] 2.1 Migration applies on a clean database: `npm run db:reset`
-- [ ] 2.2 Generated types are up to date: `npm run db:types` leaves `git diff --exit-code src/db/database.types.ts` clean
-- [ ] 2.3 Database tests pass, including the RLS guard and the new invite test: `npm run test:db`
-- [ ] 2.4 Unit tests, type check and lint pass: `npm test`, `npx astro check`, `npm run lint`
+- [x] 2.1 Migration applies on a clean database: `npm run db:reset`
+- [x] 2.2 Generated types are up to date: `npm run db:types` leaves `git diff --exit-code src/db/database.types.ts` clean
+- [x] 2.3 Database tests pass, including the RLS guard and the new invite test: `npm run test:db`
+- [x] 2.4 Unit tests, type check and lint pass: `npm test`, `npx astro check`, `npm run lint`
 
 #### Manual
 
-- [ ] 2.5 The migration encodes no business rules beyond the documented backstops: identity from `auth.uid()`, member-only creation, minimum token length, the `used_at is null` claim, and the expiry check on `now()`
+- [x] 2.5 The migration encodes no business rules beyond the documented backstops: identity from `auth.uid()`, member-only creation, minimum token length, the `used_at is null` claim, and the expiry check on `now()`
 
 ### Phase 3: Generate and share on the group page
 
