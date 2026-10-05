@@ -64,6 +64,7 @@ export function aGroup(overrides: { id?: string; memberCount?: number; now?: Dat
     members: Array.from({ length: count }, (_, position) => ({
       userId: memberId(position),
       joinedAt: new Date(Date.parse(snapshot.createdAt) + position * 60_000).toISOString(),
+      email: position === 0 ? null : `member-${position}@example.com`,
     })),
   });
 }

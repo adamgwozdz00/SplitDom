@@ -523,28 +523,28 @@ The migration is forward-only and additive for the deployed Worker:
 
 #### Automated
 
-- [x] 1.1 Unit tests pass: `npm test`
-- [x] 1.2 Type check passes: `npx astro check`
-- [x] 1.3 Lint passes: `npm run lint`
+- [x] 1.1 Unit tests pass: `npm test` — 01ca55b
+- [x] 1.2 Type check passes: `npx astro check` — 01ca55b
+- [x] 1.3 Lint passes: `npm run lint` — 01ca55b
 
 #### Manual
 
-- [x] 1.4 Reviewer confirms the test names cover US-01 (400 zł by 2 → 200 zł), the 100 zł / 3 example and the netting example from Testing Strategy
+- [x] 1.4 Reviewer confirms the test names cover US-01 (400 zł by 2 → 200 zł), the 100 zł / 3 example and the netting example from Testing Strategy — 01ca55b
 
 ### Phase 2: Database and repositories
 
 #### Automated
 
-- [ ] 2.1 Local database rebuilds from all migrations: `npm run db:reset`
-- [ ] 2.2 Generated types are current: `npm run db:types` leaves `git diff --exit-code src/db/database.types.ts` clean after the commit
-- [ ] 2.3 Unit tests pass: `npm test`
-- [ ] 2.4 Type check passes: `npx astro check`
-- [ ] 2.5 Lint passes: `npm run lint`
-- [ ] 2.6 Existing smoke flows still pass: `npm run smoke`
+- [x] 2.1 Local database rebuilds from all migrations: `npm run db:reset`
+- [x] 2.2 Generated types are current: `npm run db:types` leaves `git diff --exit-code src/db/database.types.ts` clean after the commit
+- [x] 2.3 Unit tests pass: `npm test`
+- [x] 2.4 Type check passes: `npx astro check`
+- [x] 2.5 Lint passes: `npm run lint`
+- [x] 2.6 Existing smoke flows still pass: `npm run smoke`
 
 #### Manual
 
-- [ ] 2.7 Supabase Advisor shows no new warnings beyond the expected lints 0029/0008 for the new functions and tables
+- [x] 2.7 Supabase Advisor shows no new warnings beyond the expected lints 0029/0008 for the new functions and tables
 
 ### Phase 3: Group page, endpoint, smoke and docs
 

@@ -41,6 +41,97 @@ export type Database = {
           },
         ]
       }
+      expense_shares: {
+        Row: {
+          amount: number
+          expense_id: string
+          group_id: string
+          user_id: string
+        }
+        Insert: {
+          amount: number
+          expense_id: string
+          group_id: string
+          user_id: string
+        }
+        Update: {
+          amount?: number
+          expense_id?: string
+          group_id?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "expense_shares_expense_id_group_id_fkey"
+            columns: ["expense_id", "group_id"]
+            isOneToOne: false
+            referencedRelation: "expenses"
+            referencedColumns: ["id", "group_id"]
+          },
+          {
+            foreignKeyName: "expense_shares_group_id_user_id_fkey"
+            columns: ["group_id", "user_id"]
+            isOneToOne: false
+            referencedRelation: "group_members"
+            referencedColumns: ["group_id", "user_id"]
+          },
+        ]
+      }
+      expenses: {
+        Row: {
+          amount: number
+          created_at: string
+          group_id: string
+          id: string
+          payer_id: string
+          period_id: string
+          purchased_on: string
+          title: string
+        }
+        Insert: {
+          amount: number
+          created_at: string
+          group_id: string
+          id: string
+          payer_id: string
+          period_id: string
+          purchased_on: string
+          title: string
+        }
+        Update: {
+          amount?: number
+          created_at?: string
+          group_id?: string
+          id?: string
+          payer_id?: string
+          period_id?: string
+          purchased_on?: string
+          title?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "expenses_group_id_fkey"
+            columns: ["group_id"]
+            isOneToOne: false
+            referencedRelation: "groups"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "expenses_group_id_payer_id_fkey"
+            columns: ["group_id", "payer_id"]
+            isOneToOne: false
+            referencedRelation: "group_members"
+            referencedColumns: ["group_id", "user_id"]
+          },
+          {
+            foreignKeyName: "expenses_period_id_group_id_fkey"
+            columns: ["period_id", "group_id"]
+            isOneToOne: false
+            referencedRelation: "billing_periods"
+            referencedColumns: ["id", "group_id"]
+          },
+        ]
+      }
       group_invites: {
         Row: {
           created_at: string
@@ -134,6 +225,20 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      add_expense: {
+        Args: {
+          p_amount: number
+          p_created_at: string
+          p_expense_id: string
+          p_group_id: string
+          p_payer_id: string
+          p_period_id: string
+          p_purchased_on: string
+          p_shares: Json
+          p_title: string
+        }
+        Returns: undefined
+      }
       create_group: {
         Args: {
           p_group_id: string
@@ -159,6 +264,10 @@ export type Database = {
       get_group_invite: { Args: { p_token: string }; Returns: Json }
       get_my_group: { Args: { p_group_id: string }; Returns: Json }
       list_my_groups: { Args: never; Returns: Json }
+      list_period_expenses: {
+        Args: { p_group_id: string; p_period_id: string }
+        Returns: Json
+      }
       redeem_group_invite: {
         Args: { p_token: string; p_used_at: string }
         Returns: Json
