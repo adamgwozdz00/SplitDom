@@ -403,17 +403,17 @@ One extra function call per Data API request: a header read, one `sha256` and a 
 
 #### Manual
 
-- [x] 3.6 After the PR 1 deploy, the production app still works
-- [x] 3.7 The production probe result is recorded in change.md with the chosen branch
+- [x] 3.6 After the PR 1 deploy, the production app still works — fec20c9
+- [x] 3.7 The production probe result is recorded in change.md with the chosen branch — fec20c9
 
 ### Phase 4: Enforce the gate (PR 2)
 
 #### Automated
 
-- [ ] 4.1 Migrations and seed apply from scratch
-- [ ] 4.2 Types are unchanged
-- [ ] 4.3 Lint, unit tests, type check and build pass
-- [ ] 4.4 Smoke passes including the 403-without-key and 200-with-key steps
+- [x] 4.1 Migrations and seed apply from scratch
+- [x] 4.2 Types are unchanged
+- [x] 4.3 Lint, unit tests, type check and build pass
+- [x] 4.4 Smoke passes including the 403-without-key and 200-with-key steps
 
 #### Manual
 
