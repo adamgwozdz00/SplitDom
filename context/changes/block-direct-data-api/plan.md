@@ -417,5 +417,5 @@ One extra function call per Data API request: a header read, one `sha256` and a 
 
 #### Manual
 
-- [ ] 4.5 In production, a direct call without the key returns 403 APPGATE and with the key returns 200
-- [ ] 4.6 The production app works end to end after the PR 2 deploy
+- [x] 4.5 In production, a direct call without the key returns 403 APPGATE and with the key returns 200
+- [x] 4.6 The production app works end to end after the PR 2 deploy
