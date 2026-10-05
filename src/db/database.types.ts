@@ -41,6 +41,47 @@ export type Database = {
           },
         ]
       }
+      group_invites: {
+        Row: {
+          created_at: string
+          created_by: string
+          expires_at: string
+          group_id: string
+          id: string
+          token_hash: string
+          used_at: string | null
+          used_by: string | null
+        }
+        Insert: {
+          created_at: string
+          created_by: string
+          expires_at: string
+          group_id: string
+          id: string
+          token_hash: string
+          used_at?: string | null
+          used_by?: string | null
+        }
+        Update: {
+          created_at?: string
+          created_by?: string
+          expires_at?: string
+          group_id?: string
+          id?: string
+          token_hash?: string
+          used_at?: string | null
+          used_by?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "group_invites_group_id_fkey"
+            columns: ["group_id"]
+            isOneToOne: false
+            referencedRelation: "groups"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       group_members: {
         Row: {
           group_id: string
@@ -104,8 +145,24 @@ export type Database = {
         }
         Returns: undefined
       }
+      create_group_invite: {
+        Args: {
+          p_created_at: string
+          p_created_by: string
+          p_expires_at: string
+          p_group_id: string
+          p_invite_id: string
+          p_token: string
+        }
+        Returns: undefined
+      }
+      get_group_invite: { Args: { p_token: string }; Returns: Json }
       get_my_group: { Args: { p_group_id: string }; Returns: Json }
       list_my_groups: { Args: never; Returns: Json }
+      redeem_group_invite: {
+        Args: { p_token: string; p_used_at: string }
+        Returns: Json
+      }
     }
     Enums: {
       [_ in never]: never
