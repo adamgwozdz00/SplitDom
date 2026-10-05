@@ -1,5 +1,6 @@
 -- Local and CI seed. Runs on `supabase start` of a fresh database and on `supabase db reset`;
--- never on `supabase db push`, so nothing here reaches a hosted project.
+-- `supabase db push` skips it unless given `--include-seed`. Never use that flag against a hosted
+-- project: it would make the public local app key below valid there and open the app-key gate.
 
 -- The local app key (block-direct-data-api): its plain value `local-dev-app-key` is committed on
 -- purpose and goes into `.env` / `.dev.vars` as SUPABASE_APP_KEY. It is valid only here — every
