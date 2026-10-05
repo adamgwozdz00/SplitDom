@@ -1,10 +1,10 @@
 ---
 change_id: invite-member-by-link
 title: Invite a member to the group by link or code (S-03)
-status: implemented
+status: archived
 created: 2026-10-02
 updated: 2026-10-05
-archived_at: null
+archived_at: 2026-10-05T09:48:11Z
 ---
 
 ## Notes
