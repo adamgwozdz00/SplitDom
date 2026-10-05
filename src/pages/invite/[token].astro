@@ -1,0 +1,116 @@
+---
+import Layout from "@/layouts/Layout.astro";
+import { createInviteService, InviteToken, inviteErrorMessage, rememberPendingInvite } from "@/lib/invites";
+import { createClient } from "@/lib/supabase";
+
+// The token is a bearer secret in the URL: keep it out of Referer headers sent to other sites and out of every cache.
+// "same-origin", not "no-referrer": with no-referrer browsers send `Origin: null` on the join form's POST,
+// which Astro's checkOrigin rejects as a cross-site submission.
+Astro.response.headers.set("Referrer-Policy", "same-origin");
+Astro.response.headers.set("Cache-Control", "no-store");
+
+const INVITE_LOAD_FAILED_MESSAGE = "We couldn't load this invite, try again";
+
+const { user } = Astro.locals;
+const rawToken = Astro.params.token ?? "";
+const token = InviteToken.parse(rawToken);
+
+// Anonymous visitors are sent to sign-in; the cookie brings them back here afterwards. GET consumes nothing.
+// (A top-level `return` in frontmatter breaks typescript-eslint's parser, so the redirect is set on the response.)
+const toSignIn = token !== null && !user;
+if (token && toSignIn) {
+  rememberPendingInvite(Astro.cookies, Astro.url, token);
+  Astro.response.status = 302;
+  Astro.response.headers.set("Location", "/auth/signin");
+}
+
+let invalid = token === null;
+let loadFailed = false;
+let preview: { groupName: string; callerIsMember: boolean } | null = null;
+
+if (token && user) {
+  const supabase = createClient(Astro.request.headers, Astro.cookies);
+  const result = supabase ? await createInviteService(supabase).preview({ token: token.value }) : null;
+  if (result && "data" in result) {
+    preview = result.data;
+  } else if (result?.error.code === "invite_invalid") {
+    invalid = true;
+  } else {
+    // Any other failure is shown with status 200, never a 500.
+    loadFailed = true;
+  }
+}
+
+if (invalid) {
+  Astro.response.status = 404;
+}
+
+const errorParam = Astro.url.searchParams.get("error");
+const redeemError = errorParam ? inviteErrorMessage(errorParam) : null;
+---
+
+<Layout title={preview ? "Join group" : "Invite"}>
+  <div class="bg-cosmic flex min-h-screen items-center justify-center p-4">
+    <div class="w-full max-w-md rounded-2xl border border-white/10 bg-white/10 p-8 text-white backdrop-blur-xl">
+      {preview && token ? (
+        <>
+          <h1 class="mb-2 bg-gradient-to-r from-blue-200 to-purple-200 bg-clip-text text-3xl font-bold text-transparent">
+            {preview.groupName}
+          </h1>
+          <p class="mb-4 text-sm text-blue-100/80">You've been invited to join this group.</p>
+          {preview.callerIsMember && (
+            <p class="mb-4 rounded-lg border border-white/20 bg-white/10 px-3 py-2 text-sm text-blue-100">
+              You're already a member of this group.
+            </p>
+          )}
+          {redeemError && (
+            <p
+              role="alert"
+              class="mb-4 rounded-lg border border-red-500/30 bg-red-900/30 px-3 py-2 text-sm text-red-300"
+            >
+              {redeemError}
+            </p>
+          )}
+          <form method="POST" action="/api/invites/redeem" data-join-invite>
+            <input type="hidden" name="token" value={token.value} />
+            <button
+              type="submit"
+              class="w-full rounded-lg bg-purple-600 px-4 py-2 font-medium text-white transition-colors hover:bg-purple-500 disabled:opacity-60"
+            >
+              Join group
+            </button>
+          </form>
+        </>
+      ) : (
+        <>
+          <h1 class="mb-4 bg-gradient-to-r from-blue-200 to-purple-200 bg-clip-text text-3xl font-bold text-transparent">
+            Invite
+          </h1>
+          <p role="alert" class="rounded-lg border border-red-500/30 bg-red-900/30 px-3 py-2 text-sm text-red-300">
+            {loadFailed ? INVITE_LOAD_FAILED_MESSAGE : inviteErrorMessage("invite_invalid")}
+          </p>
+          {user && (
+            <a href="/dashboard" class="mt-6 inline-block text-sm text-purple-300 hover:underline">
+              Go to dashboard
+            </a>
+          )}
+        </>
+      )}
+    </div>
+  </div>
+</Layout>
+
+<script>
+  // Progressive enhancement: a double tap on "Join group" would send a second POST of an already-used invite,
+  // which answers "no longer valid" even though the user did join. Without JavaScript the form still submits.
+  for (const form of document.querySelectorAll<HTMLFormElement>("form[data-join-invite]")) {
+    const button = form.querySelector<HTMLButtonElement>("button[type=submit]");
+    form.addEventListener("submit", () => {
+      if (button) button.disabled = true;
+    });
+    // Coming back through the browser's back/forward cache would otherwise leave the button disabled.
+    window.addEventListener("pageshow", () => {
+      if (button) button.disabled = false;
+    });
+  }
+</script>
