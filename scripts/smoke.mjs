@@ -1,11 +1,13 @@
 // Smoke test: proves the built app, the Cloudflare adapter, the Supabase auth flow and the create-group flow work together.
 // Zero dependencies on purpose. Run against a live server: BASE_URL=http://localhost:4321 node scripts/smoke.mjs
 
-import { randomUUID } from "node:crypto";
+import { randomBytes, randomUUID } from "node:crypto";
 
 const BASE_URL = process.env.BASE_URL ?? "http://localhost:4321";
 const email = `smoke-${Date.now()}@example.com`;
 const password = "Smoke-Test-Passw0rd!";
+// The second user joins group A through the invite link.
+const email2 = `smoke-joiner-${Date.now()}@example.com`;
 const jar = new Map();
 const stamp = Date.now();
 const groupA = `Smoke household A ${stamp}`;
@@ -90,6 +92,26 @@ function checkInviteHidden(actual) {
 function generateInviteA() {
   if (groupIds[0] === undefined) return Promise.resolve({ status: 0, location: "(group A was not created)", body: "" });
   return request(`/api/groups/${groupIds[0]}/invites`, { method: "POST" });
+}
+
+// Invite-flow steps need the token saved by "group page shows the invite link once"; without it they fail
+// instead of silently requesting /invite/undefined.
+function requestInvite(path, options) {
+  if (inviteToken === undefined)
+    return Promise.resolve({ status: 0, location: "(no invite token was saved)", body: "" });
+  return request(path.replace("<token>", inviteToken), options);
+}
+
+function checkPendingInviteCookie(_actual, cookies) {
+  return cookies.get("sd_pending_invite") === inviteToken ? true : "no sd_pending_invite cookie holding the token";
+}
+
+function checkInviteLocation(suffix = "") {
+  return (actual) => (actual.location === `/invite/${inviteToken}${suffix}` ? true : `location is ${actual.location}`);
+}
+
+function checkGroupALocation(actual) {
+  return actual.location === `/groups/${groupIds[0]}` ? true : `location is ${actual.location}`;
 }
 
 function checkGoogleRedirect(actual, cookies) {
@@ -178,6 +200,50 @@ const steps = [
   [
     "create group redirects after signout",
     () => request("/api/groups", { method: "POST", form: { name: groupA } }),
+    { status: 302, location: "/auth/signin" },
+  ],
+  [
+    "anonymous invite link leads to sign-in",
+    () => requestInvite("/invite/<token>"),
+    { status: 302, location: "/auth/signin", check: checkPendingInviteCookie },
+  ],
+  [
+    "sign-in page mentions the invite",
+    () => request("/auth/signin"),
+    { status: 200, check: bodyContains("Sign in or create an account to accept your invite.") },
+  ],
+  [
+    "second user signs up",
+    () => request("/api/auth/signup", { method: "POST", form: { email: email2, password } }),
+    { status: 302, location: "/auth/confirm-email" },
+  ],
+  [
+    "second user signs in back to the invite",
+    () => request("/api/auth/signin", { method: "POST", form: { email: email2, password } }),
+    { status: 302, check: checkInviteLocation() },
+  ],
+  [
+    "invite page shows the group name",
+    () => requestInvite("/invite/<token>"),
+    { status: 200, check: bodyContains(groupA) },
+  ],
+  [
+    "joining lands on the group page",
+    () => requestInvite("/api/invites/redeem", { method: "POST", form: { token: inviteToken } }),
+    { status: 302, check: checkGroupALocation },
+  ],
+  ["new member sees the group", requestGroupA, { status: 200, check: bodyContains(groupA) }],
+  [
+    "used invite is rejected",
+    () => requestInvite("/api/invites/redeem", { method: "POST", form: { token: inviteToken } }),
+    { status: 302, check: checkInviteLocation("?error=invite_invalid") },
+  ],
+  ["used invite page returns 404", () => requestInvite("/invite/<token>"), { status: 404 }],
+  ["unknown invite returns 404", () => request(`/invite/${randomBytes(32).toString("base64url")}`), { status: 404 }],
+  ["second user signs out", () => request("/api/auth/signout", { method: "POST" }), { status: 302, location: "/" }],
+  [
+    "anonymous join redirects to sign-in",
+    () => request("/api/invites/redeem", { method: "POST", form: { token: inviteToken ?? "" } }),
     { status: 302, location: "/auth/signin" },
   ],
 ];

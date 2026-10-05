@@ -28,3 +28,36 @@ export function takeNewInvite(cookies: AstroCookies, groupId: string): InviteTok
   cookies.delete(NEW_INVITE_COOKIE, { path: newInvitePath(groupId) });
   return InviteToken.parse(raw);
 }
+
+const PENDING_INVITE_COOKIE = "sd_pending_invite";
+// Long enough to confirm a new account's email before coming back to the invite.
+const PENDING_INVITE_MAX_AGE_SECONDS = 86_400;
+
+/** Remembers which invite an anonymous visitor opened, so sign-in can return to it. */
+export function rememberPendingInvite(cookies: AstroCookies, url: URL, token: InviteToken): void {
+  cookies.set(PENDING_INVITE_COOKIE, token.value, {
+    path: "/",
+    httpOnly: true,
+    sameSite: "lax",
+    secure: url.protocol === "https:",
+    maxAge: PENDING_INVITE_MAX_AGE_SECONDS,
+  });
+}
+
+export function hasPendingInvite(cookies: AstroCookies): boolean {
+  return cookies.get(PENDING_INVITE_COOKIE) !== undefined;
+}
+
+/**
+ * Reads and deletes the pending invite; returns `/invite/<token>` only when the cookie holds a well-formed token.
+ * The path is always built here, so a cookie value can never cause an open redirect.
+ */
+export function takePendingInvitePath(cookies: AstroCookies): string | null {
+  const raw = cookies.get(PENDING_INVITE_COOKIE)?.value;
+  cookies.delete(PENDING_INVITE_COOKIE, { path: "/" });
+  if (raw === undefined) {
+    return null;
+  }
+  const token = InviteToken.parse(raw);
+  return token ? `/invite/${token.value}` : null;
+}
