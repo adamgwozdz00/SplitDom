@@ -410,10 +410,10 @@ One extra function call per Data API request: a header read, one `sha256` and a 
 
 #### Automated
 
-- [x] 4.1 Migrations and seed apply from scratch
-- [x] 4.2 Types are unchanged
-- [x] 4.3 Lint, unit tests, type check and build pass
-- [x] 4.4 Smoke passes including the 403-without-key and 200-with-key steps
+- [x] 4.1 Migrations and seed apply from scratch — 66953a9
+- [x] 4.2 Types are unchanged — 66953a9
+- [x] 4.3 Lint, unit tests, type check and build pass — 66953a9
+- [x] 4.4 Smoke passes including the 403-without-key and 200-with-key steps — 66953a9
 
 #### Manual
 
