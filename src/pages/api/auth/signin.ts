@@ -1,4 +1,5 @@
 import type { APIRoute } from "astro";
+import { takePendingInvitePath } from "@/lib/invites";
 import { createClient } from "@/lib/supabase";
 
 export const POST: APIRoute = async (context) => {
@@ -16,5 +17,5 @@ export const POST: APIRoute = async (context) => {
     return context.redirect(`/auth/signin?error=${encodeURIComponent(error.message)}`);
   }
 
-  return context.redirect("/dashboard");
+  return context.redirect(takePendingInvitePath(context.cookies) ?? "/dashboard");
 };

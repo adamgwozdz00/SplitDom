@@ -729,29 +729,29 @@ The migration is forward-only and additive: one new table, three new functions, 
 
 #### Automated
 
-- [x] 3.1 Unit tests pass (including the cookie helpers): `npm test`
-- [x] 3.2 Type check and lint pass: `npx astro check`, `npm run lint`
-- [x] 3.3 Smoke passes, including the new generate steps: `npm run build && npm run preview` then `npm run smoke`
+- [x] 3.1 Unit tests pass (including the cookie helpers): `npm test` — 6f11c76
+- [x] 3.2 Type check and lint pass: `npx astro check`, `npm run lint` — 6f11c76
+- [x] 3.3 Smoke passes, including the new generate steps: `npm run build && npm run preview` then `npm run smoke` — 6f11c76
 
 #### Manual
 
 - [ ] 3.4 On a phone (iOS Safari or Android Chrome), "Generate invite" shows the link, and Share opens the system share sheet
 - [ ] 3.5 On desktop, Copy puts the exact link on the clipboard (Safari included), and Share is hidden where it is unsupported (Firefox)
-- [x] 3.6 Reloading the group page hides the link
+- [x] 3.6 Reloading the group page hides the link — 6f11c76
 
 ### Phase 4: Invite page, joining, sign-in return, smoke and docs
 
 #### Automated
 
-- [ ] 4.1 Unit tests pass: `npm test`
-- [ ] 4.2 Database tests pass: `npm run test:db`
-- [ ] 4.3 Type check and lint pass: `npx astro check`, `npm run lint`
-- [ ] 4.4 Smoke passes, including the full second-user join flow: `npm run build && npm run preview` then `npm run smoke`
+- [x] 4.1 Unit tests pass: `npm test`
+- [x] 4.2 Database tests pass: `npm run test:db`
+- [x] 4.3 Type check and lint pass: `npx astro check`, `npm run lint`
+- [x] 4.4 Smoke passes, including the full second-user join flow: `npm run build && npm run preview` then `npm run smoke`
 
 #### Manual
 
 - [ ] 4.5 Signed out on a phone: opening an invite link → sign in with Google → lands on the invite page → Join → the group page shows the group, and it appears on the dashboard
-- [ ] 4.6 Signed out on desktop: opening an invite link → sign up with email → confirm the email in the same browser → lands on the invite page → Join works
-- [ ] 4.7 Opening a used link and an expired link (`created_at` and `expires_at` both moved into the past with SQL on local Supabase) shows the same "no longer valid" message
-- [ ] 4.8 The group's existing member opens a fresh invite and sees "You're already a member"; Join opens the group, and the link is used up afterwards
+- [x] 4.6 Signed out on desktop: opening an invite link → sign up with email → confirm the email in the same browser → lands on the invite page → Join works
+- [x] 4.7 Opening a used link and an expired link (`created_at` and `expires_at` both moved into the past with SQL on local Supabase) shows the same "no longer valid" message
+- [x] 4.8 The group's existing member opens a fresh invite and sees "You're already a member"; Join opens the group, and the link is used up afterwards
 - [ ] 4.9 Pasting an invite link into WhatsApp or Slack, then letting the preview load, does not use up the invite
