@@ -389,17 +389,17 @@ One extra function call per Data API request: a header read, one `sha256` and a 
 
 #### Manual
 
-- [x] 2.8 On the PR, the workflow shows only ci and smoke, and smoke runs the types-drift step green
+- [x] 2.8 On the PR, the workflow shows only ci and smoke, and smoke runs the types-drift step green — 7714d6a
 
 ### Phase 3: App key, Worker header and the gate in observe mode (closes PR 1)
 
 #### Automated
 
-- [x] 3.1 Migrations and seed apply from scratch
-- [x] 3.2 Types are unchanged by the new schemas
-- [x] 3.3 Lint, unit tests, type check and build pass
-- [x] 3.4 Smoke passes including the 4 new gate steps
-- [x] 3.5 The gate is not reachable through the API
+- [x] 3.1 Migrations and seed apply from scratch — 7714d6a
+- [x] 3.2 Types are unchanged by the new schemas — 7714d6a
+- [x] 3.3 Lint, unit tests, type check and build pass — 7714d6a
+- [x] 3.4 Smoke passes including the 4 new gate steps — 7714d6a
+- [x] 3.5 The gate is not reachable through the API — 7714d6a
 
 #### Manual
 
