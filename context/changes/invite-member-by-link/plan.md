@@ -716,28 +716,28 @@ The migration is forward-only and additive: one new table, three new functions, 
 
 #### Automated
 
-- [x] 2.1 Migration applies on a clean database: `npm run db:reset`
-- [x] 2.2 Generated types are up to date: `npm run db:types` leaves `git diff --exit-code src/db/database.types.ts` clean
-- [x] 2.3 Database tests pass, including the RLS guard and the new invite test: `npm run test:db`
-- [x] 2.4 Unit tests, type check and lint pass: `npm test`, `npx astro check`, `npm run lint`
+- [x] 2.1 Migration applies on a clean database: `npm run db:reset` — ed25d55
+- [x] 2.2 Generated types are up to date: `npm run db:types` leaves `git diff --exit-code src/db/database.types.ts` clean — ed25d55
+- [x] 2.3 Database tests pass, including the RLS guard and the new invite test: `npm run test:db` — ed25d55
+- [x] 2.4 Unit tests, type check and lint pass: `npm test`, `npx astro check`, `npm run lint` — ed25d55
 
 #### Manual
 
-- [x] 2.5 The migration encodes no business rules beyond the documented backstops: identity from `auth.uid()`, member-only creation, minimum token length, the `used_at is null` claim, and the expiry check on `now()`
+- [x] 2.5 The migration encodes no business rules beyond the documented backstops: identity from `auth.uid()`, member-only creation, minimum token length, the `used_at is null` claim, and the expiry check on `now()` — ed25d55
 
 ### Phase 3: Generate and share on the group page
 
 #### Automated
 
-- [ ] 3.1 Unit tests pass (including the cookie helpers): `npm test`
-- [ ] 3.2 Type check and lint pass: `npx astro check`, `npm run lint`
-- [ ] 3.3 Smoke passes, including the new generate steps: `npm run build && npm run preview` then `npm run smoke`
+- [x] 3.1 Unit tests pass (including the cookie helpers): `npm test`
+- [x] 3.2 Type check and lint pass: `npx astro check`, `npm run lint`
+- [x] 3.3 Smoke passes, including the new generate steps: `npm run build && npm run preview` then `npm run smoke`
 
 #### Manual
 
 - [ ] 3.4 On a phone (iOS Safari or Android Chrome), "Generate invite" shows the link, and Share opens the system share sheet
 - [ ] 3.5 On desktop, Copy puts the exact link on the clipboard (Safari included), and Share is hidden where it is unsupported (Firefox)
-- [ ] 3.6 Reloading the group page hides the link
+- [x] 3.6 Reloading the group page hides the link
 
 ### Phase 4: Invite page, joining, sign-in return, smoke and docs
 
