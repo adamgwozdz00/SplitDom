@@ -1,0 +1,108 @@
+---
+interface Props {
+  groupId: string;
+  inviteUrl: string | null;
+  error: string | null;
+}
+
+const { groupId, inviteUrl, error } = Astro.props;
+---
+
+<section class="mt-6 border-t border-white/10 pt-6" data-invite-panel>
+  <h2 class="mb-3 text-lg font-semibold text-white">Invite a member</h2>
+  {error && (
+    <p role="alert" class="mb-3 rounded-lg border border-red-500/30 bg-red-900/30 px-3 py-2 text-sm text-red-300">
+      {error}
+    </p>
+  )}
+  {inviteUrl && (
+    <div class="mb-4 space-y-3" data-invite-link>
+      <label for="invite-url" class="block text-sm text-blue-100/80">
+        Invite link
+      </label>
+      <input
+        id="invite-url"
+        type="text"
+        readonly
+        value={inviteUrl}
+        class="w-full rounded-lg border border-white/20 bg-white/10 px-3 py-2 text-sm text-white focus:ring-2 focus:ring-purple-400 focus:outline-none"
+      />
+      <div class="flex gap-2">
+        <button
+          type="button"
+          data-copy
+          class="flex-1 rounded-lg bg-purple-600 px-4 py-2 font-medium text-white transition-colors hover:bg-purple-500"
+        >
+          Copy link
+        </button>
+        <button
+          type="button"
+          data-share
+          hidden
+          class="flex-1 rounded-lg border border-white/20 bg-white/10 px-4 py-2 font-medium text-white transition-colors hover:bg-white/20"
+        >
+          Share
+        </button>
+      </div>
+      <p role="status" data-copy-status class="min-h-5 text-sm text-green-300"></p>
+      <p class="text-sm text-blue-100/70">Works once and expires in 7 days. You won't see this link again.</p>
+    </div>
+  )}
+  <form method="POST" action={`/api/groups/${encodeURIComponent(groupId)}/invites`} data-generate-invite>
+    <button
+      type="submit"
+      class="w-full rounded-lg bg-purple-600 px-4 py-2 font-medium text-white transition-colors hover:bg-purple-500 disabled:opacity-60"
+    >
+      {inviteUrl ? "Generate another invite" : "Generate invite"}
+    </button>
+  </form>
+</section>
+
+<script>
+  // Progressive enhancement: without JavaScript the link stays visible for manual copying and the form still submits.
+  for (const form of document.querySelectorAll<HTMLFormElement>("form[data-generate-invite]")) {
+    const button = form.querySelector<HTMLButtonElement>("button[type=submit]");
+    form.addEventListener("submit", () => {
+      if (button) button.disabled = true;
+    });
+    // Coming back through the browser's back/forward cache would otherwise leave the button disabled.
+    window.addEventListener("pageshow", () => {
+      if (button) button.disabled = false;
+    });
+  }
+
+  for (const block of document.querySelectorAll<HTMLElement>("[data-invite-link]")) {
+    const input = block.querySelector<HTMLInputElement>("input");
+    const copy = block.querySelector<HTMLButtonElement>("[data-copy]");
+    const share = block.querySelector<HTMLButtonElement>("[data-share]");
+    const status = block.querySelector<HTMLElement>("[data-copy-status]");
+    if (!input) continue;
+    const url = input.value;
+
+    copy?.addEventListener("click", () => {
+      // Called synchronously inside the click handler: Safari rejects clipboard writes after an await.
+      if (!navigator.clipboard) {
+        input.select();
+        if (status) status.textContent = "Press and hold the link to copy it";
+        return;
+      }
+      navigator.clipboard.writeText(url).then(
+        () => {
+          if (status) status.textContent = "Link copied";
+        },
+        () => {
+          input.select();
+          if (status) status.textContent = "Could not copy — select the link and copy it manually";
+        },
+      );
+    });
+
+    if (share && typeof navigator.share === "function") {
+      share.hidden = false;
+      share.addEventListener("click", () => {
+        // A dismissed share sheet rejects with AbortError; that is not an error for the user.
+        navigator.share({ url }).catch(() => undefined);
+      });
+    }
+  }
+</script>

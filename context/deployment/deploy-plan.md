@@ -114,6 +114,12 @@ Known constraints on deleting a user (accepted for now, revisit before any accou
 - **A host cannot be deleted.** `groups.host_id` references `auth.users` without cascade, because a group's host never changes. Deleting a user who hosts a group (Dashboard or `auth.admin.deleteUser`) fails with a foreign-key error, which GoTrue reports as "Database error deleting user".
 - **A member's membership disappears silently.** `group_members.user_id` cascades, so deleting a non-host member removes them from the group outside the `Group` aggregate. This is harmless while groups hold no expenses. Revisit it in S-04, once expenses and balances reference members.
 
+## Member invites (added 2026-10-05, change `invite-member-by-link`, S-03)
+
+The migration `group_invites` adds one table (RLS on, no policies, no `anon`/`authenticated` grants) and the `security definer` functions `create_group_invite`, `get_group_invite` and `redeem_group_invite`. It only adds objects, so it is compatible with the previously deployed Worker. Invites need **no Supabase or Cloudflare configuration change**: no new secret, no redirect allow-list entry, and `redirectTo` / `emailRedirectTo` are unchanged. The invite to return to after sign-in travels in the `sd_pending_invite` cookie (`SameSite=Lax`, 24 h), which survives the top-level GET back from Google and from the confirmation email.
+
+Known limitation (accepted, same cause as "Post-deploy findings" 3): confirming the sign-up email in a different browser or device than the one that opened the invite link also loses the pending invite, because the cookie lives in the first browser. The invitee then opens the link again after signing in. Google sign-in remains the cross-device path.
+
 ## Out of scope
 
 Multi-region HA, Docker, and anything beyond first MVP deploy — per `infrastructure.md`'s own scope boundary.

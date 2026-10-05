@@ -6,7 +6,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 An Astro web app for splitting shared household expenses among roommates/partners: track expenses, compute per-member balances, generate payment info between debtors and creditors, and let the group's host manually close monthly settlement periods. See `context/foundation/prd.md` (Polish) for functional requirements and user stories, and `context/foundation/tech-stack.md` for the stack rationale — the 10x Astro Starter (Astro + Supabase + Cloudflare) was chosen once period closing (FR-015) became a manual host action, removing the earlier need for scheduled jobs that had pushed the stack to Next.js/Vercel.
 
-**Status**: bootstrapped from the 10x Astro Starter and deployed to Cloudflare Workers (https://10x-astro-starter.adamgwozdz.workers.dev), auto-deployed on every merge to `main`. Auth exists: Google sign-in (OAuth through Supabase) and email + password sign-up/sign-in, sharing one PKCE callback, plus route protection. Settlement groups exist: a signed-in user creates any number of groups (becoming their host, with one open billing period for the current month), `/dashboard` lists the user's groups, and each group has its page at `/groups/[id]`. Invites, expenses, balances, settlement and period closing are still to be built — see `context/foundation/roadmap.md` for the milestone, slice order and the next change to plan.
+**Status**: bootstrapped from the 10x Astro Starter and deployed to Cloudflare Workers (https://10x-astro-starter.adamgwozdz.workers.dev), auto-deployed on every merge to `main`. Auth exists: Google sign-in (OAuth through Supabase) and email + password sign-up/sign-in, sharing one PKCE callback, plus route protection. Settlement groups exist: a signed-in user creates any number of groups (becoming their host, with one open billing period for the current month), `/dashboard` lists the user's groups, and each group has its page at `/groups/[id]`. Invites exist: any member generates an invite link on the group page (shown once, single use, valid 7 days); the invitee opens `/invite/[token]`, signs in or up if needed (the pending invite survives sign-in, sign-up and Google through a cookie) and joins with an explicit button. Expenses, balances, settlement and period closing are still to be built — see `context/foundation/roadmap.md` for the milestone, slice order and the next change to plan.
 
 ### Commands
 
@@ -18,7 +18,7 @@ Run `nvm use` first — Node is pinned to 22.14.0 in `.nvmrc` (wrangler needs No
 - `npm run lint` / `npm run lint:fix` — ESLint (flat config: astro, react, jsx-a11y, typescript-eslint, prettier)
 - `npm run format` — Prettier
 - `npx astro check` — type check (runs in CI)
-- `npm run smoke` — end-to-end smoke test of the auth and create-group flows against a running server (`BASE_URL`, default http://localhost:4321)
+- `npm run smoke` — end-to-end smoke test of the auth, create-group and invite flows (a second user joins through the link) against a running server (`BASE_URL`, default http://localhost:4321)
 - `npx supabase start` / `npx supabase stop` — local Supabase (needed by `dev`, `smoke` and `test:db`)
 - `npm test` — Vitest unit tests (`src/**/__tests__/**/*.test.ts`), no database
 - `npm run test:db` — Vitest database tests (`src/**/__tests__/**/*.db.test.ts`) against local Supabase; URL and keys are discovered from `supabase status`
@@ -30,9 +30,10 @@ A husky pre-commit hook runs lint-staged (eslint --fix / prettier).
 
 ### Structure
 
-- `src/pages/` — Astro routes; `src/pages/api/` — API endpoints (`api/auth/*`: sign-up, sign-in, sign-out and `google`, which starts Google OAuth; `api/groups/` — form POST that creates a group); `src/pages/auth/callback.ts` — PKCE code exchange for email confirmation and the Google OAuth return; `src/pages/groups/` — the group page (`[id].astro`)
-- `src/components/` — Astro and React components (`ui/` is shadcn/ui, `auth/` holds the auth forms, `groups/` the group list, create form and group card)
+- `src/pages/` — Astro routes; `src/pages/api/` — API endpoints (`api/auth/*`: sign-up, sign-in, sign-out and `google`, which starts Google OAuth; `api/groups/` — form POST that creates a group; `api/groups/[id]/invites.ts` — form POST that generates an invite; `api/invites/redeem.ts` — form POST that joins a group with an invite token); `src/pages/auth/callback.ts` — PKCE code exchange for email confirmation and the Google OAuth return; `src/pages/groups/` — the group page (`[id].astro`); `src/pages/invite/[token].astro` — the invite page (public: it remembers the invite for anonymous visitors, previews it for signed-in users)
+- `src/components/` — Astro and React components (`ui/` is shadcn/ui, `auth/` holds the auth forms, `groups/` the group list, create form and group card, `invites/` the invite panel on the group page)
 - `src/lib/groups/` — the groups domain module: value objects (`GroupName`, `BillingMonth`), the `Group` aggregate, `GroupService` (its only entry point), the Supabase repository and the error messages; it never imports `@/lib/supabase` (callers pass the client in)
+- `src/lib/invites/` — the invites domain module: `InviteToken`, the `Invite` aggregate (member-only creation, 7-day expiry, single use), `InviteService` (its only entry point), the Supabase repository and the one-time cookie helpers (`sd_new_invite`, `sd_pending_invite`); it never imports `@/lib/supabase` either
 - `src/lib/supabase.ts` — server-side Supabase client, typed with `Database`; `src/middleware.ts` — sets `locals.user` and guards protected routes
 - `src/db/` — `Database` type (`@/db`); `database.types.ts` is generated by `db:types`, never hand-edited, and ignored by ESLint/Prettier. `src/db/__tests__/` holds the two-user harness (`createTwoUsers()`), `withDb()` for direct Postgres checks, and the RLS guard
 - `supabase/config.toml` — local Supabase config; `supabase/migrations/` — versioned SQL migrations, the only way the schema changes (pushed to production by the `deploy` job before `wrangler deploy`)
@@ -48,6 +49,7 @@ A husky pre-commit hook runs lint-staged (eslint --fix / prettier).
 - Migrations are forward-only: never edit a migration that has been pushed; fix it with a new one. `wrangler rollback` does not revert the database, so each migration must stay compatible with the previously deployed Worker (expand before contract).
 - `security definer` helpers used by RLS policies go in schema `private`, which is not exposed through the API. (Persistence functions for group-scoped tables are different: they live in `public`, see below.)
 - **Adding a group-scoped table**: in the same migration, enable row-level security with no policies (the RLS guard in `test:db` fails on any `public` table without it) and revoke all grants from `anon` and `authenticated`. Access goes through narrow `security definer` persistence functions (`set search_path = ''`, `revoke execute … from public, anon`, `grant execute … to authenticated`) that only persist and load, and filter on the caller's membership via `auth.uid()`. These persistence functions live directly in `public` (superseding the thin-`public`-wrapper-over-`private` split proposed in `context/changes/invite-member-by-link/research.md`); Supabase Advisor lints 0029 (`authenticated_security_definer_function_executable`) and 0008 (`rls_enabled_no_policy`) are expected for them and their tables by design. Then run `npm run db:reset && npm run db:types`, and add a `*.db.test.ts` that uses `createTwoUsers()` to prove user B cannot read A's data through those functions and that direct table access is denied.
+- **Documented exception**: `redeem_group_invite` writes `group_members` outside the `Group` repository. It claims the invite and adds the member in one function so both happen in one transaction (atomicity); the rule that an active invite grants membership still lives in `Invite.redeem`.
 
 ### Code Conventions
 
@@ -75,43 +77,54 @@ A husky pre-commit hook runs lint-staged (eslint --fix / prettier).
 
 <!-- BEGIN @przeprogramowani/10x-cli -->
 
-## 10xDevs AI Toolkit - Module 2, Lesson 3
+## 10xDevs AI Toolkit - Module 2, Lesson 4
 
-Review AI-generated code before merge with the **implementation review chain**:
+Prepare for a harder implementation stream with the **research-backed planning chain**:
 
 ```
-/10x-implement -> /10x-impl-review -> triage -> (/10x-lesson | fix | skip | disagree)
+internal research (/10x-research) + external research (exa.ai, Context7) -> /10x-plan -> /10x-implement -> success
 ```
 
-`/10x-impl-review` is the lesson focus. Review is a quality gate, not an instruction to fix every finding.
+The lesson focus is distinguishing internal from external research and using evidence to back planning decisions.
 
 ### Task Router - Where to start
 
-| Skill                          | Use it when                                                                                                                                                                                                                             |
-| ------------------------------ | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| **Code review (lesson focus)** |                                                                                                                                                                                                                                         |
-| `/10x-impl-review <change-id>` | You have implemented code and want a structured review before merge. The skill checks plan adherence, scope discipline, safety and quality, architecture, pattern consistency, and success criteria, then presents findings for triage. |
-| **Recurring lesson outcome**   |                                                                                                                                                                                                                                         |
-| `/10x-lesson`                  | A finding reveals a recurring project rule or agent failure pattern. Record it in `context/foundation/lessons.md` instead of treating it as a one-off note.                                                                             |
+| Skill                                                            | Use it when                                                                                                                                                                                                                                    |
+| ---------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Internal research (lesson focus)**                             |                                                                                                                                                                                                                                                |
+| `/10x-research <change-id>`                                      | You need evidence from the existing codebase — patterns, conventions, integration points, or existing implementations. Runs parallel sub-agents over the repo and writes structured findings to `research.md`.                                 |
+| **External research (lesson focus)**                             |                                                                                                                                                                                                                                                |
+| exa.ai                                                           | You need AI-native web search for library comparisons, best practices, or ecosystem context that the codebase cannot answer.                                                                                                                   |
+| Context7 (`resolve-library-id` → `get-library-docs`)             | You need live, current documentation for a specific library or framework. Resolves a library ID first, then fetches relevant doc pages.                                                                                                        |
+| **Framing spare wheel**                                          |                                                                                                                                                                                                                                                |
+| `/10x-frame <change-id>`                                         | The plan won't converge, the plan doesn't deliver expected results, or persistent drift keeps breaking the implementation. Use as an escape hatch on a separate problem (demonstrated on Space Explorers example), not as pre-research ritual. |
+| **Planning and execution**                                       |                                                                                                                                                                                                                                                |
+| `/10x-plan <change-id>` / `/10x-implement <change-id> phase <n>` | Use the same planning and execution chain from Lesson 2, now with upstream research evidence feeding the plan.                                                                                                                                 |
 
-### Triage discipline
+### Research discipline
 
-- Severity says how bad the finding is. Impact says how much the decision matters now.
-- Valid outcomes: fix now, fix differently, skip, accept as risk, record as recurring rule (`/10x-lesson`), disagree.
-- Fix critical findings. Do not burn hours on low-impact observations just because the agent found them.
-- Conscious skipping of low-impact findings is a valid review outcome, not negligence.
-- If you disagree with a finding, record why. Wrong agent reasoning is also signal.
+- Internal research (`/10x-research`) answers "what does our codebase already do?" — patterns, schemas, conventions, integration points.
+- External research (exa.ai, Context7) answers "what should we do?" — library capabilities, API docs, ecosystem best practices.
+- Combine both as evidence-backed input to `/10x-plan`. A plan without research evidence on a non-trivial stream is a guess.
+- Agent-friendly docs (`llms.txt`, markdown-for-agents, `/md` endpoints) are a quality signal for library selection — libraries that publish agent-readable docs integrate faster.
 
-### Review boundaries
+### `/10x-frame` as spare wheel
 
-- This lesson reviews implemented code. It does not create the plan, execute new phases, or teach CI review.
-- Testing strategy and quality gates are introduced in Module 3.
-- Do not use `/10x-contract` as a triage outcome in this lesson.
+Three triggers for reaching for `/10x-frame`:
+
+1. The plan won't converge — research keeps opening more questions instead of narrowing to a contract.
+2. The plan doesn't deliver — implementation repeatedly fails to meet success criteria.
+3. Persistent drift — the implementation keeps diverging from the plan in ways that suggest the problem was mis-framed.
+
+Demonstrated on a Space Explorers example, not the SRS path. It is an escape hatch, not a mandatory step.
 
 ### Paths used by this lesson
 
-- `context/changes/<change-id>/plan.md` - expected implementation contract
-- `context/changes/<change-id>/reviews/` - review output
-- `context/foundation/lessons.md` - recurring lessons
+- `context/changes/<change-id>/research.md` - internal research output
+- `context/changes/<change-id>/frame.md` - framing output when needed
+- `context/changes/<change-id>/plan.md` - evidence-backed implementation contract
+- `context/foundation/lessons.md` - recurring rules and pitfalls
 
 Skills must not write to `context/archive/`. Archived changes are immutable; if a resolved target path starts with `context/archive/`, abort with: "This change is archived. Open a new change with `/10x-new` instead."
+
+<!-- END @przeprogramowani/10x-cli -->
