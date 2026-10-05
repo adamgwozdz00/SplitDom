@@ -367,25 +367,25 @@ One extra function call per Data API request: a header read, one `sha256` and a 
 
 #### Automated
 
-- [x] 1.1 The three paths are gone
-- [x] 1.2 No live reference remains
-- [x] 1.3 Roadmap shows S-04 as blocked
+- [x] 1.1 The three paths are gone — 552df2c
+- [x] 1.2 No live reference remains — 552df2c
+- [x] 1.3 Roadmap shows S-04 as blocked — 552df2c
 
 #### Manual
 
-- [x] 1.4 The SplitDom Roadmap board shows S-04 with the status matching blocked
+- [x] 1.4 The SplitDom Roadmap board shows S-04 with the status matching blocked — 552df2c
 
 ### Phase 2: Remove the database tests and move the types-drift check into smoke
 
 #### Automated
 
-- [ ] 2.1 No database tests remain
-- [ ] 2.2 No leftovers
-- [ ] 2.3 Unit tests pass
-- [ ] 2.4 Lint passes
-- [ ] 2.5 Type check passes
-- [ ] 2.6 Build passes
-- [ ] 2.7 Types are current against a fresh local database
+- [x] 2.1 No database tests remain
+- [x] 2.2 No leftovers
+- [x] 2.3 Unit tests pass
+- [x] 2.4 Lint passes
+- [x] 2.5 Type check passes
+- [x] 2.6 Build passes
+- [x] 2.7 Types are current against a fresh local database
 
 #### Manual
 

@@ -13,19 +13,7 @@ export default defineConfig({
         test: {
           name: "unit",
           include: ["src/**/__tests__/**/*.test.ts"],
-          exclude: ["**/node_modules/**", "**/*.db.test.ts"],
-        },
-      },
-      {
-        // Runs against local Supabase (`npx supabase start`); files run one at a time on a shared database.
-        extends: true,
-        test: {
-          name: "db",
-          include: ["src/**/__tests__/**/*.db.test.ts"],
-          globalSetup: ["src/db/__tests__/global.setup.ts"],
-          fileParallelism: false,
-          testTimeout: 30_000,
-          hookTimeout: 30_000,
+          exclude: ["**/node_modules/**"],
         },
       },
     ],
