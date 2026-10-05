@@ -82,7 +82,7 @@ Foundations below assume these are present and do NOT re-scaffold them.
 - **Outcome:** (foundation) schema changes are authored in the repo and applied the same way to the local and the hosted database (pushed to production before each Worker deploy), and a reusable two-user test harness plus a guard that fails CI on any public table without row-level security are ready for each group-scoped slice to prove that one user cannot read another group's data. No domain tables — they emerge from S-02's domain model.
 - **Change ID:** db-migrations-and-isolation
 - **PRD refs:** NFR-3, Success Criteria § Guardrails (per-group privacy)
-- **Unlocks:** S-02 (first persisted domain data), and the per-group isolation verification path that S-02, S-03, S-04, S-06 extend.
+- **Unlocks:** S-02 (first persisted domain data), and the per-group isolation model (RLS without policies, revoked grants, `security definer` persistence functions) that S-02, S-03, S-04, S-06 extend. (Its two-user DB test harness was removed on 2026-10-05 in `block-direct-data-api`; the Data API now also refuses calls without the Worker's app key.)
 - **Prerequisites:** — (hosted database project already linked per Baseline)
 - **Parallel with:** S-01
 - **Blockers:** —
@@ -169,7 +169,7 @@ Foundations below assume these are present and do NOT re-scaffold them.
 - **Blockers:** —
 - **Unknowns:**
   - Where and when does a member provide their bank account number? — Owner: user. Block: no.
-- **Risk:** Introduces the most sensitive data in the app (account numbers), so it extends the F-01 isolation check; low logic risk otherwise.
+- **Risk:** Introduces the most sensitive data in the app (account numbers), so it must follow the F-01 isolation model (and stays behind the app-key gate); low logic risk otherwise.
 - **Status:** proposed
 
 ### S-07: Mark a transfer as sent
