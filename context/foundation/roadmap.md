@@ -3,7 +3,7 @@ project: SplitDom
 version: 1
 status: draft
 created: 2026-09-26
-updated: 2026-10-03
+updated: 2026-10-05
 prd_version: 1
 main_goal: speed
 top_blocker: time
@@ -44,7 +44,7 @@ People who share household costs — partners or roommates — settle shared exp
 | F-01 | db-migrations-and-isolation   | (foundation) schema changes ship repo → hosted DB; two-user test harness + RLS guard | —             | NFR-3, Guardrails          | done |
 | S-01 | external-identity-sign-in     | user can sign in with an external identity provider                                 | —             | FR-001                     | done |
 | S-02 | create-settlement-group       | user can create a settlement group, becomes its host, and it has an open period     | F-01          | FR-002                     | done |
-| S-03 | invite-member-by-link         | user can invite someone with a link/code, and that person joins the group           | S-02          | FR-003                     | ready |
+| S-03 | invite-member-by-link         | user can invite someone with a link/code, and that person joins the group           | S-02          | FR-003                     | in-progress |
 | S-04 | add-expense-see-balances      | member can add an expense split equally and immediately see every member's balance  | S-03          | US-01, FR-004, FR-005      | blocked  |
 | S-05 | edit-own-expense-rules        | expense author can edit or delete their own expense only while it is still editable | S-04          | FR-005                     | proposed |
 | S-06 | generate-transfer-details     | debtor can copy transfer details (account number, amount, title) for a debt         | S-04          | FR-007                     | proposed |
@@ -128,9 +128,9 @@ Foundations below assume these are present and do NOT re-scaffold them.
 - **Blockers:** —
 - **Unknowns:**
   - ~~What happens when the invited person already belongs to another group?~~ Resolved 2026-10-02: no longer applies — FR-002 now allows a user to belong to many groups, so the invitee simply joins one more.
-  - Does an invite expire or work only once? — Owner: user. Block: no.
+  - ~~Does an invite expire or work only once?~~ Resolved 2026-10-04: an invite works once and expires after 7 days (`context/changes/invite-member-by-link/research.md`, Decisions).
 - **Risk:** Required before the north star because US-01 needs two members; it is the first flow where a second real user touches the group, so it is where the isolation check first matters for strangers.
-- **Status:** ready
+- **Status:** in-progress
 
 ### S-04: Add an expense and see balances
 
