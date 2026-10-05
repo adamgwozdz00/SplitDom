@@ -10,3 +10,4 @@ export { PeriodBalances } from "@/lib/expenses/period-balances.value";
 export type { MemberBalance, PairDebt } from "@/lib/expenses/period-balances.value";
 export { PurchaseDate } from "@/lib/expenses/purchase-date.value";
 export type { PurchaseDateWindow } from "@/lib/expenses/purchase-date.value";
+export { createExpenseService, createSupabaseExpenseRepository } from "@/lib/expenses/expense.repository";
