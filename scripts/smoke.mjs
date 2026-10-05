@@ -123,7 +123,7 @@ function checkGroupALocation(actual) {
 }
 
 // Calls a persistence function straight through the Data API, as a user holding their token could.
-async function directRpc(name, { token = SUPABASE_KEY, headers = {} } = {}) {
+async function directRpc(name, { token, headers = {} }) {
   const response = await fetch(`${SUPABASE_URL}/rest/v1/rpc/${name}`, {
     method: "POST",
     headers: { apikey: SUPABASE_KEY, Authorization: `Bearer ${token}`, "Content-Type": "application/json", ...headers },
@@ -139,6 +139,8 @@ async function firstUserToken() {
     headers: { apikey: SUPABASE_KEY, "Content-Type": "application/json" },
     body: JSON.stringify({ email, password }),
   });
+  // Fail loudly here, so a sign-in problem does not surface later as a confusing 401 from the gate steps.
+  if (!response.ok) throw new Error(`password grant for the first smoke user failed with ${response.status}`);
   const session = await response.json();
   return session.access_token;
 }
