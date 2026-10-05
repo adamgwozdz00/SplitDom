@@ -403,8 +403,8 @@ One extra function call per Data API request: a header read, one `sha256` and a 
 
 #### Manual
 
-- [ ] 3.6 After the PR 1 deploy, the production app still works
-- [ ] 3.7 The production probe result is recorded in change.md with the chosen branch
+- [x] 3.6 After the PR 1 deploy, the production app still works
+- [x] 3.7 The production probe result is recorded in change.md with the chosen branch
 
 ### Phase 4: Enforce the gate (PR 2)
 
