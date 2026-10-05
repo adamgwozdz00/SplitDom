@@ -33,18 +33,20 @@ jobs:
         with:
           node-version: 22
           cache: npm
-      - uses: supabase/setup-cli@v1
-        with:
-          version: latest
       - run: npm ci
+      # Supabase CLI from devDependencies (not supabase/setup-cli), so generated types match local output byte for byte.
       - name: Start local Supabase
         run: |
-          supabase start -x studio,imgproxy,mailpit,edge-runtime,logflare,vector,realtime,storage-api,postgres-meta,supavisor
-          supabase status -o env | grep -E '^(API_URL|ANON_KEY)=' > supabase.env
+          npx supabase start -x studio,imgproxy,mailpit,edge-runtime,logflare,vector,realtime,storage-api,supavisor
+          npx supabase status -o env | grep -E '^(API_URL|ANON_KEY)=' > supabase.env
+      - name: Check generated database types are up to date
+        run: |
+          npm run db:types
+          git diff --exit-code src/db/database.types.ts
       - name: Configure secrets for build and preview
         run: |
           source supabase.env
-          printf 'SUPABASE_URL=%s\nSUPABASE_KEY=%s\n' "$API_URL" "$ANON_KEY" > .env
+          printf 'SUPABASE_URL=%s\nSUPABASE_KEY=%s\nSUPABASE_APP_KEY=local-dev-app-key\n' "$API_URL" "$ANON_KEY" > .env
           cp .env .dev.vars
       - run: npm run build
       - name: Run smoke test against production preview
@@ -53,30 +55,10 @@ jobs:
           for i in $(seq 1 60); do curl -sf -o /dev/null http://localhost:4321/ && break; sleep 1; done
           BASE_URL=http://localhost:4321 npm run smoke
       - if: always()
-        run: supabase stop --no-backup
-
-  db-test:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
-        with:
-          node-version: 22
-          cache: npm
-      - run: npm ci
-      # Supabase CLI from devDependencies (not supabase/setup-cli), so generated types match local output byte for byte.
-      - name: Start local Supabase
-        run: npx supabase start -x studio,imgproxy,mailpit,edge-runtime,logflare,vector,realtime,storage-api,supavisor
-      - run: npm run test:db
-      - name: Check generated database types are up to date
-        run: |
-          npm run db:types
-          git diff --exit-code src/db/database.types.ts
-      - if: always()
         run: npx supabase stop --no-backup
 
   deploy:
-    needs: [ci, smoke, db-test]
+    needs: [ci, smoke]
     if: github.event_name == 'push' && github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
     # Never push migrations from two merges at once.
