@@ -51,6 +51,7 @@ People who share household costs — partners or roommates — settle shared exp
 | S-07 | mark-transfer-sent            | debtor can mark a transfer as sent, as a reminder for themselves                    | S-04          | FR-008                     | proposed |
 | S-08 | confirm-debt-paid             | creditor can confirm a debt as paid, which closes it                                | S-04          | FR-009                     | proposed |
 | S-09 | host-closes-period            | host can close a finished period, which freezes it and opens the next one           | S-05, S-08    | US-02, FR-015              | proposed |
+| S-10 | member-profile-display-name   | member can set a display name that the group shows instead of their email           | S-04          | — (supports US-01)         | proposed |
 
 ## Streams
 
@@ -58,7 +59,7 @@ Navigation aid — groups items that share a Prerequisites chain. Canonical orde
 
 | Stream | Theme                   | Chain                                               | Note                                                                                     |
 | ------ | ----------------------- | --------------------------------------------------- | ---------------------------------------------------------------------------------------- |
-| A      | Group and expenses      | `F-01` → `S-02` → `S-03` → `S-04` → `S-05`          | The must-have path to the north star; the critical path under the `speed` goal.          |
+| A      | Group and expenses      | `F-01` → `S-02` → `S-03` → `S-04` → `S-05` · `S-10` | The must-have path to the north star; the critical path under the `speed` goal. `S-10` branches off `S-04` and is off the critical path. |
 | B      | Sign-in                 | `S-01`                                              | Standalone; existing email/password sign-in keeps every other slice unblocked meanwhile. |
 | C      | Settlement and closing  | `S-06` · `S-07` · `S-08` → `S-09`                   | Joins Stream A at `S-04`; `S-06`–`S-08` can run in parallel; `S-09` also needs `S-05`.   |
 
@@ -152,7 +153,7 @@ Foundations below assume these are present and do NOT re-scaffold them.
 - **Change ID:** edit-own-expense-rules
 - **PRD refs:** FR-005
 - **Prerequisites:** S-04
-- **Parallel with:** S-01, S-06, S-07, S-08
+- **Parallel with:** S-01, S-06, S-07, S-08, S-10
 - **Blockers:** —
 - **Unknowns:** —
 - **Risk:** Kept separate from S-04 so the north star stays small; it must land before S-09 because closing a period relies on the "no edits after lock" rule.
@@ -164,7 +165,7 @@ Foundations below assume these are present and do NOT re-scaffold them.
 - **Change ID:** generate-transfer-details
 - **PRD refs:** FR-007
 - **Prerequisites:** S-04
-- **Parallel with:** S-01, S-05, S-07, S-08, S-09
+- **Parallel with:** S-01, S-05, S-07, S-08, S-09, S-10
 - **Blockers:** —
 - **Unknowns:**
   - Where and when does a member provide their bank account number? — Owner: user. Block: no.
@@ -177,7 +178,7 @@ Foundations below assume these are present and do NOT re-scaffold them.
 - **Change ID:** mark-transfer-sent
 - **PRD refs:** FR-008
 - **Prerequisites:** S-04
-- **Parallel with:** S-01, S-05, S-06, S-08, S-09
+- **Parallel with:** S-01, S-05, S-06, S-08, S-09, S-10
 - **Blockers:** —
 - **Unknowns:** —
 - **Risk:** Small, independent status change; sequenced after S-04 only because it needs a debt to exist.
@@ -189,7 +190,7 @@ Foundations below assume these are present and do NOT re-scaffold them.
 - **Change ID:** confirm-debt-paid
 - **PRD refs:** FR-009
 - **Prerequisites:** S-04
-- **Parallel with:** S-01, S-05, S-06, S-07
+- **Parallel with:** S-01, S-05, S-06, S-07, S-10
 - **Blockers:** —
 - **Unknowns:** —
 - **Risk:** The only action that finally settles money in the app; S-09's closing precondition depends on it, so it sits on the path to milestone completion.
@@ -201,11 +202,25 @@ Foundations below assume these are present and do NOT re-scaffold them.
 - **Change ID:** host-closes-period
 - **PRD refs:** US-02, FR-015
 - **Prerequisites:** S-05, S-08
-- **Parallel with:** S-01, S-06, S-07
+- **Parallel with:** S-01, S-06, S-07, S-10
 - **Blockers:** —
 - **Unknowns:**
   - ~~Which timezone defines "the calendar month has ended"?~~ Resolved 2026-10-02 (S-02 planning): Europe/Warsaw; timestamps stay in UTC, and `BillingMonth` in `src/lib/groups/` is the single place that maps a moment to its billing month.
 - **Risk:** The most rule-heavy slice (host-only, month ended, host's debts paid, exactly one new open period); placed last because it consumes the edit-lock and paid-debt rules from S-05 and S-08.
+- **Status:** proposed
+
+### S-10: Member profile with a display name
+
+- **Outcome:** member can set a display name in their profile; wherever the group labels a member (balances, debts, expense list), the display name is shown first, falling back to the member's email.
+- **Change ID:** member-profile-display-name
+- **PRD refs:** — (not in PRD v1; makes the US-01 balance view readable without exposing emails as the primary label)
+- **Prerequisites:** S-04
+- **Parallel with:** S-01, S-05, S-06, S-07, S-08, S-09
+- **Blockers:** —
+- **Unknowns:**
+  - Is the display name per user (one name in every group) or per group membership? — Owner: user. Block: no.
+  - Should the profile also hold the bank account number that S-06 needs (S-06 unknown "where and when does a member provide their bank account number")? — Owner: user. Block: no.
+- **Risk:** Low logic risk, provided S-04 keeps the member-labelling rule in one place, so this slice changes the label source without touching the balance views. Added 2026-10-05 during S-04 planning.
 - **Status:** proposed
 
 ## Backlog Handoff
@@ -224,6 +239,7 @@ Mirrored on GitHub: milestone [M-1](https://github.com/adamgwozdz00/SplitDom/mil
 | S-07       | mark-transfer-sent          | Let the debtor mark a transfer as sent                       | no                    | [#12](https://github.com/adamgwozdz00/SplitDom/issues/12) · Needs S-04 |
 | S-08       | confirm-debt-paid           | Let the creditor confirm a debt as paid                      | no                    | [#13](https://github.com/adamgwozdz00/SplitDom/issues/13) · Needs S-04 |
 | S-09       | host-closes-period          | Let the host close a finished period and open the next one   | no                    | [#14](https://github.com/adamgwozdz00/SplitDom/issues/14) · Needs S-05 and S-08 |
+| S-10       | member-profile-display-name | Let a member set a display name shown instead of their email | no                    | [#27](https://github.com/adamgwozdz00/SplitDom/issues/27) · Needs S-04 |
 
 ## Open Roadmap Questions
 
