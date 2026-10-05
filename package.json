@@ -10,7 +10,7 @@
     "lint": "eslint .",
     "lint:fix": "eslint . --fix",
     "format": "prettier --write .",
-    "smoke": "node scripts/smoke.mjs",
+    "smoke": "node --env-file=.env scripts/smoke.mjs",
     "test": "vitest run --project unit --passWithNoTests",
     "db:new": "supabase migration new",
     "db:reset": "supabase db reset",

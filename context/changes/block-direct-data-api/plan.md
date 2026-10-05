@@ -379,27 +379,27 @@ One extra function call per Data API request: a header read, one `sha256` and a 
 
 #### Automated
 
-- [x] 2.1 No database tests remain
-- [x] 2.2 No leftovers
-- [x] 2.3 Unit tests pass
-- [x] 2.4 Lint passes
-- [x] 2.5 Type check passes
-- [x] 2.6 Build passes
-- [x] 2.7 Types are current against a fresh local database
+- [x] 2.1 No database tests remain — e65e371
+- [x] 2.2 No leftovers — e65e371
+- [x] 2.3 Unit tests pass — e65e371
+- [x] 2.4 Lint passes — e65e371
+- [x] 2.5 Type check passes — e65e371
+- [x] 2.6 Build passes — e65e371
+- [x] 2.7 Types are current against a fresh local database — e65e371
 
 #### Manual
 
-- [ ] 2.8 On the PR, the workflow shows only ci and smoke, and smoke runs the types-drift step green
+- [x] 2.8 On the PR, the workflow shows only ci and smoke, and smoke runs the types-drift step green
 
 ### Phase 3: App key, Worker header and the gate in observe mode (closes PR 1)
 
 #### Automated
 
-- [ ] 3.1 Migrations and seed apply from scratch
-- [ ] 3.2 Types are unchanged by the new schemas
-- [ ] 3.3 Lint, unit tests, type check and build pass
-- [ ] 3.4 Smoke passes including the 4 new gate steps
-- [ ] 3.5 The gate is not reachable through the API
+- [x] 3.1 Migrations and seed apply from scratch
+- [x] 3.2 Types are unchanged by the new schemas
+- [x] 3.3 Lint, unit tests, type check and build pass
+- [x] 3.4 Smoke passes including the 4 new gate steps
+- [x] 3.5 The gate is not reachable through the API
 
 #### Manual
 

@@ -40,7 +40,7 @@ npm install
 npx supabase start
 ```
 
-3. Create `.env` (Astro) and `.dev.vars` (Cloudflare runtime) and fill both with the URL and anon key printed by `supabase start`:
+3. Create `.env` (Astro) and `.dev.vars` (Cloudflare runtime) and fill both with the URL and anon key printed by `supabase start`, plus the local app key (seeded by `supabase/seed.sql`; the database refuses Data API calls without it):
 
 ```bash
 cp .env.example .env
@@ -50,6 +50,7 @@ cp .env.example .dev.vars
 ```
 SUPABASE_URL=http://127.0.0.1:54321
 SUPABASE_KEY=<anon key from CLI output>
+SUPABASE_APP_KEY=local-dev-app-key
 ```
 
 4. Run the dev server at http://localhost:4321:
@@ -70,7 +71,7 @@ Optional — Google sign-in locally: copy `supabase/.env.example` to `supabase/.
 - `npm run lint` / `npm run lint:fix` — ESLint
 - `npm run format` — Prettier
 - `npx astro check` — type check
-- `npm run smoke` — end-to-end smoke test of the auth flow against a running server (`BASE_URL`, default `http://localhost:4321`)
+- `npm run smoke` — end-to-end smoke test of the auth, group and invite flows, plus direct Data API calls that check the app-key gate, against a running server (`BASE_URL`, default `http://localhost:4321`) and local Supabase; reads `.env`
 
 A husky pre-commit hook runs lint-staged (eslint --fix / prettier). No unit test runner is configured yet.
 
@@ -116,4 +117,4 @@ GitHub Actions (`.github/workflows/ci.yml`) runs on every push and PR to `main`:
 - **smoke** — starts a local Supabase, checks that `src/db/database.types.ts` matches `npm run db:types` output, serves the production preview on the Cloudflare runtime and runs `npm run smoke`
 - **deploy** — on push to `main` only, after `ci` and `smoke` pass: builds and deploys to Cloudflare Workers with wrangler
 
-Production secrets (`SUPABASE_URL`, `SUPABASE_KEY`, `CLOUDFLARE_API_TOKEN`, `CLOUDFLARE_ACCOUNT_ID`) live in GitHub Actions secrets; `SUPABASE_URL` and `SUPABASE_KEY` are also set as Cloudflare Worker secrets. Details in [`context/deployment/deploy-plan.md`](context/deployment/deploy-plan.md).
+Production secrets (`SUPABASE_URL`, `SUPABASE_KEY`, `CLOUDFLARE_API_TOKEN`, `CLOUDFLARE_ACCOUNT_ID`) live in GitHub Actions secrets; `SUPABASE_URL` and `SUPABASE_KEY` are also set as Cloudflare Worker secrets, next to `SUPABASE_APP_KEY`, which exists only as a Worker secret. Details in [`context/deployment/deploy-plan.md`](context/deployment/deploy-plan.md).
