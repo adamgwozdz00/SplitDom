@@ -1,7 +1,7 @@
 ---
 change_id: block-direct-data-api
 title: Block direct Data API calls that bypass the app (app-secret header checked by db_pre_request)
-status: implementing
+status: implemented
 created: 2026-10-05
 updated: 2026-10-05
 archived_at: null
