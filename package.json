@@ -10,9 +10,8 @@
     "lint": "eslint .",
     "lint:fix": "eslint . --fix",
     "format": "prettier --write .",
-    "smoke": "node scripts/smoke.mjs",
+    "smoke": "node --env-file=.env scripts/smoke.mjs",
     "test": "vitest run --project unit --passWithNoTests",
-    "test:db": "vitest run --project db",
     "db:new": "supabase migration new",
     "db:reset": "supabase db reset",
     "db:types": "supabase gen types typescript --local --schema public > src/db/database.types.ts"
@@ -42,7 +41,6 @@
   "devDependencies": {
     "@eslint/compat": "^2.1.1",
     "@eslint/js": "^10.0.1",
-    "@types/pg": "^8.23.1",
     "eslint": "^10.10.0",
     "eslint-config-prettier": "^10.1.8",
     "eslint-plugin-astro": "^3.1.0",
@@ -52,7 +50,6 @@
     "eslint-plugin-react-hooks": "^7.1.1",
     "husky": "9.1.7",
     "lint-staged": "^16.3.3",
-    "pg": "^8.23.0",
     "prettier": "^3.9.6",
     "prettier-plugin-astro": "^1.0.0",
     "prettier-plugin-tailwindcss": "^0.8.1",
