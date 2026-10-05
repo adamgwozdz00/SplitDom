@@ -704,54 +704,54 @@ The migration is forward-only and additive: one new table, three new functions, 
 
 #### Automated
 
-- [x] 1.1 Unit tests pass: `npm test` — 4cc4030
-- [x] 1.2 Type check passes: `npx astro check` — 4cc4030
-- [x] 1.3 Lint passes: `npm run lint` — 4cc4030
+- [x] 1.1 Unit tests pass: `npm test` — 03c8b29
+- [x] 1.2 Type check passes: `npx astro check` — 03c8b29
+- [x] 1.3 Lint passes: `npm run lint` — 03c8b29
 
 #### Manual
 
-- [x] 1.4 The rules (member-only creation, 7-day expiry, single use) are readable in `invite.aggregate.ts` alone, and `src/lib/invites/` imports nothing from `@/lib/supabase` — 4cc4030
+- [x] 1.4 The rules (member-only creation, 7-day expiry, single use) are readable in `invite.aggregate.ts` alone, and `src/lib/invites/` imports nothing from `@/lib/supabase` — 03c8b29
 
 ### Phase 2: Persistence and isolation
 
 #### Automated
 
-- [x] 2.1 Migration applies on a clean database: `npm run db:reset` — d4dae5e
-- [x] 2.2 Generated types are up to date: `npm run db:types` leaves `git diff --exit-code src/db/database.types.ts` clean — d4dae5e
-- [x] 2.3 Database tests pass, including the RLS guard and the new invite test: `npm run test:db` — d4dae5e
-- [x] 2.4 Unit tests, type check and lint pass: `npm test`, `npx astro check`, `npm run lint` — d4dae5e
+- [x] 2.1 Migration applies on a clean database: `npm run db:reset` — 03c8b29
+- [x] 2.2 Generated types are up to date: `npm run db:types` leaves `git diff --exit-code src/db/database.types.ts` clean — 03c8b29
+- [x] 2.3 Database tests pass, including the RLS guard and the new invite test: `npm run test:db` — 03c8b29
+- [x] 2.4 Unit tests, type check and lint pass: `npm test`, `npx astro check`, `npm run lint` — 03c8b29
 
 #### Manual
 
-- [x] 2.5 The migration encodes no business rules beyond the documented backstops: identity from `auth.uid()`, member-only creation, minimum token length, the `used_at is null` claim, and the expiry check on `now()` — d4dae5e
+- [x] 2.5 The migration encodes no business rules beyond the documented backstops: identity from `auth.uid()`, member-only creation, minimum token length, the `used_at is null` claim, and the expiry check on `now()` — 03c8b29
 
 ### Phase 3: Generate and share on the group page
 
 #### Automated
 
-- [x] 3.1 Unit tests pass (including the cookie helpers): `npm test` — 1307a49
-- [x] 3.2 Type check and lint pass: `npx astro check`, `npm run lint` — 1307a49
-- [x] 3.3 Smoke passes, including the new generate steps: `npm run build && npm run preview` then `npm run smoke` — 1307a49
+- [x] 3.1 Unit tests pass (including the cookie helpers): `npm test` — 03c8b29
+- [x] 3.2 Type check and lint pass: `npx astro check`, `npm run lint` — 03c8b29
+- [x] 3.3 Smoke passes, including the new generate steps: `npm run build && npm run preview` then `npm run smoke` — 03c8b29
 
 #### Manual
 
 - [ ] 3.4 On a phone (iOS Safari or Android Chrome), "Generate invite" shows the link, and Share opens the system share sheet
 - [ ] 3.5 On desktop, Copy puts the exact link on the clipboard (Safari included), and Share is hidden where it is unsupported (Firefox)
-- [x] 3.6 Reloading the group page hides the link — 1307a49
+- [x] 3.6 Reloading the group page hides the link — 03c8b29
 
 ### Phase 4: Invite page, joining, sign-in return, smoke and docs
 
 #### Automated
 
-- [x] 4.1 Unit tests pass: `npm test` — 6351beb
-- [x] 4.2 Database tests pass: `npm run test:db` — 6351beb
-- [x] 4.3 Type check and lint pass: `npx astro check`, `npm run lint` — 6351beb
-- [x] 4.4 Smoke passes, including the full second-user join flow: `npm run build && npm run preview` then `npm run smoke` — 6351beb
+- [x] 4.1 Unit tests pass: `npm test` — 03c8b29
+- [x] 4.2 Database tests pass: `npm run test:db` — 03c8b29
+- [x] 4.3 Type check and lint pass: `npx astro check`, `npm run lint` — 03c8b29
+- [x] 4.4 Smoke passes, including the full second-user join flow: `npm run build && npm run preview` then `npm run smoke` — 03c8b29
 
 #### Manual
 
 - [ ] 4.5 Signed out on a phone: opening an invite link → sign in with Google → lands on the invite page → Join → the group page shows the group, and it appears on the dashboard
-- [x] 4.6 Signed out on desktop: opening an invite link → sign up with email → confirm the email in the same browser → lands on the invite page → Join works — 6351beb
-- [x] 4.7 Opening a used link and an expired link (`created_at` and `expires_at` both moved into the past with SQL on local Supabase) shows the same "no longer valid" message — 6351beb
-- [x] 4.8 The group's existing member opens a fresh invite and sees "You're already a member"; Join opens the group, and the link is used up afterwards — 6351beb
+- [x] 4.6 Signed out on desktop: opening an invite link → sign up with email → confirm the email in the same browser → lands on the invite page → Join works — 03c8b29
+- [x] 4.7 Opening a used link and an expired link (`created_at` and `expires_at` both moved into the past with SQL on local Supabase) shows the same "no longer valid" message — 03c8b29
+- [x] 4.8 The group's existing member opens a fresh invite and sees "You're already a member"; Join opens the group, and the link is used up afterwards — 03c8b29
 - [ ] 4.9 Pasting an invite link into WhatsApp or Slack, then letting the preview load, does not use up the invite
