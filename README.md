@@ -113,7 +113,7 @@ Known limitation: confirming the sign-up email in a different browser or device 
 GitHub Actions (`.github/workflows/ci.yml`) runs on every push and PR to `main`:
 
 - **ci** — lint, `astro check` and build
-- **smoke** — starts a local Supabase, serves the production preview on the Cloudflare runtime and runs `npm run smoke`
+- **smoke** — starts a local Supabase, checks that `src/db/database.types.ts` matches `npm run db:types` output, serves the production preview on the Cloudflare runtime and runs `npm run smoke`
 - **deploy** — on push to `main` only, after `ci` and `smoke` pass: builds and deploys to Cloudflare Workers with wrangler
 
 Production secrets (`SUPABASE_URL`, `SUPABASE_KEY`, `CLOUDFLARE_API_TOKEN`, `CLOUDFLARE_ACCOUNT_ID`) live in GitHub Actions secrets; `SUPABASE_URL` and `SUPABASE_KEY` are also set as Cloudflare Worker secrets. Details in [`context/deployment/deploy-plan.md`](context/deployment/deploy-plan.md).
