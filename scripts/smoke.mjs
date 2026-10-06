@@ -335,7 +335,7 @@ const steps = [
     () => request("/api/auth/signin", { method: "POST", form: { email, password } }),
     { status: 302, location: "/dashboard" },
   ],
-  ["first user sees the amount owed to them", requestGroupA, { status: 200, check: bodyContains("200,00") }],
+  ["first user sees the amount they owe", requestGroupA, { status: 200, check: bodyContains("You owe", "200,00") }],
   ["first user signs out", () => request("/api/auth/signout", { method: "POST" }), { status: 302, location: "/" }],
   [
     "signed-in user calling an RPC directly without the app key is refused",
