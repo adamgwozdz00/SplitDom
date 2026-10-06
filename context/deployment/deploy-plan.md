@@ -111,8 +111,7 @@ The migration `settlement_groups` adds `groups`, `group_members` and `billing_pe
 
 Known constraints on deleting a user (accepted for now, revisit before any account-deletion or GDPR flow):
 
-- **A host cannot be deleted.** `groups.host_id` references `auth.users` without cascade, because a group's host never changes. Deleting a user who hosts a group (Dashboard or `auth.admin.deleteUser`) fails with a foreign-key error, which GoTrue reports as "Database error deleting user".
-- **A member's membership disappears silently.** `group_members.user_id` cascades, so deleting a non-host member removes them from the group outside the `Group` aggregate. This is harmless while groups hold no expenses. Revisit it in S-04, once expenses and balances reference members.
+- **A host or a member cannot be deleted while they belong to a group.** `groups.host_id` and `group_members.user_id` both reference `auth.users` without cascade (the latter since S-04, because expenses and balances reference members), so a group's membership never disappears silently. Deleting a user who hosts or belongs to a group (Dashboard or `auth.admin.deleteUser`) fails with a foreign-key error, which GoTrue reports as "Database error deleting user". A future account-deletion flow has to remove the user from their groups first, through the `Group` aggregate.
 
 ## Member invites (added 2026-10-05, change `invite-member-by-link`, S-03)
 

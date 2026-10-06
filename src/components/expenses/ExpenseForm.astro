@@ -1,0 +1,102 @@
+---
+import { ExpenseTitle, PurchaseDate } from "@/lib/expenses";
+import type { Group } from "@/lib/groups";
+
+interface Props {
+  group: Group;
+  error: string | null;
+}
+
+const { group, error } = Astro.props;
+const window = PurchaseDate.window(group.openPeriod.month, new Date());
+const field =
+  "w-full rounded-lg border bg-white/10 px-3 py-2 text-white placeholder-white/40 transition-colors focus:ring-2 focus:outline-none";
+const fieldState = error ? "border-red-400/60 focus:ring-red-400" : "border-white/20 focus:ring-purple-400";
+---
+
+<form method="POST" action={`/api/groups/${encodeURIComponent(group.id)}/expenses`} class="space-y-3" data-add-expense>
+  <div>
+    <label for="expense-title" class="mb-1 block text-sm text-blue-100/80">
+      Title
+    </label>
+    <input
+      id="expense-title"
+      name="title"
+      type="text"
+      required
+      maxlength={ExpenseTitle.MAX_LENGTH}
+      autocomplete="off"
+      placeholder="e.g. Rent"
+      aria-invalid={error ? "true" : undefined}
+      aria-describedby={error ? "expense-error" : undefined}
+      class:list={[field, fieldState]}
+    />
+  </div>
+  <div>
+    <label for="expense-amount" class="mb-1 block text-sm text-blue-100/80">
+      Amount
+    </label>
+    <div class="relative">
+      <input
+        id="expense-amount"
+        name="amount"
+        type="text"
+        inputmode="decimal"
+        required
+        autocomplete="off"
+        placeholder="0,00"
+        aria-invalid={error ? "true" : undefined}
+        aria-describedby={error ? "expense-error" : undefined}
+        class:list={[field, fieldState, "pr-10"]}
+      />
+      <span class="pointer-events-none absolute inset-y-0 right-3 flex items-center text-white/60">zł</span>
+    </div>
+  </div>
+  <div>
+    <label for="expense-date" class="mb-1 block text-sm text-blue-100/80">
+      Purchase date
+    </label>
+    <input
+      id="expense-date"
+      name="purchasedOn"
+      type="date"
+      required
+      min={window.min}
+      max={window.max}
+      value={window.default}
+      aria-invalid={error ? "true" : undefined}
+      aria-describedby={error ? "expense-error" : undefined}
+      class:list={[field, fieldState]}
+    />
+  </div>
+  {error && (
+    <p
+      id="expense-error"
+      role="alert"
+      class="rounded-lg border border-red-500/30 bg-red-900/30 px-3 py-2 text-sm text-red-300"
+    >
+      {error}
+    </p>
+  )}
+  <button
+    type="submit"
+    class="w-full rounded-lg bg-purple-600 px-4 py-2 font-medium text-white transition-colors hover:bg-purple-500 disabled:opacity-60"
+  >
+    Add expense
+  </button>
+</form>
+
+<script>
+  // Progressive enhancement: a double tap on a phone must not store a duplicate expense.
+  // Without JavaScript the form still submits normally.
+  for (const form of document.querySelectorAll<HTMLFormElement>("form[data-add-expense]")) {
+    const button = form.querySelector<HTMLButtonElement>("button[type=submit]");
+    form.addEventListener("submit", () => {
+      if (button) button.disabled = true;
+    });
+    // Coming back through the browser's back/forward cache would otherwise leave the button disabled.
+    window.addEventListener("pageshow", () => {
+      if (button) button.disabled = false;
+    });
+  }
+</script>
