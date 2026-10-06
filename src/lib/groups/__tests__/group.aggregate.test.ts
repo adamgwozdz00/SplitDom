@@ -20,7 +20,7 @@ describe("Group", () => {
 
     it("makes the host the only member, joined now", () => {
       expect(group.hostId).toBe(HOST);
-      expect(group.members).toEqual([{ userId: HOST, joinedAt: now }]);
+      expect(group.members).toEqual([{ userId: HOST, joinedAt: now, email: null }]);
       expect(group.createdAt).toEqual(now);
     });
 
@@ -40,6 +40,33 @@ describe("Group", () => {
     expect(group.isMember(OTHER)).toBe(false);
   });
 
+  describe("memberLabel", () => {
+    const group = Group.restore({
+      ...aGroup({ hostId: HOST }).toSnapshot(),
+      members: [
+        { userId: HOST, joinedAt: "2026-10-15T12:00:00.000Z", email: "host@example.com" },
+        { userId: OTHER, joinedAt: "2026-10-16T12:00:00.000Z", email: "other@example.com" },
+        { userId: "no-email", joinedAt: "2026-10-17T12:00:00.000Z", email: null },
+      ],
+    });
+
+    it("labels the viewer as You, even when their email is known", () => {
+      expect(group.memberLabel(HOST, HOST)).toBe("You");
+    });
+
+    it("labels another member by email", () => {
+      expect(group.memberLabel(OTHER, HOST)).toBe("other@example.com");
+    });
+
+    it("labels a member without a known email as Member", () => {
+      expect(group.memberLabel("no-email", HOST)).toBe("Member");
+    });
+
+    it("labels an unknown user as Member", () => {
+      expect(group.memberLabel("stranger", HOST)).toBe("Member");
+    });
+  });
+
   it("round-trips through a snapshot", () => {
     const group = aGroup({ hostId: HOST, name: "Wakacje 2026" });
 
@@ -51,7 +78,7 @@ describe("Group", () => {
       name: "Wakacje 2026",
       hostId: HOST,
       createdAt: "2026-10-15T12:00:00.000Z",
-      members: [{ userId: HOST, joinedAt: "2026-10-15T12:00:00.000Z" }],
+      members: [{ userId: HOST, joinedAt: "2026-10-15T12:00:00.000Z", email: null }],
       openPeriod: {
         id: "22222222-2222-4222-8222-222222222222",
         month: "2026-10-01",
@@ -64,7 +91,7 @@ describe("Group", () => {
 
   it("restores a group with other members", () => {
     const snapshot = aGroup({ hostId: HOST }).toSnapshot();
-    snapshot.members.push({ userId: OTHER, joinedAt: "2026-10-20T08:00:00.000Z" });
+    snapshot.members.push({ userId: OTHER, joinedAt: "2026-10-20T08:00:00.000Z", email: "other@example.com" });
 
     const restored = Group.restore(snapshot);
 
@@ -75,7 +102,7 @@ describe("Group", () => {
   describe("restore rejects corrupt data", () => {
     it("throws when the host is not a member", () => {
       const snapshot = aGroup({ hostId: HOST }).toSnapshot();
-      snapshot.members = [{ userId: OTHER, joinedAt: snapshot.createdAt }];
+      snapshot.members = [{ userId: OTHER, joinedAt: snapshot.createdAt, email: null }];
 
       expect(() => Group.restore(snapshot)).toThrow(/host is not a member/);
     });

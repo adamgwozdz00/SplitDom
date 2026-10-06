@@ -41,7 +41,8 @@ export class Group {
       name: input.name,
       hostId: input.hostId,
       createdAt: input.now,
-      members: [{ userId: input.hostId, joinedAt: input.now }],
+      // The email is not persisted by create_group; it is loaded with the group.
+      members: [{ userId: input.hostId, joinedAt: input.now, email: null }],
       openPeriod: { id: input.periodId, month: BillingMonth.of(input.now), openedAt: input.now },
     });
   }
@@ -61,6 +62,7 @@ export class Group {
       members: snapshot.members.map((member) => ({
         userId: member.userId,
         joinedAt: parseInstant(member.joinedAt),
+        email: member.email,
       })),
       openPeriod: {
         id: snapshot.openPeriod.id,
@@ -78,13 +80,25 @@ export class Group {
     return this.members.some((member) => member.userId === userId);
   }
 
+  /** How a member is shown to `viewerId`: "You", their email, or "Member" when the email is unknown. */
+  memberLabel(userId: string, viewerId: string): string {
+    if (userId === viewerId) {
+      return "You";
+    }
+    return this.members.find((member) => member.userId === userId)?.email ?? "Member";
+  }
+
   toSnapshot(): GroupSnapshot {
     return {
       id: this.id,
       name: this.name.value,
       hostId: this.hostId,
       createdAt: this.createdAt.toISOString(),
-      members: this.members.map((member) => ({ userId: member.userId, joinedAt: member.joinedAt.toISOString() })),
+      members: this.members.map((member) => ({
+        userId: member.userId,
+        joinedAt: member.joinedAt.toISOString(),
+        email: member.email,
+      })),
       openPeriod: {
         id: this.openPeriod.id,
         month: this.openPeriod.month.toDate(),
