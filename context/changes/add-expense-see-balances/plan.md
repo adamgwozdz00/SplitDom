@@ -550,15 +550,15 @@ The migration is forward-only and additive for the deployed Worker:
 
 #### Automated
 
-- [x] 3.1 Unit tests pass: `npm test`
-- [x] 3.2 Type check passes: `npx astro check`
-- [x] 3.3 Lint passes: `npm run lint`
-- [x] 3.4 Production build succeeds: `npm run build`
-- [x] 3.5 Smoke test passes with the new expense steps: `npm run smoke`
+- [x] 3.1 Unit tests pass: `npm test` — d7f63e6
+- [x] 3.2 Type check passes: `npx astro check` — d7f63e6
+- [x] 3.3 Lint passes: `npm run lint` — d7f63e6
+- [x] 3.4 Production build succeeds: `npm run build` — d7f63e6
+- [x] 3.5 Smoke test passes with the new expense steps: `npm run smoke` — d7f63e6
 
 #### Manual
 
-- [x] 3.6 In two browsers (two users in one group), adding "Czynsz" 400,00 zł shows +200,00 zł / −200,00 zł and "… owes … 200,00 zł" to both users immediately after the redirect
-- [x] 3.7 Adding 100,00 zł in a three-member group shows the payer's share absorbing the extra grosz (debtors owe 33,33 zł each)
-- [x] 3.8 The form shows a readable error for an empty title, `0`, `1000000,01` and a date outside the window; the date picker offers only days in the window
-- [x] 3.9 The group page is usable at phone width (375 px), and a double tap on "Add expense" stores one expense
+- [x] 3.6 In two browsers (two users in one group), adding "Czynsz" 400,00 zł shows +200,00 zł / −200,00 zł and "… owes … 200,00 zł" to both users immediately after the redirect — d7f63e6
+- [x] 3.7 Adding 100,00 zł in a three-member group shows the payer's share absorbing the extra grosz (debtors owe 33,33 zł each) — d7f63e6
+- [x] 3.8 The form shows a readable error for an empty title, `0`, `1000000,01` and a date outside the window; the date picker offers only days in the window — d7f63e6
+- [x] 3.9 The group page is usable at phone width (375 px), and a double tap on "Add expense" stores one expense — d7f63e6
