@@ -13,6 +13,8 @@ export type Result<T> = { data: T } | GroupError;
 export interface GroupMember {
   readonly userId: string;
   readonly joinedAt: Date;
+  /** Null when the email is not known to the aggregate (a freshly created group). */
+  readonly email: string | null;
 }
 
 export interface OpenPeriod {
@@ -27,7 +29,7 @@ export interface GroupSnapshot {
   name: string;
   hostId: string;
   createdAt: string;
-  members: { userId: string; joinedAt: string }[];
+  members: { userId: string; joinedAt: string; email: string | null }[];
   /** `month` is the first day of the billing month, `YYYY-MM-01`. */
   openPeriod: { id: string; month: string; openedAt: string };
 }

@@ -45,7 +45,7 @@ People who share household costs — partners or roommates — settle shared exp
 | S-01 | external-identity-sign-in     | user can sign in with an external identity provider                                 | —             | FR-001                     | done |
 | S-02 | create-settlement-group       | user can create a settlement group, becomes its host, and it has an open period     | F-01          | FR-002                     | done |
 | S-03 | invite-member-by-link         | user can invite someone with a link/code, and that person joins the group           | S-02          | FR-003                     | done        |
-| S-04 | add-expense-see-balances      | member can add an expense split equally and immediately see every member's balance  | S-03          | US-01, FR-004, FR-005      | blocked  |
+| S-04 | add-expense-see-balances      | member can add an expense split equally and immediately see every member's balance  | S-03          | US-01, FR-004, FR-005      | in-progress |
 | S-05 | edit-own-expense-rules        | expense author can edit or delete their own expense only while it is still editable | S-04          | FR-005                     | proposed |
 | S-06 | generate-transfer-details     | debtor can copy transfer details (account number, amount, title) for a debt         | S-04          | FR-007                     | proposed |
 | S-07 | mark-transfer-sent            | debtor can mark a transfer as sent, as a reminder for themselves                    | S-04          | FR-008                     | proposed |
@@ -142,10 +142,10 @@ Foundations below assume these are present and do NOT re-scaffold them.
 - **Parallel with:** S-01
 - **Blockers:** —
 - **Unknowns:**
-  - How are debts recorded: one debt per expense share, or netted into one debt per pair of members per period? This decides what S-06, S-08, S-05 and S-09 act on. — Owner: user. Block: yes.
-  - How are amounts that don't split evenly rounded (e.g. 100 zł / 3) while keeping "sum of expenses = sum of shares"? — Owner: user. Block: no.
+  - ~~How are debts recorded: one debt per expense share, or netted into one debt per pair of members per period? This decides what S-06, S-08, S-05 and S-09 act on.~~ Resolved 2026-10-05 (S-04 planning): a netted debt per pair of members per period, derived from shares stored per expense (`context/changes/add-expense-see-balances/plan.md`).
+  - ~~How are amounts that don't split evenly rounded (e.g. 100 zł / 3) while keeping "sum of expenses = sum of shares"?~~ Resolved 2026-10-05 (S-04 planning): integer grosze; debtors pay floor(amount / n), the payer's share absorbs the remainder (`context/changes/add-expense-see-balances/plan.md`).
 - **Risk:** This is the north star and carries the balance-correctness guardrail; a wrong debt model here forces rework in every settlement slice, which is why the debt-granularity question blocks planning.
-- **Status:** blocked
+- **Status:** in-progress
 
 ### S-05: Edit and delete rules for own expenses
 
@@ -156,7 +156,7 @@ Foundations below assume these are present and do NOT re-scaffold them.
 - **Parallel with:** S-01, S-06, S-07, S-08, S-10
 - **Blockers:** —
 - **Unknowns:** —
-- **Risk:** Kept separate from S-04 so the north star stays small; it must land before S-09 because closing a period relies on the "no edits after lock" rule.
+- **Risk:** Kept separate from S-04 so the north star stays small; it must land before S-09 because closing a period relies on the "no edits after lock" rule. Until it lands, a duplicate expense (a POST sent without JavaScript or retried) cannot be removed (see `context/deployment/deploy-plan.md`, "Expenses").
 - **Status:** proposed
 
 ### S-06: Generate transfer details
@@ -206,6 +206,8 @@ Foundations below assume these are present and do NOT re-scaffold them.
 - **Blockers:** —
 - **Unknowns:**
   - ~~Which timezone defines "the calendar month has ended"?~~ Resolved 2026-10-02 (S-02 planning): Europe/Warsaw; timestamps stay in UTC, and `BillingMonth` in `src/lib/groups/` is the single place that maps a moment to its billing month.
+  - How does `add_expense` stay safe against a period closed between loading the group and storing the expense? It does not check that the period is open (S-04 left this to S-09 on purpose); a race-safe guard needs a `closed_at is null` check with `for share` on the period row in `add_expense` and `for update` in the closing function. (S-04 implementation review, 2026-10-06)
+  - Can the new open period's month start after today in Europe/Warsaw? If so, `PurchaseDate.window` gives min > max and rejects every purchase date, so either the next period opens only once its month has started or the window rule changes. (S-04 implementation review, 2026-10-06)
 - **Risk:** The most rule-heavy slice (host-only, month ended, host's debts paid, exactly one new open period); placed last because it consumes the edit-lock and paid-debt rules from S-05 and S-08.
 - **Status:** proposed
 
@@ -246,6 +248,7 @@ Mirrored on GitHub: milestone [M-1](https://github.com/adamgwozdz00/SplitDom/mil
 1. **How are debts recorded — per expense share, or netted per pair of members per period?** — Owner: user. Block: S-04 (and through it S-05, S-06, S-07, S-08, S-09).
 2. **What is the expected request volume (qps) at target scale?** (PRD Open Question 1) — Owner: user. Block: roadmap-wide: no.
 3. **What is the expected data volume?** (PRD Open Question 2) — Owner: user. Block: roadmap-wide: no.
+4. **How is a member's personal data erased once they have expenses?** The privacy page promises deletion on request, but since S-04 a member who paid an expense or holds a share can be neither removed from a group nor deleted (see `context/deployment/deploy-plan.md`, "Known constraints on deleting a user"). Options: pseudonymise the email in `auth.users` and keep the financial rows, or delete a group's data only when its last member leaves. Whatever removes a member must also decide what happens to their expenses: `PeriodBalances` currently ignores an expense whose payer is not a member, and any share held by a non-member (`src/lib/expenses/period-balances.value.ts`). — Owner: user. Block: roadmap-wide: no (needed before the first deletion request).
 
 ## Parked
 

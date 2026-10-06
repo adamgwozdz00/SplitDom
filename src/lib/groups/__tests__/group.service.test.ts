@@ -37,7 +37,7 @@ describe("GroupService.create", () => {
       name: "Mokotów",
       hostId: USER,
       createdAt: "2026-10-02T09:15:30.123Z",
-      members: [{ userId: USER, joinedAt: "2026-10-02T09:15:30.123Z" }],
+      members: [{ userId: USER, joinedAt: "2026-10-02T09:15:30.123Z", email: null }],
       openPeriod: { id: "period-1", month: "2026-10-01", openedAt: "2026-10-02T09:15:30.123Z" },
     });
   });

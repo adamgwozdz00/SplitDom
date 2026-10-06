@@ -104,6 +104,7 @@ function toSnapshot(value: Json): GroupSnapshot {
       return {
         userId: asString(row.user_id, "member.user_id"),
         joinedAt: asInstant(row.joined_at, "member.joined_at"),
+        email: row.email === null ? null : asString(row.email, "member.email"),
       };
     }),
     openPeriod: {
