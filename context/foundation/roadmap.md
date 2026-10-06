@@ -47,6 +47,7 @@ People who share household costs — partners or roommates — settle shared exp
 | S-03 | invite-member-by-link         | user can invite someone with a link/code, and that person joins the group           | S-02          | FR-003                     | done        |
 | S-04 | add-expense-see-balances      | member can add an expense split equally and immediately see every member's balance  | S-03          | US-01, FR-004, FR-005      | in-progress |
 | F-02 | billing-period-aggregate      | (foundation) `BillingPeriod` is the aggregate root that adds expenses and splits them | S-04          | FR-004, FR-005, FR-015     | proposed |
+| F-03 | group-membership-aggregate    | (foundation) `Group` is the membership aggregate; `Invite` is an entity inside it   | S-03          | FR-002, FR-003             | proposed |
 | S-05 | edit-own-expense-rules        | expense author can edit or delete their own expense only while it is still editable | F-02          | FR-005                     | proposed |
 | S-06 | generate-transfer-details     | debtor can copy transfer details (account number, amount, title) for a debt         | S-04          | FR-007                     | proposed |
 | S-07 | mark-transfer-sent            | debtor can mark a transfer as sent, as a reminder for themselves                    | F-02          | FR-008                     | proposed |
@@ -60,7 +61,7 @@ Navigation aid — groups items that share a Prerequisites chain. Canonical orde
 
 | Stream | Theme                   | Chain                                               | Note                                                                                     |
 | ------ | ----------------------- | --------------------------------------------------- | ---------------------------------------------------------------------------------------- |
-| A      | Group and expenses      | `F-01` → `S-02` → `S-03` → `S-04` → `F-02` → `S-05` · `S-10` | The must-have path to the north star; the critical path under the `speed` goal. `S-10` branches off `S-04` and is off the critical path. |
+| A      | Group and expenses      | `F-01` → `S-02` → `S-03` → `S-04` → `F-02` → `S-05` · `S-10` · `F-03` | The must-have path to the north star; the critical path under the `speed` goal. `S-10` branches off `S-04` and `F-03` off `S-03`; both are off the critical path. |
 | B      | Sign-in                 | `S-01`                                              | Standalone; existing email/password sign-in keeps every other slice unblocked meanwhile. |
 | C      | Settlement and closing  | `S-06` · `S-07` · `S-08` → `S-09`                   | `S-06` joins Stream A at `S-04`, `S-07` and `S-08` at `F-02`; they can run in parallel; `S-09` also needs `S-05`. |
 
@@ -107,6 +108,21 @@ Foundations below assume these are present and do NOT re-scaffold them.
   - Concurrent writes: two members adding an expense at once both change the same aggregate, so `billing_periods` needs a version column (optimistic locking) or an equivalent guard. — Owner: user. Block: no.
   - Does the open period move out of the `Group` aggregate into its own `billing_periods` repository? — Owner: user. Block: no.
 - **Risk:** A refactor right after the north star; the risk is regressing balance correctness, so the existing expense and balance tests must keep passing and the new aggregate is driven by tests written first. Sequenced before S-05, S-07 and S-08 so they build on the new boundary instead of being reworked later.
+- **Status:** proposed
+
+### F-03: Group as the membership aggregate
+
+- **Outcome:** (foundation) `Group` becomes the aggregate root of a household's membership: `Group.invite(by, now)` lets only a member create an invite, and `Group.join(token, userId, now)` uses up an active invite and adds the user as a member in one write of one aggregate. `Invite` becomes an entity inside `Group` (only active invites are loaded). Invariants owned by `Group`: the host is a member and never changes, an invite is used at most once, a user is a member at most once, nobody removes members (PRD). The documented exception in CLAUDE.md (`redeem_group_invite` writing `group_members` outside the `Group` repository) disappears: the rule "an active invite grants membership" moves back to TypeScript, and the conditional UPDATE in SQL stays only as a backstop. `memberLabel` moves from the domain to presentation; the open period leaves `Group` with F-02. Behaviour visible to users does not change. Built test-first (TDD).
+- **Change ID:** group-membership-aggregate
+- **PRD refs:** FR-002, FR-003 (no new functionality; moves the membership rules into one consistency boundary)
+- **Unlocks:** — (clean boundary for any later membership rule, e.g. leaving a group or erasing a member's data, Open Roadmap Question 4)
+- **Prerequisites:** S-03
+- **Parallel with:** F-02, S-05, S-06, S-07, S-08, S-10
+- **Blockers:** —
+- **Unknowns:**
+  - Concurrent joins with the same token: a version column on `groups` (optimistic locking, as for `billing_periods` in F-02), or keep the atomic claim in SQL as the guard? — Owner: user. Block: no.
+  - Token lookup: the repository finds the `groupId` by the token hash first, then loads the group; does the invite preview page keep its own read model? — Owner: user. Block: no.
+- **Risk:** Touches the invite flow that already works in production and is covered by the smoke test; kept separate from F-02 so each refactor is reviewed and tested on its own.
 - **Status:** proposed
 
 ## Slices
@@ -187,7 +203,7 @@ Foundations below assume these are present and do NOT re-scaffold them.
 - **Blockers:** —
 - **Unknowns:**
   - Where and when does a member provide their bank account number? — Owner: user. Block: no.
-- **Risk:** Introduces the most sensitive data in the app (account numbers), so it must follow the F-01 isolation model (and stays behind the app-key gate); low logic risk otherwise.
+- **Risk:** Introduces the most sensitive data in the app (account numbers), so it must follow the F-01 isolation model (and stays behind the app-key gate); low logic risk otherwise. Design note (2026-10-06): the account number belongs to the person, not to a group, so it fits a separate per-user aggregate (`MemberProfile`, shared with S-10) that only its owner edits and that validates the account number (NRB/IBAN), rather than the `Group` or `BillingPeriod` aggregates.
 - **Status:** proposed
 
 ### S-07: Mark a transfer as sent
@@ -240,7 +256,7 @@ Foundations below assume these are present and do NOT re-scaffold them.
 - **Unknowns:**
   - Is the display name per user (one name in every group) or per group membership? — Owner: user. Block: no.
   - Should the profile also hold the bank account number that S-06 needs (S-06 unknown "where and when does a member provide their bank account number")? — Owner: user. Block: no.
-- **Risk:** Low logic risk, provided S-04 keeps the member-labelling rule in one place, so this slice changes the label source without touching the balance views. Added 2026-10-05 during S-04 planning.
+- **Risk:** Low logic risk, provided S-04 keeps the member-labelling rule in one place, so this slice changes the label source without touching the balance views. Added 2026-10-05 during S-04 planning. Design note (2026-10-06): the display name belongs to the person across all their groups, so it fits a separate per-user aggregate (`MemberProfile`, shared with S-06) rather than `Group`.
 - **Status:** proposed
 
 ## Backlog Handoff
@@ -255,6 +271,7 @@ Mirrored on GitHub: milestone [M-1](https://github.com/adamgwozdz00/SplitDom/mil
 | S-03       | invite-member-by-link       | Invite a member to the group by link/code                    | yes                   | [#8](https://github.com/adamgwozdz00/SplitDom/issues/8) · Run `/10x-plan invite-member-by-link`; research in `context/changes/invite-member-by-link/research.md` |
 | S-04       | add-expense-see-balances    | Add an expense split equally and show member balances        | no                    | [#9](https://github.com/adamgwozdz00/SplitDom/issues/9) · Needs S-03 and the debt-granularity decision |
 | F-02       | billing-period-aggregate    | Refactor: BillingPeriod as the aggregate root for expenses   | no                    | [#32](https://github.com/adamgwozdz00/SplitDom/issues/32) · Needs S-04; then `/10x-plan billing-period-aggregate` |
+| F-03       | group-membership-aggregate  | Refactor: Group as the membership aggregate (Invite inside)  | yes                   | [#34](https://github.com/adamgwozdz00/SplitDom/issues/34) · Needs S-03 (done); run `/10x-plan group-membership-aggregate` |
 | S-05       | edit-own-expense-rules      | Enforce edit/delete rules for an author's own expenses       | no                    | [#10](https://github.com/adamgwozdz00/SplitDom/issues/10) · Needs S-04 |
 | S-06       | generate-transfer-details   | Generate copyable transfer details for a debt                | no                    | [#11](https://github.com/adamgwozdz00/SplitDom/issues/11) · Needs S-04 |
 | S-07       | mark-transfer-sent          | Let the debtor mark a transfer as sent                       | no                    | [#12](https://github.com/adamgwozdz00/SplitDom/issues/12) · Needs S-04 |
