@@ -111,7 +111,7 @@ The migration `settlement_groups` adds `groups`, `group_members` and `billing_pe
 
 Known constraints on deleting a user (accepted for now, revisit before any account-deletion or GDPR flow):
 
-- **A host or a member cannot be deleted while they belong to a group.** `groups.host_id` and `group_members.user_id` both reference `auth.users` without cascade (the latter since S-04, because expenses and balances reference members), so a group's membership never disappears silently. Deleting a user who hosts or belongs to a group (Dashboard or `auth.admin.deleteUser`) fails with a foreign-key error, which GoTrue reports as "Database error deleting user". A future account-deletion flow has to remove the user from their groups first, through the `Group` aggregate.
+- **A host or a member cannot be deleted while they belong to a group.** `groups.host_id` and `group_members.user_id` both reference `auth.users` without cascade (the latter since S-04, because expenses and balances reference members), so a group's membership never disappears silently. Deleting a user who hosts or belongs to a group (Dashboard or `auth.admin.deleteUser`) fails with a foreign-key error, which GoTrue reports as "Database error deleting user". Removing them from their groups does not help once they have paid an expense or hold a share: `expenses (group_id, payer_id)` and `expense_shares (group_id, user_id)` reference `group_members` without cascade, so the membership row cannot be removed without deleting other members' financial records. A future account-deletion flow therefore needs an erasure procedure that keeps the shared records (for example, pseudonymising the user's email in `auth.users`); see Open Roadmap Question 4 in `context/foundation/roadmap.md`.
 
 ## Member invites (added 2026-10-05, change `invite-member-by-link`, S-03)
 
@@ -142,6 +142,12 @@ Production steps (human; the key's value never goes into the repo, SQL history o
 **Never run `supabase db push --include-seed` against the hosted project**: `supabase/seed.sql` inserts the hash of the public local key `local-dev-app-key`, which would then open the gate in production. The `deploy` job runs `db push` without it.
 
 **Rotation**: insert the new key's hash (old and new are both valid), `wrangler secret put SUPABASE_APP_KEY` with the new key, confirm the app works, then `delete from private.app_keys where note = '<old note>';`.
+
+## Expenses (added 2026-10-05, change `add-expense-see-balances`, S-04)
+
+The migration `expenses` adds two tables (`expenses`, `expense_shares`; RLS on, no policies, no `anon`/`authenticated` grants) and the `security definer` functions `add_expense` and `list_period_expenses`, redefines `get_my_group` with each member's email, and drops the cascade from `group_members.user_id` (see "Known constraints on deleting a user"). It is compatible with the previously deployed Worker and needs no Supabase or Cloudflare configuration change.
+
+Known limitation (accepted until S-05): a duplicate submit of the add-expense form is blocked only by disabling the button in the browser. A POST sent without JavaScript, retried by the network or sent from a second tab stores a second expense, which cannot be deleted until S-05 adds deletion.
 
 ## Out of scope
 

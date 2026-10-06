@@ -156,7 +156,7 @@ Foundations below assume these are present and do NOT re-scaffold them.
 - **Parallel with:** S-01, S-06, S-07, S-08, S-10
 - **Blockers:** —
 - **Unknowns:** —
-- **Risk:** Kept separate from S-04 so the north star stays small; it must land before S-09 because closing a period relies on the "no edits after lock" rule.
+- **Risk:** Kept separate from S-04 so the north star stays small; it must land before S-09 because closing a period relies on the "no edits after lock" rule. Until it lands, a duplicate expense (a POST sent without JavaScript or retried) cannot be removed (see `context/deployment/deploy-plan.md`, "Expenses").
 - **Status:** proposed
 
 ### S-06: Generate transfer details
@@ -206,6 +206,8 @@ Foundations below assume these are present and do NOT re-scaffold them.
 - **Blockers:** —
 - **Unknowns:**
   - ~~Which timezone defines "the calendar month has ended"?~~ Resolved 2026-10-02 (S-02 planning): Europe/Warsaw; timestamps stay in UTC, and `BillingMonth` in `src/lib/groups/` is the single place that maps a moment to its billing month.
+  - How does `add_expense` stay safe against a period closed between loading the group and storing the expense? It does not check that the period is open (S-04 left this to S-09 on purpose); a race-safe guard needs a `closed_at is null` check with `for share` on the period row in `add_expense` and `for update` in the closing function. (S-04 implementation review, 2026-10-06)
+  - Can the new open period's month start after today in Europe/Warsaw? If so, `PurchaseDate.window` gives min > max and rejects every purchase date, so either the next period opens only once its month has started or the window rule changes. (S-04 implementation review, 2026-10-06)
 - **Risk:** The most rule-heavy slice (host-only, month ended, host's debts paid, exactly one new open period); placed last because it consumes the edit-lock and paid-debt rules from S-05 and S-08.
 - **Status:** proposed
 
@@ -246,6 +248,7 @@ Mirrored on GitHub: milestone [M-1](https://github.com/adamgwozdz00/SplitDom/mil
 1. **How are debts recorded — per expense share, or netted per pair of members per period?** — Owner: user. Block: S-04 (and through it S-05, S-06, S-07, S-08, S-09).
 2. **What is the expected request volume (qps) at target scale?** (PRD Open Question 1) — Owner: user. Block: roadmap-wide: no.
 3. **What is the expected data volume?** (PRD Open Question 2) — Owner: user. Block: roadmap-wide: no.
+4. **How is a member's personal data erased once they have expenses?** The privacy page promises deletion on request, but since S-04 a member who paid an expense or holds a share can be neither removed from a group nor deleted (see `context/deployment/deploy-plan.md`, "Known constraints on deleting a user"). Options: pseudonymise the email in `auth.users` and keep the financial rows, or delete a group's data only when its last member leaves. Whatever removes a member must also decide what happens to their expenses: `PeriodBalances` currently ignores an expense whose payer is not a member, and any share held by a non-member (`src/lib/expenses/period-balances.value.ts`). — Owner: user. Block: roadmap-wide: no (needed before the first deletion request).
 
 ## Parked
 
