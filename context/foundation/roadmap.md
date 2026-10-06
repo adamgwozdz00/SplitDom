@@ -142,8 +142,8 @@ Foundations below assume these are present and do NOT re-scaffold them.
 - **Parallel with:** S-01
 - **Blockers:** —
 - **Unknowns:**
-  - How are debts recorded: one debt per expense share, or netted into one debt per pair of members per period? This decides what S-06, S-08, S-05 and S-09 act on. — Owner: user. Block: yes.
-  - How are amounts that don't split evenly rounded (e.g. 100 zł / 3) while keeping "sum of expenses = sum of shares"? — Owner: user. Block: no.
+  - ~~How are debts recorded: one debt per expense share, or netted into one debt per pair of members per period? This decides what S-06, S-08, S-05 and S-09 act on.~~ Resolved 2026-10-05 (S-04 planning): a netted debt per pair of members per period, derived from shares stored per expense (`context/changes/add-expense-see-balances/plan.md`).
+  - ~~How are amounts that don't split evenly rounded (e.g. 100 zł / 3) while keeping "sum of expenses = sum of shares"?~~ Resolved 2026-10-05 (S-04 planning): integer grosze; debtors pay floor(amount / n), the payer's share absorbs the remainder (`context/changes/add-expense-see-balances/plan.md`).
 - **Risk:** This is the north star and carries the balance-correctness guardrail; a wrong debt model here forces rework in every settlement slice, which is why the debt-granularity question blocks planning.
 - **Status:** in-progress
 

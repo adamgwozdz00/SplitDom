@@ -1,0 +1,48 @@
+---
+import type { PeriodBalances } from "@/lib/expenses";
+import type { Group } from "@/lib/groups";
+
+interface Props {
+  group: Group;
+  balances: PeriodBalances;
+  viewerId: string;
+}
+
+const { group, balances, viewerId } = Astro.props;
+---
+
+<div data-balances>
+  <h3 class="mb-2 text-sm font-semibold text-blue-100/80">Balances</h3>
+  <ul class="space-y-1">
+    {balances.members.map((member) => (
+      <li class="flex items-baseline justify-between gap-3 text-sm">
+        <span class="min-w-0 break-words text-white">{group.memberLabel(member.userId, viewerId)}</span>
+        <span
+          class:list={[
+            "shrink-0 font-semibold",
+            member.balance.isZero()
+              ? "text-blue-100/80"
+              : member.balance.isPositive()
+                ? "text-green-300"
+                : "text-red-300",
+          ]}
+        >
+          {member.balance.signedLabel()}
+        </span>
+      </li>
+    ))}
+  </ul>
+  <h3 class="mt-4 mb-2 text-sm font-semibold text-blue-100/80">Debts</h3>
+  {balances.debts.length === 0 ? (
+    <p class="text-sm text-blue-100/70">All settled</p>
+  ) : (
+    <ul class="space-y-1">
+      {balances.debts.map((debt) => (
+        <li class="text-sm break-words text-white">
+          {group.memberLabel(debt.debtorId, viewerId)} {debt.debtorId === viewerId ? "owe" : "owes"}{" "}
+          {group.memberLabel(debt.creditorId, viewerId)} <span class="font-semibold">{debt.amount.label()}</span>
+        </li>
+      ))}
+    </ul>
+  )}
+</div>

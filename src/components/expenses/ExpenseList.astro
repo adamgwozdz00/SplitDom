@@ -1,0 +1,33 @@
+---
+import type { Expense } from "@/lib/expenses";
+import type { Group } from "@/lib/groups";
+
+interface Props {
+  group: Group;
+  expenses: readonly Expense[];
+  viewerId: string;
+}
+
+const { group, expenses, viewerId } = Astro.props;
+---
+
+<div data-expense-list>
+  <h3 class="mb-2 text-sm font-semibold text-blue-100/80">Expenses</h3>
+  {expenses.length === 0 ? (
+    <p class="text-sm text-blue-100/70">No expenses in {group.openPeriod.month.label()} yet</p>
+  ) : (
+    <ul class="space-y-3">
+      {expenses.map((expense) => (
+        <li class="text-sm">
+          <div class="flex items-baseline justify-between gap-3">
+            <span class="min-w-0 font-medium break-words text-white">{expense.title.value}</span>
+            <span class="shrink-0 font-semibold text-white">{expense.amount.label()}</span>
+          </div>
+          <div class="text-blue-100/70">
+            Paid by {group.memberLabel(expense.payerId, viewerId)} · {expense.purchasedOn.label()}
+          </div>
+        </li>
+      ))}
+    </ul>
+  )}
+</div>

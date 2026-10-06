@@ -153,6 +153,26 @@ async function firstUserCallsDirectly(appKey) {
   });
 }
 
+// Today's calendar day in Warsaw, the household's day (the app validates purchase dates against it).
+const todayInWarsaw = new Intl.DateTimeFormat("en-CA", { timeZone: "Europe/Warsaw" }).format(new Date());
+
+// Steps on a group need its id; without it they fail instead of silently requesting /groups/undefined.
+function postExpense(groupIndex, form) {
+  if (groupIds[groupIndex] === undefined) {
+    return Promise.resolve({
+      status: 0,
+      location: `(group ${groupIndex === 0 ? "A" : "B"} was not created)`,
+      body: "",
+    });
+  }
+  return request(`/api/groups/${groupIds[groupIndex]}/expenses`, { method: "POST", form });
+}
+
+function checkExpenseLocation(groupIndex, suffix = "") {
+  return (actual) =>
+    actual.location === `/groups/${groupIds[groupIndex]}${suffix}` ? true : `location is ${actual.location}`;
+}
+
 function checkGoogleRedirect(actual, cookies) {
   let url;
   try {
@@ -279,12 +299,44 @@ const steps = [
   ],
   ["used invite page returns 404", () => requestInvite("/invite/<token>"), { status: 404 }],
   ["unknown invite returns 404", () => request(`/invite/${randomBytes(32).toString("base64url")}`), { status: 404 }],
+  [
+    "second user adds an expense",
+    () => postExpense(0, { title: "Czynsz", amount: "400,00", purchasedOn: todayInWarsaw }),
+    { status: 302, check: checkExpenseLocation(0) },
+  ],
+  [
+    "group page shows the expense and the debt",
+    requestGroupA,
+    { status: 200, check: bodyContains("Czynsz", "200,00") },
+  ],
+  [
+    "invalid amount is rejected",
+    () => postExpense(0, { title: "Czynsz", amount: "abc", purchasedOn: todayInWarsaw }),
+    { status: 302, check: checkExpenseLocation(0, "?expenseError=invalid_amount") },
+  ],
+  [
+    "non-member cannot add an expense to another group",
+    () => postExpense(1, { title: "Czynsz", amount: "400,00", purchasedOn: todayInWarsaw }),
+    { status: 302, check: checkExpenseLocation(1, "?expenseError=group_not_found") },
+  ],
   ["second user signs out", () => request("/api/auth/signout", { method: "POST" }), { status: 302, location: "/" }],
   [
     "anonymous join redirects to sign-in",
     () => request("/api/invites/redeem", { method: "POST", form: { token: inviteToken ?? "" } }),
     { status: 302, location: "/auth/signin" },
   ],
+  [
+    "anonymous expense redirects to sign-in",
+    () => postExpense(0, { title: "Czynsz", amount: "400,00", purchasedOn: todayInWarsaw }),
+    { status: 302, location: "/auth/signin" },
+  ],
+  [
+    "first user signs in again",
+    () => request("/api/auth/signin", { method: "POST", form: { email, password } }),
+    { status: 302, location: "/dashboard" },
+  ],
+  ["first user sees the amount owed to them", requestGroupA, { status: 200, check: bodyContains("200,00") }],
+  ["first user signs out", () => request("/api/auth/signout", { method: "POST" }), { status: 302, location: "/" }],
   [
     "signed-in user calling an RPC directly without the app key is refused",
     () => firstUserCallsDirectly(),

@@ -1,7 +1,11 @@
 ---
 import Layout from "@/layouts/Layout.astro";
 import GroupCard from "@/components/groups/GroupCard.astro";
+import BalancesPanel from "@/components/expenses/BalancesPanel.astro";
+import ExpenseForm from "@/components/expenses/ExpenseForm.astro";
+import ExpenseList from "@/components/expenses/ExpenseList.astro";
 import InvitePanel from "@/components/invites/InvitePanel.astro";
+import { createExpenseService, EXPENSES_LOAD_FAILED_MESSAGE, expenseErrorMessage } from "@/lib/expenses";
 import { createGroupService, groupErrorMessage, GROUPS_LOAD_FAILED_MESSAGE } from "@/lib/groups";
 import { inviteErrorMessage, takeNewInvite } from "@/lib/invites";
 import { createClient } from "@/lib/supabase";
@@ -33,6 +37,12 @@ if (inviteUrl) {
 }
 const errorParam = Astro.url.searchParams.get("error");
 const inviteError = group && errorParam ? inviteErrorMessage(errorParam) : null;
+const expenseErrorParam = Astro.url.searchParams.get("expenseError");
+const expenseError = group && expenseErrorParam ? expenseErrorMessage(expenseErrorParam) : null;
+
+// A failure to load expenses only replaces the expenses section; the rest of the page still renders.
+const summary = group && supabase ? await createExpenseService(supabase).summarizeOpenPeriod(group) : null;
+const expenses = summary && "data" in summary ? summary.data : null;
 ---
 
 <Layout title={group ? group.name.value : notFound ? groupErrorMessage("group_not_found") : "Group"}>
@@ -41,6 +51,23 @@ const inviteError = group && errorParam ? inviteErrorMessage(errorParam) : null;
       {group ? (
         <>
           <GroupCard group={group} userId={user.id} />
+          <section class="mt-6 border-t border-white/10 pt-6" data-expenses>
+            <h2 class="mb-3 text-lg font-semibold text-white">Expenses</h2>
+            <ExpenseForm group={group} error={expenseError} />
+            {expenses ? (
+              <div class="mt-6 space-y-6">
+                <BalancesPanel group={group} balances={expenses.balances} viewerId={user.id} />
+                <ExpenseList group={group} expenses={expenses.expenses} viewerId={user.id} />
+              </div>
+            ) : (
+              <p
+                role="alert"
+                class="mt-6 rounded-lg border border-red-500/30 bg-red-900/30 px-3 py-2 text-sm text-red-300"
+              >
+                {EXPENSES_LOAD_FAILED_MESSAGE}
+              </p>
+            )}
+          </section>
           <InvitePanel groupId={group.id} inviteUrl={inviteUrl} error={inviteError} />
         </>
       ) : (
