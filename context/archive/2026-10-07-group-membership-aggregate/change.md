@@ -1,10 +1,10 @@
 ---
 change_id: group-membership-aggregate
 title: Group membership aggregate
-status: impl_reviewed
+status: archived
 created: 2026-10-07
 updated: 2026-10-07
-archived_at: null
+archived_at: 2026-10-07T11:55:45Z
 ---
 
 ## Notes
