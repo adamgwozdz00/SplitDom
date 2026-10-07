@@ -38,6 +38,8 @@ describe("GroupService.create", () => {
       hostId: USER,
       createdAt: "2026-10-02T09:15:30.123Z",
       members: [{ userId: USER, joinedAt: "2026-10-02T09:15:30.123Z", email: null }],
+      version: 0,
+      invites: [],
     });
   });
 

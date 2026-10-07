@@ -208,18 +208,21 @@ export type Database = {
           host_id: string
           id: string
           name: string
+          version: number
         }
         Insert: {
           created_at: string
           host_id: string
           id: string
           name: string
+          version?: number
         }
         Update: {
           created_at?: string
           host_id?: string
           id?: string
           name?: string
+          version?: number
         }
         Relationships: []
       }
@@ -277,8 +280,15 @@ export type Database = {
         Args: { p_group_id: string }
         Returns: Json
       }
+      get_group_aggregate: { Args: { p_group_id: string }; Returns: Json }
+      get_group_by_invite_token: {
+        Args: { p_token_hash: string }
+        Returns: Json
+      }
       get_group_invite: { Args: { p_token: string }; Returns: Json }
+      get_invite_preview: { Args: { p_token_hash: string }; Returns: Json }
       get_my_group: { Args: { p_group_id: string }; Returns: Json }
+      list_my_group_aggregates: { Args: never; Returns: Json }
       list_my_groups: { Args: never; Returns: Json }
       list_my_open_billing_months: { Args: never; Returns: Json }
       list_period_expenses: {
@@ -305,6 +315,16 @@ export type Database = {
           p_expenses: Json
           p_group_id: string
           p_period_id: string
+        }
+        Returns: boolean
+      }
+      save_group: {
+        Args: {
+          p_expected_version: number
+          p_group_id: string
+          p_new_invites: Json
+          p_new_members: Json
+          p_used_invites: Json
         }
         Returns: boolean
       }
