@@ -16,6 +16,7 @@ export type Database = {
           id: string
           month: string
           opened_at: string
+          version: number
         }
         Insert: {
           closed_at?: string | null
@@ -23,6 +24,7 @@ export type Database = {
           id: string
           month: string
           opened_at: string
+          version?: number
         }
         Update: {
           closed_at?: string | null
@@ -30,6 +32,7 @@ export type Database = {
           id?: string
           month?: string
           opened_at?: string
+          version?: number
         }
         Relationships: [
           {
@@ -239,6 +242,15 @@ export type Database = {
         }
         Returns: undefined
       }
+      add_group: {
+        Args: {
+          p_group_id: string
+          p_host_id: string
+          p_name: string
+          p_now: string
+        }
+        Returns: undefined
+      }
       create_group: {
         Args: {
           p_group_id: string
@@ -261,16 +273,40 @@ export type Database = {
         }
         Returns: undefined
       }
+      get_current_billing_period: {
+        Args: { p_group_id: string }
+        Returns: Json
+      }
       get_group_invite: { Args: { p_token: string }; Returns: Json }
       get_my_group: { Args: { p_group_id: string }; Returns: Json }
       list_my_groups: { Args: never; Returns: Json }
+      list_my_open_billing_months: { Args: never; Returns: Json }
       list_period_expenses: {
         Args: { p_group_id: string; p_period_id: string }
         Returns: Json
       }
+      open_billing_period: {
+        Args: {
+          p_group_id: string
+          p_month: string
+          p_opened_at: string
+          p_period_id: string
+          p_version: number
+        }
+        Returns: undefined
+      }
       redeem_group_invite: {
         Args: { p_token: string; p_used_at: string }
         Returns: Json
+      }
+      save_billing_period: {
+        Args: {
+          p_expected_version: number
+          p_expenses: Json
+          p_group_id: string
+          p_period_id: string
+        }
+        Returns: boolean
       }
     }
     Enums: {

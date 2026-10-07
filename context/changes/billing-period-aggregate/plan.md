@@ -513,20 +513,20 @@ A follow-up contract change drops `create_group`, `add_expense`, `list_period_ex
 
 #### Automated
 
-- [x] 2.1 Aggregate and policy tests pass: `npx vitest run src/lib/billing-periods/__tests__/billing-period.aggregate.test.ts src/lib/billing-periods/__tests__/split-policy.test.ts`
-- [x] 2.2 Unit tests pass: `npm test`
-- [x] 2.3 Type check passes: `npx astro check`
-- [x] 2.4 Lint passes: `npm run lint`
+- [x] 2.1 Aggregate and policy tests pass: `npx vitest run src/lib/billing-periods/__tests__/billing-period.aggregate.test.ts src/lib/billing-periods/__tests__/split-policy.test.ts` — 1074602
+- [x] 2.2 Unit tests pass: `npm test` — 1074602
+- [x] 2.3 Type check passes: `npx astro check` — 1074602
+- [x] 2.4 Lint passes: `npm run lint` — 1074602
 
 ### Phase 3: Persistence
 
 #### Automated
 
-- [ ] 3.1 Migrations apply and types are current: `npm run db:reset && npm run db:types` leaves `src/db/database.types.ts` unchanged after commit
-- [ ] 3.2 Unit tests pass: `npm test`
-- [ ] 3.3 Type check passes: `npx astro check`
-- [ ] 3.4 Lint passes: `npm run lint`
-- [ ] 3.5 Existing flows unaffected: `npm run smoke` against the local dev server
+- [x] 3.1 Migrations apply and types are current: `npm run db:reset && npm run db:types` leaves `src/db/database.types.ts` unchanged after commit
+- [x] 3.2 Unit tests pass: `npm test`
+- [x] 3.3 Type check passes: `npx astro check`
+- [x] 3.4 Lint passes: `npm run lint`
+- [x] 3.5 Existing flows unaffected: `npm run smoke` against the local dev server
 
 ### Phase 4: BillingPeriodService
 

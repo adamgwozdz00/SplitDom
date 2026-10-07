@@ -1,4 +1,7 @@
+import type { BillingMonth } from "@/lib/billing-periods/billing-month.value";
+import type { BillingPeriod } from "@/lib/billing-periods/billing-period.aggregate";
 import type { Expense } from "@/lib/billing-periods/expense.aggregate";
+import type { Group } from "@/lib/groups";
 
 export type BillingPeriodErrorCode =
   | "invalid_expense_title"
@@ -58,4 +61,16 @@ export interface BillingPeriodSnapshot {
   closedAt: string | null;
   version: number;
   expenses: PeriodExpenseSnapshot[];
+}
+
+/** Loads and persists BillingPeriod aggregates on behalf of the signed-in user. */
+export interface BillingPeriodRepository {
+  /** The group's latest period, restored with the group's member ids as participants; null when it has none. */
+  findCurrentOfGroup(group: Group): Promise<Result<BillingPeriod | null>>;
+  /** Stores a newly opened period; `"conflict"` when the group already got one concurrently. */
+  open(period: BillingPeriod): Promise<Result<"opened" | "conflict">>;
+  /** Stores the expenses added since load if the period's version is unchanged; `"conflict"` otherwise. */
+  save(period: BillingPeriod): Promise<Result<"saved" | "conflict">>;
+  /** The open period's month of every group the signed-in user belongs to. */
+  listOpenMonthsOfCurrentUser(): Promise<Result<{ groupId: string; month: BillingMonth }[]>>;
 }
