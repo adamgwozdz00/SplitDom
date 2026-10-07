@@ -3,6 +3,7 @@ import type { Database, Json } from "@/db";
 import { BillingMonth } from "@/lib/billing-periods/billing-month.value";
 import { BillingPeriod } from "@/lib/billing-periods/billing-period.aggregate";
 import { billingPeriodError } from "@/lib/billing-periods/billing-period-error.messages";
+import { BillingPeriodService } from "@/lib/billing-periods/billing-period.service";
 import type {
   BillingPeriodError,
   BillingPeriodRepository,
@@ -80,6 +81,18 @@ export function createSupabaseBillingPeriodRepository(client: SupabaseClient<Dat
       }
     },
   };
+}
+
+/**
+ * The BillingPeriodService for a request, persisting through the signed-in user's Supabase client. The generators
+ * must stay arrows: workerd throws "Illegal invocation" for an unbound crypto.randomUUID.
+ */
+export function createBillingPeriodService(client: SupabaseClient<Database>): BillingPeriodService {
+  return new BillingPeriodService(
+    createSupabaseBillingPeriodRepository(client),
+    () => crypto.randomUUID(),
+    () => new Date(),
+  );
 }
 
 function fromDbError(error: PostgrestError): BillingPeriodError {

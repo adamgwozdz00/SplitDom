@@ -522,20 +522,20 @@ A follow-up contract change drops `create_group`, `add_expense`, `list_period_ex
 
 #### Automated
 
-- [x] 3.1 Migrations apply and types are current: `npm run db:reset && npm run db:types` leaves `src/db/database.types.ts` unchanged after commit
-- [x] 3.2 Unit tests pass: `npm test`
-- [x] 3.3 Type check passes: `npx astro check`
-- [x] 3.4 Lint passes: `npm run lint`
-- [x] 3.5 Existing flows unaffected: `npm run smoke` against the local dev server
+- [x] 3.1 Migrations apply and types are current: `npm run db:reset && npm run db:types` leaves `src/db/database.types.ts` unchanged after commit — 8114f08
+- [x] 3.2 Unit tests pass: `npm test` — 8114f08
+- [x] 3.3 Type check passes: `npx astro check` — 8114f08
+- [x] 3.4 Lint passes: `npm run lint` — 8114f08
+- [x] 3.5 Existing flows unaffected: `npm run smoke` against the local dev server — 8114f08
 
 ### Phase 4: BillingPeriodService
 
 #### Automated
 
-- [ ] 4.1 Service tests pass: `npx vitest run src/lib/billing-periods/__tests__/billing-period.service.test.ts`
-- [ ] 4.2 Unit tests pass: `npm test`
-- [ ] 4.3 Type check passes: `npx astro check`
-- [ ] 4.4 Lint passes: `npm run lint`
+- [x] 4.1 Service tests pass: `npx vitest run src/lib/billing-periods/__tests__/billing-period.service.test.ts`
+- [x] 4.2 Unit tests pass: `npm test`
+- [x] 4.3 Type check passes: `npx astro check`
+- [x] 4.4 Lint passes: `npm run lint`
 
 ### Phase 5: Switch-over
 

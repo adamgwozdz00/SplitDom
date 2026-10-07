@@ -3,7 +3,11 @@
 export type * from "@/lib/billing-periods/types";
 export { BillingMonth } from "@/lib/billing-periods/billing-month.value";
 export { BillingPeriod } from "@/lib/billing-periods/billing-period.aggregate";
-export { createSupabaseBillingPeriodRepository } from "@/lib/billing-periods/billing-period.repository";
+export {
+  createBillingPeriodService,
+  createSupabaseBillingPeriodRepository,
+} from "@/lib/billing-periods/billing-period.repository";
+export { BillingPeriodService } from "@/lib/billing-periods/billing-period.service";
 export {
   EXPENSES_LOAD_FAILED_MESSAGE,
   billingPeriodErrorMessage,
