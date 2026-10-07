@@ -346,17 +346,17 @@ Expand only: new column with a default and new functions, nothing dropped. The p
 
 #### Automated
 
-- [x] 4.1 No imports of `@/lib/invites` remain
-- [x] 4.2 Unit tests pass
-- [x] 4.3 Type check passes
-- [x] 4.4 Lint passes
-- [x] 4.5 Production build passes
-- [x] 4.6 Types in sync
-- [x] 4.7 Smoke passes against local Supabase
+- [x] 4.1 No imports of `@/lib/invites` remain — 1ac1a40
+- [x] 4.2 Unit tests pass — 1ac1a40
+- [x] 4.3 Type check passes — 1ac1a40
+- [x] 4.4 Lint passes — 1ac1a40
+- [x] 4.5 Production build passes — 1ac1a40
+- [x] 4.6 Types in sync — 1ac1a40
+- [x] 4.7 Smoke passes against local Supabase — 1ac1a40
 
 #### Manual
 
-- [x] 4.8 Invite, sign-in and join flow works for a second user
-- [x] 4.9 A member opening the link sees "already a member" and is not duplicated
-- [x] 4.10 A used or expired link shows "no longer valid" with status 404
-- [x] 4.11 Member labels in balances and the expense list are unchanged
+- [x] 4.8 Invite, sign-in and join flow works for a second user — 1ac1a40
+- [x] 4.9 A member opening the link sees "already a member" and is not duplicated — 1ac1a40
+- [x] 4.10 A used or expired link shows "no longer valid" with status 404 — 1ac1a40
+- [x] 4.11 Member labels in balances and the expense list are unchanged — 1ac1a40
