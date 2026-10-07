@@ -241,6 +241,7 @@ Foundations below assume these are present and do NOT re-scaffold them.
 - **Unknowns:**
   - ~~Which timezone defines "the calendar month has ended"?~~ Resolved 2026-10-02 (S-02 planning): Europe/Warsaw; timestamps stay in UTC, and `BillingMonth` in `src/lib/billing-periods/` is the single place that maps a moment to its billing month.
   - ~~How does `add_expense` stay safe against a period closed between loading the group and storing the expense?~~ Resolved by F-02: `save_billing_period` only stores expenses if the period's `version` is unchanged, so a close that bumped `version` makes the stale add fail, and its retry reloads the closed period, which the aggregate refuses. S-09's close must bump `version`. (S-04 implementation review, 2026-10-06)
+  - S-09 prerequisite (F-02 implementation review, 2026-10-07): the old `add_expense` does not bump `version`, so the contract migration that drops `create_group`, `add_expense`, `list_period_expenses` and `open_period` must land before S-09 ships.
   - Can the new open period's month start after today in Europe/Warsaw? If so, `PurchaseDate.window` gives min > max and rejects every purchase date, so either the next period opens only once its month has started or the window rule changes. (S-04 implementation review, 2026-10-06)
 - **Risk:** The most rule-heavy slice (host-only, month ended, host's debts paid, exactly one new open period); placed last because it consumes the edit-lock and paid-debt rules from S-05 and S-08.
 - **Status:** proposed
