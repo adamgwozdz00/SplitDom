@@ -2,13 +2,10 @@ import { billingPeriodError } from "@/lib/billing-periods/billing-period-error.m
 import { ExpenseTitle } from "@/lib/billing-periods/expense-title.value";
 import { Money } from "@/lib/billing-periods/money.value";
 import { PurchaseDate } from "@/lib/billing-periods/purchase-date.value";
+import { EqualSplitPolicy } from "@/lib/billing-periods/split-policy";
+import type { ExpenseShare } from "@/lib/billing-periods/split-policy";
 import type { ExpenseSnapshot, Result } from "@/lib/billing-periods/types";
 import type { Group } from "@/lib/groups";
-
-export interface ExpenseShare {
-  readonly userId: string;
-  readonly amount: Money;
-}
 
 interface ExpenseState {
   id: string;
@@ -80,9 +77,6 @@ export class Expense {
     if (!group.isMember(payerId)) {
       return billingPeriodError("group_not_found", { groupId: group.id });
     }
-    const count = group.members.length;
-    const each = Math.floor(amount.grosze / count);
-    const remainder = amount.grosze % count;
     return {
       data: new Expense({
         id: input.id,
@@ -93,10 +87,11 @@ export class Expense {
         amount,
         purchasedOn: input.purchasedOn,
         createdAt: input.now,
-        shares: group.members.map((member) => ({
-          userId: member.userId,
-          amount: Money.ofGrosze(member.userId === payerId ? each + remainder : each),
-        })),
+        shares: new EqualSplitPolicy().split({
+          amount,
+          participants: group.members.map((member) => member.userId),
+          payerId,
+        }),
       }),
     };
   }

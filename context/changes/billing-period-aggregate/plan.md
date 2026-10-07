@@ -504,19 +504,19 @@ A follow-up contract change drops `create_group`, `add_expense`, `list_period_ex
 
 #### Automated
 
-- [x] 1.1 No import of the old module remains: `grep -rn "@/lib/expenses" src` prints nothing
-- [x] 1.2 Unit tests pass: `npm test`
-- [x] 1.3 Type check passes: `npx astro check`
-- [x] 1.4 Lint passes: `npm run lint`
+- [x] 1.1 No import of the old module remains: `grep -rn "@/lib/expenses" src` prints nothing — 1e36d76
+- [x] 1.2 Unit tests pass: `npm test` — 1e36d76
+- [x] 1.3 Type check passes: `npx astro check` — 1e36d76
+- [x] 1.4 Lint passes: `npm run lint` — 1e36d76
 
 ### Phase 2: BillingPeriod aggregate
 
 #### Automated
 
-- [ ] 2.1 Aggregate and policy tests pass: `npx vitest run src/lib/billing-periods/__tests__/billing-period.aggregate.test.ts src/lib/billing-periods/__tests__/split-policy.test.ts`
-- [ ] 2.2 Unit tests pass: `npm test`
-- [ ] 2.3 Type check passes: `npx astro check`
-- [ ] 2.4 Lint passes: `npm run lint`
+- [x] 2.1 Aggregate and policy tests pass: `npx vitest run src/lib/billing-periods/__tests__/billing-period.aggregate.test.ts src/lib/billing-periods/__tests__/split-policy.test.ts`
+- [x] 2.2 Unit tests pass: `npm test`
+- [x] 2.3 Type check passes: `npx astro check`
+- [x] 2.4 Lint passes: `npm run lint`
 
 ### Phase 3: Persistence
 
