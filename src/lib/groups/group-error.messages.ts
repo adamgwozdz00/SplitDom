@@ -4,6 +4,8 @@ import type { GroupError, GroupErrorCode } from "@/lib/groups/types";
 const MESSAGES: Record<GroupErrorCode, string> = {
   invalid_group_name: "Group name must be 1–60 characters",
   group_not_found: "Group not found",
+  invite_invalid: "This invite is no longer valid — ask a group member for a new one",
+  group_changed: "The group changed at the same time, try again",
   not_authenticated: "Sign in to continue",
   unexpected: "Something went wrong, try again",
 };

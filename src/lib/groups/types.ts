@@ -1,6 +1,7 @@
 import type { Group } from "@/lib/groups/group.aggregate";
 
-export type GroupErrorCode = "invalid_group_name" | "group_not_found" | "not_authenticated" | "unexpected";
+export type GroupErrorCode =
+  "invalid_group_name" | "group_not_found" | "invite_invalid" | "group_changed" | "not_authenticated" | "unexpected";
 
 // Project-wide error shape, owned here until a second module needs it.
 export interface GroupError {
