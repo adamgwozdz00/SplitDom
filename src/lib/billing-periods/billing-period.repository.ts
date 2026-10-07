@@ -99,6 +99,8 @@ function fromDbError(error: PostgrestError): BillingPeriodError {
   switch (error.code) {
     case "28000":
       return billingPeriodError("not_authenticated");
+    // Also raised by save_billing_period when the payer is not the caller; the aggregate checks the payer first,
+    // so in practice this is a caller who is not a member of the group.
     case "42501":
       return billingPeriodError("group_not_found");
     default:
