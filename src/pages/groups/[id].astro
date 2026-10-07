@@ -10,8 +10,7 @@ import {
   EXPENSES_LOAD_FAILED_MESSAGE,
   billingPeriodErrorMessage,
 } from "@/lib/billing-periods";
-import { createGroupService, groupErrorMessage, GROUPS_LOAD_FAILED_MESSAGE } from "@/lib/groups";
-import { inviteErrorMessage, takeNewInvite } from "@/lib/invites";
+import { createGroupService, groupErrorMessage, GROUPS_LOAD_FAILED_MESSAGE, takeNewInvite } from "@/lib/groups";
 import { createClient } from "@/lib/supabase";
 
 const { user } = Astro.locals;
@@ -40,7 +39,7 @@ if (inviteUrl) {
   Astro.response.headers.set("Cache-Control", "no-store");
 }
 const errorParam = Astro.url.searchParams.get("error");
-const inviteError = group && errorParam ? inviteErrorMessage(errorParam) : null;
+const inviteError = group && errorParam ? groupErrorMessage(errorParam) : null;
 const expenseErrorParam = Astro.url.searchParams.get("expenseError");
 const expenseError = group && expenseErrorParam ? billingPeriodErrorMessage(expenseErrorParam) : null;
 

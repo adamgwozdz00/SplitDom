@@ -334,29 +334,29 @@ Expand only: new column with a default and new functions, nothing dropped. The p
 
 #### Automated
 
-- [x] 3.1 Service tests pass
-- [x] 3.2 Type check passes
-- [x] 3.3 Lint passes
+- [x] 3.1 Service tests pass — 5feb4a1
+- [x] 3.2 Type check passes — 5feb4a1
+- [x] 3.3 Lint passes — 5feb4a1
 
 #### Manual
 
-- [ ] 3.4 Test list reviewed
+- [x] 3.4 Test list reviewed — 5feb4a1
 
 ### Phase 4: Switch-over
 
 #### Automated
 
-- [ ] 4.1 No imports of `@/lib/invites` remain
-- [ ] 4.2 Unit tests pass
-- [ ] 4.3 Type check passes
-- [ ] 4.4 Lint passes
-- [ ] 4.5 Production build passes
-- [ ] 4.6 Types in sync
-- [ ] 4.7 Smoke passes against local Supabase
+- [x] 4.1 No imports of `@/lib/invites` remain
+- [x] 4.2 Unit tests pass
+- [x] 4.3 Type check passes
+- [x] 4.4 Lint passes
+- [x] 4.5 Production build passes
+- [x] 4.6 Types in sync
+- [x] 4.7 Smoke passes against local Supabase
 
 #### Manual
 
-- [ ] 4.8 Invite, sign-in and join flow works for a second user
-- [ ] 4.9 A member opening the link sees "already a member" and is not duplicated
-- [ ] 4.10 A used or expired link shows "no longer valid" with status 404
-- [ ] 4.11 Member labels in balances and the expense list are unchanged
+- [x] 4.8 Invite, sign-in and join flow works for a second user
+- [x] 4.9 A member opening the link sees "already a member" and is not duplicated
+- [x] 4.10 A used or expired link shows "no longer valid" with status 404
+- [x] 4.11 Member labels in balances and the expense list are unchanged

@@ -1,5 +1,5 @@
 import type { APIRoute } from "astro";
-import { createInviteService } from "@/lib/invites";
+import { createGroupService } from "@/lib/groups";
 import { createClient } from "@/lib/supabase";
 
 export const POST: APIRoute = async (context) => {
@@ -20,7 +20,7 @@ export const POST: APIRoute = async (context) => {
     return context.redirect(`${invitePage}?error=unexpected`);
   }
 
-  const result = await createInviteService(supabase).redeem({ token, userId: user.id });
+  const result = await createGroupService(supabase).join({ token, userId: user.id });
   if ("error" in result) {
     return context.redirect(`${invitePage}?error=${result.error.code}`);
   }

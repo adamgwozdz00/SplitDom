@@ -1,6 +1,7 @@
 ---
 import type { PeriodBalances } from "@/lib/billing-periods";
 import type { Group } from "@/lib/groups";
+import { memberLabel } from "@/components/expenses/member-label";
 
 interface Props {
   group: Group;
@@ -16,7 +17,7 @@ const { group, balances, viewerId } = Astro.props;
   <ul class="space-y-1">
     {balances.members.map((member) => (
       <li class="flex items-baseline justify-between gap-3 text-sm">
-        <span class="min-w-0 break-words text-white">{group.memberLabel(member.userId, viewerId)}</span>
+        <span class="min-w-0 break-words text-white">{memberLabel(group.members, member.userId, viewerId)}</span>
         <span
           class:list={[
             "shrink-0 font-semibold",
@@ -39,8 +40,9 @@ const { group, balances, viewerId } = Astro.props;
     <ul class="space-y-1">
       {balances.debts.map((debt) => (
         <li class="text-sm break-words text-white">
-          {group.memberLabel(debt.debtorId, viewerId)} {debt.debtorId === viewerId ? "owe" : "owes"}{" "}
-          {group.memberLabel(debt.creditorId, viewerId)} <span class="font-semibold">{debt.amount.label()}</span>
+          {memberLabel(group.members, debt.debtorId, viewerId)} {debt.debtorId === viewerId ? "owe" : "owes"}{" "}
+          {memberLabel(group.members, debt.creditorId, viewerId)}{" "}
+          <span class="font-semibold">{debt.amount.label()}</span>
         </li>
       ))}
     </ul>

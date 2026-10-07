@@ -88,14 +88,6 @@ export class Group {
     return this.members.some((member) => member.userId === userId);
   }
 
-  /** How a member is shown to `viewerId`: "You", their email, or "Member" when the email is unknown. */
-  memberLabel(userId: string, viewerId: string): string {
-    if (userId === viewerId) {
-      return "You";
-    }
-    return this.members.find((member) => member.userId === userId)?.email ?? "Member";
-  }
-
   /** Only a member may invite; to anyone else the group does not exist. */
   invite(input: { id: string; by: string; tokenHash: InviteTokenHash; now: Date }): Result<Invite> {
     if (!this.isMember(input.by)) {

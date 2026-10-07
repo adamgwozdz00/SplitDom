@@ -7,7 +7,7 @@ import {
   stashNewInvite,
   takeNewInvite,
   takePendingInvitePath,
-} from "@/lib/invites";
+} from "@/lib/groups";
 
 interface SetCall {
   value: string;

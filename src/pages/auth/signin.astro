@@ -2,7 +2,7 @@
 import Layout from "@/layouts/Layout.astro";
 import SignInForm from "@/components/auth/SignInForm";
 import GoogleSignInButton from "@/components/auth/GoogleSignInButton.astro";
-import { hasPendingInvite } from "@/lib/invites";
+import { hasPendingInvite } from "@/lib/groups";
 
 const error = Astro.url.searchParams.get("error");
 const pendingInvite = hasPendingInvite(Astro.cookies);
