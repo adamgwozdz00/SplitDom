@@ -1,33 +1,24 @@
 import { describe, expect, it } from "vitest";
 import { aGroup, groupName } from "@/lib/groups/__tests__/groups.harness";
 import { Group } from "@/lib/groups/group.aggregate";
-import type { GroupSnapshot } from "@/lib/groups/types";
 
 const HOST = "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa";
 const OTHER = "bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb";
 
 describe("Group", () => {
   describe("create", () => {
-    // 23:30 UTC on 31 October is already November in Warsaw.
     const now = new Date("2026-10-31T23:30:00.000Z");
     const group = Group.create({
       id: "11111111-1111-4111-8111-111111111111",
       name: groupName("Mokotów"),
       hostId: HOST,
       now,
-      periodId: "22222222-2222-4222-8222-222222222222",
     });
 
     it("makes the host the only member, joined now", () => {
       expect(group.hostId).toBe(HOST);
       expect(group.members).toEqual([{ userId: HOST, joinedAt: now, email: null }]);
       expect(group.createdAt).toEqual(now);
-    });
-
-    it("opens exactly one period for the Warsaw month of now", () => {
-      expect(group.openPeriod.id).toBe("22222222-2222-4222-8222-222222222222");
-      expect(group.openPeriod.month.toDate()).toBe("2026-11-01");
-      expect(group.openPeriod.openedAt).toEqual(now);
     });
   });
 
@@ -79,11 +70,6 @@ describe("Group", () => {
       hostId: HOST,
       createdAt: "2026-10-15T12:00:00.000Z",
       members: [{ userId: HOST, joinedAt: "2026-10-15T12:00:00.000Z", email: null }],
-      openPeriod: {
-        id: "22222222-2222-4222-8222-222222222222",
-        month: "2026-10-01",
-        openedAt: "2026-10-15T12:00:00.000Z",
-      },
     });
     expect(restored.toSnapshot()).toEqual(snapshot);
     expect(restored.isHost(HOST)).toBe(true);
@@ -105,19 +91,6 @@ describe("Group", () => {
       snapshot.members = [{ userId: OTHER, joinedAt: snapshot.createdAt, email: null }];
 
       expect(() => Group.restore(snapshot)).toThrow(/host is not a member/);
-    });
-
-    it("throws when the open period is missing", () => {
-      const snapshot = { ...aGroup().toSnapshot(), openPeriod: null } as unknown as GroupSnapshot;
-
-      expect(() => Group.restore(snapshot)).toThrow(/no open billing period/);
-    });
-
-    it("throws on a malformed period month", () => {
-      const snapshot = aGroup().toSnapshot();
-      snapshot.openPeriod.month = "2026-10-15";
-
-      expect(() => Group.restore(snapshot)).toThrow();
     });
 
     it("restores a stored name as it is, without applying the creation rule again", () => {

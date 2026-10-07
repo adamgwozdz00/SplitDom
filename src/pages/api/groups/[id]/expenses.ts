@@ -1,5 +1,5 @@
 import type { APIRoute } from "astro";
-import { createExpenseService } from "@/lib/expenses";
+import { createBillingPeriodService } from "@/lib/billing-periods";
 import { createGroupService } from "@/lib/groups";
 import { createClient } from "@/lib/supabase";
 
@@ -31,7 +31,7 @@ export const POST: APIRoute = async (context) => {
     const value = form.get(name);
     return typeof value === "string" ? value : "";
   };
-  const added = await createExpenseService(supabase).add({
+  const added = await createBillingPeriodService(supabase).addExpense({
     group: group.data,
     payerId: user.id,
     title: field("title"),

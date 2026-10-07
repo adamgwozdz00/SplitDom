@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { Money } from "@/lib/expenses/money.value";
+import { Money } from "@/lib/billing-periods/money.value";
 
 // Intl uses non-breaking spaces; compare on a normalised form.
 const plain = (text: string) => text.replace(/\s/g, " ");

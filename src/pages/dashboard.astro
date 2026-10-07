@@ -2,6 +2,7 @@
 import Layout from "@/layouts/Layout.astro";
 import CreateGroupForm from "@/components/groups/CreateGroupForm.astro";
 import GroupList from "@/components/groups/GroupList.astro";
+import { createBillingPeriodService } from "@/lib/billing-periods";
 import { createGroupService, groupErrorMessage, GROUPS_LOAD_FAILED_MESSAGE } from "@/lib/groups";
 import { createClient } from "@/lib/supabase";
 
@@ -14,6 +15,9 @@ if (!user) {
 // Any failure to load (no Supabase, `unexpected`, `not_authenticated`) replaces the list, never a 500.
 const supabase = createClient(Astro.request.headers, Astro.cookies);
 const groups = supabase ? await createGroupService(supabase).listForMember(user.id) : null;
+// The month labels are optional: when they cannot be loaded, the list shows groups without the label line.
+const openMonths = supabase ? await createBillingPeriodService(supabase).openMonthsOf() : null;
+const months = openMonths && "data" in openMonths ? openMonths.data : new Map();
 
 // Only the mapped message is rendered, never the raw query value.
 const errorCode = Astro.url.searchParams.get("error");
@@ -35,7 +39,7 @@ const formError = errorCode ? groupErrorMessage(errorCode) : null;
           Your groups
         </h2>
         {groups && "data" in groups ? (
-          <GroupList groups={groups.data} userId={user.id} />
+          <GroupList groups={groups.data} months={months} userId={user.id} />
         ) : (
           <p role="alert" class="rounded-lg border border-red-500/30 bg-red-900/30 px-3 py-2 text-sm text-red-300">
             {GROUPS_LOAD_FAILED_MESSAGE}

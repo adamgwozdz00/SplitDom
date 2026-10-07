@@ -18,7 +18,7 @@ export class GroupService {
   ) {}
 
   /** Creates a settlement group hosted by `hostId`. A user may create any number of groups. */
-  async create(input: { name: string; hostId: string }): Promise<Result<{ groupId: string }>> {
+  async create(input: { name: string; hostId: string }): Promise<Result<Group>> {
     const name = GroupName.create(input.name);
     if ("error" in name) {
       return name;
@@ -29,14 +29,13 @@ export class GroupService {
       name: name.data,
       hostId: input.hostId,
       now: this.clock(),
-      periodId: this.newId(),
     });
 
     const saved = await this.repository.create(group);
     if ("error" in saved) {
       return saved;
     }
-    return { data: { groupId: group.id } };
+    return { data: group };
   }
 
   /** The groups `userId` belongs to, newest first. */
