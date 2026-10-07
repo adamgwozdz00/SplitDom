@@ -8,7 +8,7 @@ import type {
   BillingPeriodError,
   BillingPeriodRepository,
   BillingPeriodSnapshot,
-  PeriodExpenseSnapshot,
+  ExpenseSnapshot,
   Result,
 } from "@/lib/billing-periods/types";
 import type { Group } from "@/lib/groups";
@@ -122,7 +122,7 @@ function restore(value: Json, group: Group): Result<BillingPeriod> {
 }
 
 /** Maps an expense to the snake_case shape `save_billing_period` stores. */
-function toRow(expense: PeriodExpenseSnapshot): Json {
+function toRow(expense: ExpenseSnapshot): Json {
   return {
     id: expense.id,
     payer_id: expense.payerId,
@@ -152,7 +152,7 @@ function toSnapshot(value: Json): BillingPeriodSnapshot {
   };
 }
 
-function toExpenseSnapshot(value: Json): PeriodExpenseSnapshot {
+function toExpenseSnapshot(value: Json): ExpenseSnapshot {
   const row = asObject(value, "expense");
   const shares = row.shares;
   if (!Array.isArray(shares)) {

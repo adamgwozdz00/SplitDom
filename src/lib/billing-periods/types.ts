@@ -1,6 +1,5 @@
 import type { BillingMonth } from "@/lib/billing-periods/billing-month.value";
 import type { BillingPeriod } from "@/lib/billing-periods/billing-period.aggregate";
-import type { Expense } from "@/lib/billing-periods/expense.aggregate";
 import type { Group } from "@/lib/groups";
 
 export type BillingPeriodErrorCode =
@@ -20,30 +19,11 @@ export interface BillingPeriodError {
 
 export type Result<T> = { data: T } | BillingPeriodError;
 
-/** Persistence shape of the Expense aggregate. Amounts are integer grosze, `purchasedOn` is `YYYY-MM-DD`, `createdAt` a UTC ISO string. */
-export interface ExpenseSnapshot {
-  id: string;
-  groupId: string;
-  periodId: string;
-  payerId: string;
-  title: string;
-  amount: number;
-  purchasedOn: string;
-  createdAt: string;
-  shares: { userId: string; amount: number }[];
-}
-
-/** Persists and loads Expense aggregates on behalf of the signed-in user. */
-export interface ExpenseRepository {
-  add(expense: Expense): Promise<Result<void>>;
-  listForPeriod(groupId: string, periodId: string): Promise<Result<Expense[]>>;
-}
-
 /**
  * Persistence shape of an expense inside a BillingPeriod. Amounts are integer grosze, `purchasedOn` is
- * `YYYY-MM-DD`, `createdAt` a UTC ISO string. Becomes `ExpenseSnapshot` once the old Expense aggregate is gone.
+ * `YYYY-MM-DD`, `createdAt` a UTC ISO string.
  */
-export interface PeriodExpenseSnapshot {
+export interface ExpenseSnapshot {
   id: string;
   payerId: string;
   title: string;
@@ -61,7 +41,7 @@ export interface BillingPeriodSnapshot {
   openedAt: string;
   closedAt: string | null;
   version: number;
-  expenses: PeriodExpenseSnapshot[];
+  expenses: ExpenseSnapshot[];
 }
 
 /** Loads and persists BillingPeriod aggregates on behalf of the signed-in user. */

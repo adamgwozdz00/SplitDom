@@ -1,4 +1,3 @@
-import type { BillingMonth } from "@/lib/billing-periods";
 import type { Group } from "@/lib/groups/group.aggregate";
 
 export type GroupErrorCode = "invalid_group_name" | "group_not_found" | "not_authenticated" | "unexpected";
@@ -17,12 +16,6 @@ export interface GroupMember {
   readonly email: string | null;
 }
 
-export interface OpenPeriod {
-  readonly id: string;
-  readonly month: BillingMonth;
-  readonly openedAt: Date;
-}
-
 /** Persistence shape of the Group aggregate. Timestamps are UTC ISO strings with millisecond precision. */
 export interface GroupSnapshot {
   id: string;
@@ -30,8 +23,6 @@ export interface GroupSnapshot {
   hostId: string;
   createdAt: string;
   members: { userId: string; joinedAt: string; email: string | null }[];
-  /** `month` is the first day of the billing month, `YYYY-MM-01`. */
-  openPeriod: { id: string; month: string; openedAt: string };
 }
 
 /** Loads and persists Group aggregates on behalf of the signed-in user. */

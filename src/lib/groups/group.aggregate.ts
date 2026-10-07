@@ -1,6 +1,5 @@
-import { BillingMonth } from "@/lib/billing-periods";
 import { GroupName } from "@/lib/groups/group-name.value";
-import type { GroupMember, GroupSnapshot, OpenPeriod } from "@/lib/groups/types";
+import type { GroupMember, GroupSnapshot } from "@/lib/groups/types";
 
 interface GroupState {
   id: string;
@@ -8,12 +7,11 @@ interface GroupState {
   hostId: string;
   createdAt: Date;
   members: readonly GroupMember[];
-  openPeriod: OpenPeriod;
 }
 
 /**
- * A settlement group: its permanent host, its members and its single open billing period.
- * Invariants: the host is a member, the host never changes, and exactly one period is open.
+ * A settlement group: its permanent host and its members. The billing period lives in its own aggregate.
+ * Invariants: the host is a member, and the host never changes.
  */
 export class Group {
   readonly id: string;
@@ -21,7 +19,6 @@ export class Group {
   readonly hostId: string;
   readonly createdAt: Date;
   readonly members: readonly GroupMember[];
-  readonly openPeriod: OpenPeriod;
 
   private constructor(state: GroupState) {
     if (!state.members.some((member) => member.userId === state.hostId)) {
@@ -32,28 +29,21 @@ export class Group {
     this.hostId = state.hostId;
     this.createdAt = state.createdAt;
     this.members = Object.freeze(state.members.map((member) => Object.freeze({ ...member })));
-    this.openPeriod = Object.freeze({ ...state.openPeriod });
   }
 
-  static create(input: { id: string; name: GroupName; hostId: string; now: Date; periodId: string }): Group {
+  static create(input: { id: string; name: GroupName; hostId: string; now: Date }): Group {
     return new Group({
       id: input.id,
       name: input.name,
       hostId: input.hostId,
       createdAt: input.now,
-      // The email is not persisted by create_group; it is loaded with the group.
+      // The email is not persisted by add_group; it is loaded with the group.
       members: [{ userId: input.hostId, joinedAt: input.now, email: null }],
-      openPeriod: { id: input.periodId, month: BillingMonth.of(input.now), openedAt: input.now },
     });
   }
 
   /** Rebuilds a group from storage; throws when the stored data breaks an invariant. */
   static restore(snapshot: GroupSnapshot): Group {
-    // Snapshots come from storage, so the type alone does not prove the open period exists.
-    // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
-    if (!snapshot.openPeriod) {
-      throw new Error(`Group ${snapshot.id}: no open billing period`);
-    }
     return new Group({
       id: snapshot.id,
       name: GroupName.fromStored(snapshot.name),
@@ -64,11 +54,6 @@ export class Group {
         joinedAt: parseInstant(member.joinedAt),
         email: member.email,
       })),
-      openPeriod: {
-        id: snapshot.openPeriod.id,
-        month: BillingMonth.fromDate(snapshot.openPeriod.month),
-        openedAt: parseInstant(snapshot.openPeriod.openedAt),
-      },
     });
   }
 
@@ -99,11 +84,6 @@ export class Group {
         joinedAt: member.joinedAt.toISOString(),
         email: member.email,
       })),
-      openPeriod: {
-        id: this.openPeriod.id,
-        month: this.openPeriod.month.toDate(),
-        openedAt: this.openPeriod.openedAt.toISOString(),
-      },
     };
   }
 }
