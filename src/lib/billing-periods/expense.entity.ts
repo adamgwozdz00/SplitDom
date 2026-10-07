@@ -1,16 +1,11 @@
-import { billingPeriodError } from "@/lib/billing-periods/billing-period-error.messages";
 import { ExpenseTitle } from "@/lib/billing-periods/expense-title.value";
 import { Money } from "@/lib/billing-periods/money.value";
 import { PurchaseDate } from "@/lib/billing-periods/purchase-date.value";
-import { EqualSplitPolicy } from "@/lib/billing-periods/split-policy";
 import type { ExpenseShare } from "@/lib/billing-periods/split-policy";
-import type { ExpenseSnapshot, Result } from "@/lib/billing-periods/types";
-import type { Group } from "@/lib/groups";
+import type { PeriodExpenseSnapshot } from "@/lib/billing-periods/types";
 
 interface ExpenseState {
   id: string;
-  groupId: string;
-  periodId: string;
   payerId: string;
   title: ExpenseTitle;
   amount: Money;
@@ -20,14 +15,13 @@ interface ExpenseState {
 }
 
 /**
- * One purchase paid by a member of a group during its open billing period, with its stored equal split.
- * Every member at that moment owes `floor(amount / n)`; the payer's share also absorbs the leftover
- * grosze (`amount mod n`). Shares always sum to the amount.
+ * One purchase inside a billing period, with its stored split. It keeps its own id because it will be
+ * edited and deleted (S-05); the period it belongs to owns the group and period ids.
+ * Invariants: at least one share, the payer has a share, one share per user, no negative share,
+ * and the shares sum to the amount.
  */
 export class Expense {
   readonly id: string;
-  readonly groupId: string;
-  readonly periodId: string;
   readonly payerId: string;
   readonly title: ExpenseTitle;
   readonly amount: Money;
@@ -35,7 +29,7 @@ export class Expense {
   readonly createdAt: Date;
   readonly shares: readonly ExpenseShare[];
 
-  private constructor(state: ExpenseState) {
+  constructor(state: ExpenseState) {
     if (state.shares.length === 0) {
       throw new Error(`Expense ${state.id}: no shares`);
     }
@@ -53,8 +47,6 @@ export class Expense {
       throw new Error(`Expense ${state.id}: shares sum to ${total}, not ${state.amount.grosze}`);
     }
     this.id = state.id;
-    this.groupId = state.groupId;
-    this.periodId = state.periodId;
     this.payerId = state.payerId;
     this.title = state.title;
     this.amount = state.amount;
@@ -63,45 +55,10 @@ export class Expense {
     this.shares = Object.freeze(state.shares.map((share) => Object.freeze({ ...share })));
   }
 
-  /** Adds an expense to the group's open period, split equally between its current members. */
-  static add(input: {
-    id: string;
-    group: Group;
-    payerId: string;
-    title: ExpenseTitle;
-    amount: Money;
-    purchasedOn: PurchaseDate;
-    now: Date;
-  }): Result<Expense> {
-    const { group, payerId, amount } = input;
-    if (!group.isMember(payerId)) {
-      return billingPeriodError("group_not_found", { groupId: group.id });
-    }
-    return {
-      data: new Expense({
-        id: input.id,
-        groupId: group.id,
-        periodId: group.openPeriod.id,
-        payerId,
-        title: input.title,
-        amount,
-        purchasedOn: input.purchasedOn,
-        createdAt: input.now,
-        shares: new EqualSplitPolicy().split({
-          amount,
-          participants: group.members.map((member) => member.userId),
-          payerId,
-        }),
-      }),
-    };
-  }
-
   /** Rebuilds an expense from storage; throws when the stored data breaks an invariant. */
-  static restore(snapshot: ExpenseSnapshot): Expense {
+  static restore(snapshot: PeriodExpenseSnapshot): Expense {
     return new Expense({
       id: snapshot.id,
-      groupId: snapshot.groupId,
-      periodId: snapshot.periodId,
       payerId: snapshot.payerId,
       title: ExpenseTitle.fromStored(snapshot.title),
       amount: Money.ofGrosze(snapshot.amount),
@@ -111,11 +68,9 @@ export class Expense {
     });
   }
 
-  toSnapshot(): ExpenseSnapshot {
+  toSnapshot(): PeriodExpenseSnapshot {
     return {
       id: this.id,
-      groupId: this.groupId,
-      periodId: this.periodId,
       payerId: this.payerId,
       title: this.title.value,
       amount: this.amount.grosze,

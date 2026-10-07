@@ -4,6 +4,7 @@ export type BillingPeriodErrorCode =
   | "invalid_expense_title"
   | "invalid_amount"
   | "invalid_purchase_date"
+  | "billing_period_closed"
   | "group_not_found"
   | "not_authenticated"
   | "unexpected";
@@ -32,4 +33,29 @@ export interface ExpenseSnapshot {
 export interface ExpenseRepository {
   add(expense: Expense): Promise<Result<void>>;
   listForPeriod(groupId: string, periodId: string): Promise<Result<Expense[]>>;
+}
+
+/**
+ * Persistence shape of an expense inside a BillingPeriod. Amounts are integer grosze, `purchasedOn` is
+ * `YYYY-MM-DD`, `createdAt` a UTC ISO string. Becomes `ExpenseSnapshot` once the old Expense aggregate is gone.
+ */
+export interface PeriodExpenseSnapshot {
+  id: string;
+  payerId: string;
+  title: string;
+  amount: number;
+  purchasedOn: string;
+  createdAt: string;
+  shares: { userId: string; amount: number }[];
+}
+
+/** Persistence shape of the BillingPeriod aggregate. `month` is `YYYY-MM-01`; timestamps are UTC ISO strings. */
+export interface BillingPeriodSnapshot {
+  id: string;
+  groupId: string;
+  month: string;
+  openedAt: string;
+  closedAt: string | null;
+  version: number;
+  expenses: PeriodExpenseSnapshot[];
 }

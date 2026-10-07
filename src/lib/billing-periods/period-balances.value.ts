@@ -1,10 +1,16 @@
-import type { Expense } from "@/lib/billing-periods/expense.aggregate";
 import { Money } from "@/lib/billing-periods/money.value";
+import type { ExpenseShare } from "@/lib/billing-periods/split-policy";
 
 export interface MemberBalance {
   readonly userId: string;
   /** Paid minus own shares: positive when the member is owed money, negative when they owe. */
   readonly balance: Money;
+}
+
+/** What balances need from an expense: who paid and how it was split. */
+export interface PaidExpense {
+  readonly payerId: string;
+  readonly shares: readonly ExpenseShare[];
 }
 
 export interface PairDebt {
@@ -25,7 +31,7 @@ export class PeriodBalances {
     readonly debts: readonly PairDebt[],
   ) {}
 
-  static of(input: { memberIds: readonly string[]; expenses: readonly Expense[] }): PeriodBalances {
+  static of(input: { memberIds: readonly string[]; expenses: readonly PaidExpense[] }): PeriodBalances {
     const { memberIds, expenses } = input;
     const index = new Map(memberIds.map((id, position) => [id, position]));
     const size = memberIds.length;
