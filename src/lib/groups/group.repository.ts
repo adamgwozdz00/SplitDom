@@ -9,18 +9,16 @@ type JsonObject = Record<string, Json | undefined>;
 
 /**
  * GroupRepository on the signed-in user's Supabase client. It talks to the persistence functions
- * from the `settlement_groups` migration, which scope every read and write to `auth.uid()`.
+ * from the `settlement_groups` and `billing_period_aggregate` migrations, which scope every read and write to `auth.uid()`.
  */
 export function createSupabaseGroupRepository(client: SupabaseClient<Database>): GroupRepository {
   return {
     async create(group) {
       const snapshot = group.toSnapshot();
-      const { error } = await client.rpc("create_group", {
+      const { error } = await client.rpc("add_group", {
         p_group_id: snapshot.id,
         p_name: snapshot.name,
         p_host_id: snapshot.hostId,
-        p_period_id: snapshot.openPeriod.id,
-        p_period_month: snapshot.openPeriod.month,
         p_now: snapshot.createdAt,
       });
       return error ? fromDbError(error) : { data: undefined };
@@ -93,7 +91,6 @@ function toSnapshot(value: Json): GroupSnapshot {
   if (!Array.isArray(members)) {
     throw new TypeError("group.members: expected an array");
   }
-  const period = asObject(group.open_period, "group.open_period");
   return {
     id: asString(group.id, "group.id"),
     name: asString(group.name, "group.name"),
@@ -107,11 +104,6 @@ function toSnapshot(value: Json): GroupSnapshot {
         email: row.email === null ? null : asString(row.email, "member.email"),
       };
     }),
-    openPeriod: {
-      id: asString(period.id, "open_period.id"),
-      month: asString(period.month, "open_period.month"),
-      openedAt: asInstant(period.opened_at, "open_period.opened_at"),
-    },
   };
 }
 

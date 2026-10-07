@@ -92,7 +92,6 @@ export function aGroup(overrides: { id?: string; hostId?: string; now?: Date } =
     name: name.data,
     hostId: overrides.hostId ?? "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa",
     now: overrides.now ?? new Date("2026-10-01T08:00:00.000Z"),
-    periodId: "22222222-2222-4222-8222-222222222222",
   });
 }
 

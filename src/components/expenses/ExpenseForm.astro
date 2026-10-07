@@ -1,14 +1,16 @@
 ---
-import { ExpenseTitle, PurchaseDate } from "@/lib/expenses";
+import { ExpenseTitle } from "@/lib/billing-periods";
+import type { BillingPeriod } from "@/lib/billing-periods";
 import type { Group } from "@/lib/groups";
 
 interface Props {
   group: Group;
+  period: BillingPeriod;
   error: string | null;
 }
 
-const { group, error } = Astro.props;
-const window = PurchaseDate.window(group.openPeriod.month, new Date());
+const { group, period, error } = Astro.props;
+const window = period.purchaseDateWindow(new Date());
 const field =
   "w-full rounded-lg border bg-white/10 px-3 py-2 text-white placeholder-white/40 transition-colors focus:ring-2 focus:outline-none";
 const fieldState = error ? "border-red-400/60 focus:ring-red-400" : "border-white/20 focus:ring-purple-400";

@@ -1,5 +1,5 @@
-import { expenseError } from "@/lib/expenses/expense-error.messages";
-import type { Result } from "@/lib/expenses/types";
+import { billingPeriodError } from "@/lib/billing-periods/billing-period-error.messages";
+import type { Result } from "@/lib/billing-periods/types";
 
 const AMOUNT_INPUT = /^(\d+)(?:[.,](\d{1,2}))?$/;
 
@@ -19,11 +19,11 @@ export class Money {
   static parse(raw: string): Result<Money> {
     const match = AMOUNT_INPUT.exec(raw.trim());
     if (!match) {
-      return expenseError("invalid_amount");
+      return billingPeriodError("invalid_amount");
     }
     const grosze = Number(match[1]) * 100 + Number((match.at(2) ?? "").padEnd(2, "0"));
     if (!Number.isSafeInteger(grosze) || grosze < Money.MIN_EXPENSE_GROSZE || grosze > Money.MAX_EXPENSE_GROSZE) {
-      return expenseError("invalid_amount");
+      return billingPeriodError("invalid_amount");
     }
     return { data: new Money(grosze) };
   }
