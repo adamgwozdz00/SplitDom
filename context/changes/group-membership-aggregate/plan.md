@@ -322,21 +322,21 @@ Expand only: new column with a default and new functions, nothing dropped. The p
 
 #### Automated
 
-- [x] 2.1 Aggregate and entity tests pass
-- [x] 2.2 Type check passes
-- [x] 2.3 Lint passes
+- [x] 2.1 Aggregate and entity tests pass — 734b8a8
+- [x] 2.2 Type check passes — 734b8a8
+- [x] 2.3 Lint passes — 734b8a8
 
 #### Manual
 
-- [x] 2.4 Test list reviewed against the rules
+- [x] 2.4 Test list reviewed against the rules — 734b8a8
 
 ### Phase 3: GroupService (test-first)
 
 #### Automated
 
-- [ ] 3.1 Service tests pass
-- [ ] 3.2 Type check passes
-- [ ] 3.3 Lint passes
+- [x] 3.1 Service tests pass
+- [x] 3.2 Type check passes
+- [x] 3.3 Lint passes
 
 #### Manual
 
