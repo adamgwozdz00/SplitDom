@@ -546,13 +546,13 @@ A follow-up contract change drops `create_group`, `add_expense`, `list_period_ex
 - [x] 5.3 Type check passes: `npx astro check` — 234ad7e
 - [x] 5.4 Lint passes: `npm run lint` — 234ad7e
 - [x] 5.5 Build passes: `npm run build` — 234ad7e
-- [x] 5.6 Types are current: `npm run db:types` leaves `src/db/database.types.ts` unchanged
+- [x] 5.6 Types are current: `npm run db:types` leaves `src/db/database.types.ts` unchanged — 234ad7e
 - [x] 5.7 Smoke passes against the local dev server: `npm run smoke` — 234ad7e
 
 #### Manual
 
-- [x] 5.8 Dashboard shows "Open period: <month>" for every group, as before
-- [x] 5.9 New group: the group page shows the current month, and adding an expense updates balances and the list as before
+- [x] 5.8 Dashboard shows "Open period: <month>" for every group, as before — 234ad7e
+- [x] 5.9 New group: the group page shows the current month, and adding an expense updates balances and the list as before — 234ad7e
 - [x] 5.10 Self-repair: after deleting a fresh group's only period in local SQL, opening the group page shows a new open period for the current month — 234ad7e
 - [x] 5.11 Closed period: after setting `closed_at` on the open period in local SQL, adding an expense shows "This billing period is closed…" and stores nothing — 234ad7e
-- [x] 5.12 F-02 board item and roadmap entries reflect the change
+- [x] 5.12 F-02 board item and roadmap entries reflect the change — 234ad7e
