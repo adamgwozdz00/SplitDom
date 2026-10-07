@@ -1,6 +1,6 @@
-import type { Expense } from "@/lib/expenses/expense.aggregate";
+import type { Expense } from "@/lib/billing-periods/expense.aggregate";
 
-export type ExpenseErrorCode =
+export type BillingPeriodErrorCode =
   | "invalid_expense_title"
   | "invalid_amount"
   | "invalid_purchase_date"
@@ -9,11 +9,11 @@ export type ExpenseErrorCode =
   | "unexpected";
 
 // Project-wide error shape, owned here until a shared module is introduced.
-export interface ExpenseError {
-  error: { code: ExpenseErrorCode; message: string; context: Record<string, unknown> };
+export interface BillingPeriodError {
+  error: { code: BillingPeriodErrorCode; message: string; context: Record<string, unknown> };
 }
 
-export type Result<T> = { data: T } | ExpenseError;
+export type Result<T> = { data: T } | BillingPeriodError;
 
 /** Persistence shape of the Expense aggregate. Amounts are integer grosze, `purchasedOn` is `YYYY-MM-DD`, `createdAt` a UTC ISO string. */
 export interface ExpenseSnapshot {

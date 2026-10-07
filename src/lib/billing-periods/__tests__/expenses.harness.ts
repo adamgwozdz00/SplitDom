@@ -1,8 +1,8 @@
-import { Expense } from "@/lib/expenses/expense.aggregate";
-import { ExpenseTitle } from "@/lib/expenses/expense-title.value";
-import { Money } from "@/lib/expenses/money.value";
-import { PurchaseDate } from "@/lib/expenses/purchase-date.value";
-import type { ExpenseError, ExpenseRepository, Result } from "@/lib/expenses/types";
+import { Expense } from "@/lib/billing-periods/expense.aggregate";
+import { ExpenseTitle } from "@/lib/billing-periods/expense-title.value";
+import { Money } from "@/lib/billing-periods/money.value";
+import { PurchaseDate } from "@/lib/billing-periods/purchase-date.value";
+import type { BillingPeriodError, ExpenseRepository, Result } from "@/lib/billing-periods/types";
 import { Group, GroupName } from "@/lib/groups";
 
 /** In-memory ExpenseRepository for unit tests. It lists the expenses of the requested period, like a repository scoped to "me". */
@@ -10,7 +10,7 @@ export class FakeExpenseRepository implements ExpenseRepository {
   readonly addCalls: Expense[] = [];
   readonly listCalls: { groupId: string; periodId: string }[] = [];
   /** When set, every call fails with this error. */
-  failure: ExpenseError | null = null;
+  failure: BillingPeriodError | null = null;
 
   constructor(private readonly expenses: Expense[] = []) {}
 

@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
-import { aGroup, anExpense, HOST_ID, memberId } from "@/lib/expenses/__tests__/expenses.harness";
-import type { Expense } from "@/lib/expenses/expense.aggregate";
-import { PeriodBalances } from "@/lib/expenses/period-balances.value";
+import { aGroup, anExpense, HOST_ID, memberId } from "@/lib/billing-periods/__tests__/expenses.harness";
+import type { Expense } from "@/lib/billing-periods/expense.aggregate";
+import { PeriodBalances } from "@/lib/billing-periods/period-balances.value";
 
 const A = HOST_ID;
 const B = memberId(1);

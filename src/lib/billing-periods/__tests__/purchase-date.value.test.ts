@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
-import { PurchaseDate } from "@/lib/expenses/purchase-date.value";
-import { BillingMonth } from "@/lib/groups";
+import { PurchaseDate } from "@/lib/billing-periods/purchase-date.value";
+import { BillingMonth } from "@/lib/billing-periods/billing-month.value";
 
 const OCTOBER = BillingMonth.fromDate("2026-10-01");
 const NOVEMBER = BillingMonth.fromDate("2026-11-01");

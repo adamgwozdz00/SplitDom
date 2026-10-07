@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { ExpenseTitle } from "@/lib/expenses/expense-title.value";
+import { ExpenseTitle } from "@/lib/billing-periods/expense-title.value";
 
 describe("ExpenseTitle.create", () => {
   it("trims the title", () => {

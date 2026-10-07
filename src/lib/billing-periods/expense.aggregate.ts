@@ -1,8 +1,8 @@
-import { expenseError } from "@/lib/expenses/expense-error.messages";
-import { ExpenseTitle } from "@/lib/expenses/expense-title.value";
-import { Money } from "@/lib/expenses/money.value";
-import { PurchaseDate } from "@/lib/expenses/purchase-date.value";
-import type { ExpenseSnapshot, Result } from "@/lib/expenses/types";
+import { billingPeriodError } from "@/lib/billing-periods/billing-period-error.messages";
+import { ExpenseTitle } from "@/lib/billing-periods/expense-title.value";
+import { Money } from "@/lib/billing-periods/money.value";
+import { PurchaseDate } from "@/lib/billing-periods/purchase-date.value";
+import type { ExpenseSnapshot, Result } from "@/lib/billing-periods/types";
 import type { Group } from "@/lib/groups";
 
 export interface ExpenseShare {
@@ -78,7 +78,7 @@ export class Expense {
   }): Result<Expense> {
     const { group, payerId, amount } = input;
     if (!group.isMember(payerId)) {
-      return expenseError("group_not_found", { groupId: group.id });
+      return billingPeriodError("group_not_found", { groupId: group.id });
     }
     const count = group.members.length;
     const each = Math.floor(amount.grosze / count);

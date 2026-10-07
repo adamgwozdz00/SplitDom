@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { BillingMonth } from "@/lib/groups/billing-month.value";
+import { BillingMonth } from "@/lib/billing-periods/billing-month.value";
 
 describe("BillingMonth", () => {
   it.each([

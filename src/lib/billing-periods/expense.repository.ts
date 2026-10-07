@@ -1,9 +1,9 @@
 import type { PostgrestError, SupabaseClient } from "@supabase/supabase-js";
 import type { Database, Json } from "@/db";
-import { Expense } from "@/lib/expenses/expense.aggregate";
-import { expenseError } from "@/lib/expenses/expense-error.messages";
-import { ExpenseService } from "@/lib/expenses/expense.service";
-import type { ExpenseError, ExpenseRepository, ExpenseSnapshot, Result } from "@/lib/expenses/types";
+import { Expense } from "@/lib/billing-periods/expense.aggregate";
+import { billingPeriodError } from "@/lib/billing-periods/billing-period-error.messages";
+import { ExpenseService } from "@/lib/billing-periods/expense.service";
+import type { BillingPeriodError, ExpenseRepository, ExpenseSnapshot, Result } from "@/lib/billing-periods/types";
 
 type JsonObject = Record<string, Json | undefined>;
 
@@ -38,7 +38,7 @@ export function createSupabaseExpenseRepository(client: SupabaseClient<Database>
         return fromDbError(error);
       }
       if (data === null) {
-        return expenseError("group_not_found", { groupId });
+        return billingPeriodError("group_not_found", { groupId });
       }
       return restoreAll(data, groupId);
     },
@@ -57,14 +57,14 @@ export function createExpenseService(client: SupabaseClient<Database>): ExpenseS
   );
 }
 
-function fromDbError(error: PostgrestError): ExpenseError {
+function fromDbError(error: PostgrestError): BillingPeriodError {
   switch (error.code) {
     case "28000":
-      return expenseError("not_authenticated");
+      return billingPeriodError("not_authenticated");
     case "42501":
-      return expenseError("group_not_found");
+      return billingPeriodError("group_not_found");
     default:
-      return expenseError("unexpected", { dbCode: error.code });
+      return billingPeriodError("unexpected", { dbCode: error.code });
   }
 }
 
@@ -77,7 +77,7 @@ function restoreAll(value: Json, groupId: string): Result<Expense[]> {
     }
     return { data: value.map((row) => Expense.restore(toSnapshot(row))) };
   } catch {
-    return expenseError("unexpected", { groupId });
+    return billingPeriodError("unexpected", { groupId });
   }
 }
 

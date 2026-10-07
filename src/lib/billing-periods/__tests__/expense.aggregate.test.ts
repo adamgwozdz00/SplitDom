@@ -1,10 +1,10 @@
 import { describe, expect, it } from "vitest";
-import { aGroup, anExpense, HOST_ID, memberId } from "@/lib/expenses/__tests__/expenses.harness";
-import { Expense } from "@/lib/expenses/expense.aggregate";
-import { ExpenseTitle } from "@/lib/expenses/expense-title.value";
-import { Money } from "@/lib/expenses/money.value";
-import { PurchaseDate } from "@/lib/expenses/purchase-date.value";
-import type { ExpenseSnapshot } from "@/lib/expenses/types";
+import { aGroup, anExpense, HOST_ID, memberId } from "@/lib/billing-periods/__tests__/expenses.harness";
+import { Expense } from "@/lib/billing-periods/expense.aggregate";
+import { ExpenseTitle } from "@/lib/billing-periods/expense-title.value";
+import { Money } from "@/lib/billing-periods/money.value";
+import { PurchaseDate } from "@/lib/billing-periods/purchase-date.value";
+import type { ExpenseSnapshot } from "@/lib/billing-periods/types";
 
 function shareOf(expense: Expense, userId: string): number | undefined {
   return expense.shares.find((share) => share.userId === userId)?.amount.grosze;

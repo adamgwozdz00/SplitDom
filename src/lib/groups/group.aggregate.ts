@@ -1,4 +1,4 @@
-import { BillingMonth } from "@/lib/groups/billing-month.value";
+import { BillingMonth } from "@/lib/billing-periods";
 import { GroupName } from "@/lib/groups/group-name.value";
 import type { GroupMember, GroupSnapshot, OpenPeriod } from "@/lib/groups/types";
 
