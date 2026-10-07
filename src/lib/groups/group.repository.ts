@@ -2,6 +2,7 @@ import type { PostgrestError, SupabaseClient } from "@supabase/supabase-js";
 import type { Database, Json } from "@/db";
 import { Group } from "@/lib/groups/group.aggregate";
 import { groupError } from "@/lib/groups/group-error.messages";
+import { InviteToken } from "@/lib/groups/invite-token.value";
 import { GroupService } from "@/lib/groups/group.service";
 import type {
   GroupError,
@@ -124,6 +125,7 @@ export function createGroupService(client: SupabaseClient<Database>): GroupServi
     createSupabaseGroupRepository(client),
     () => crypto.randomUUID(),
     () => new Date(),
+    () => InviteToken.generate(),
   );
 }
 
