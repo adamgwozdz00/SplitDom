@@ -1,6 +1,7 @@
 ---
 import type { BillingMonth, Expense } from "@/lib/billing-periods";
 import type { Group } from "@/lib/groups";
+import { memberLabel } from "@/components/expenses/member-label";
 
 interface Props {
   group: Group;
@@ -25,7 +26,7 @@ const { group, month, expenses, viewerId } = Astro.props;
             <span class="shrink-0 font-semibold text-white">{expense.amount.label()}</span>
           </div>
           <div class="text-blue-100/70">
-            Paid by {group.memberLabel(expense.payerId, viewerId)} · {expense.purchasedOn.label()}
+            Paid by {memberLabel(group.members, expense.payerId, viewerId)} · {expense.purchasedOn.label()}
           </div>
         </li>
       ))}

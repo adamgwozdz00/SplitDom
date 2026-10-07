@@ -1,5 +1,5 @@
 import type { AstroCookies } from "astro";
-import { InviteToken } from "@/lib/invites/invite-token.value";
+import { InviteToken } from "@/lib/groups/invite-token.value";
 
 const NEW_INVITE_COOKIE = "sd_new_invite";
 const NEW_INVITE_MAX_AGE_SECONDS = 300;
