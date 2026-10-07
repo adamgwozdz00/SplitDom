@@ -1,5 +1,5 @@
 import { GroupName } from "@/lib/groups/group-name.value";
-import type { GroupMember, GroupSnapshot } from "@/lib/groups/types";
+import type { GroupInviteSnapshot, GroupMember, GroupSnapshot, UsedInvite } from "@/lib/groups/types";
 
 interface GroupState {
   id: string;
@@ -7,6 +7,7 @@ interface GroupState {
   hostId: string;
   createdAt: Date;
   members: readonly GroupMember[];
+  version: number;
 }
 
 /**
@@ -19,6 +20,8 @@ export class Group {
   readonly hostId: string;
   readonly createdAt: Date;
   readonly members: readonly GroupMember[];
+  /** The version this group was loaded at; 0 for a new group. */
+  readonly version: number;
 
   private constructor(state: GroupState) {
     if (!state.members.some((member) => member.userId === state.hostId)) {
@@ -29,6 +32,7 @@ export class Group {
     this.hostId = state.hostId;
     this.createdAt = state.createdAt;
     this.members = Object.freeze(state.members.map((member) => Object.freeze({ ...member })));
+    this.version = state.version;
   }
 
   static create(input: { id: string; name: GroupName; hostId: string; now: Date }): Group {
@@ -39,6 +43,7 @@ export class Group {
       createdAt: input.now,
       // The email is not persisted by add_group; it is loaded with the group.
       members: [{ userId: input.hostId, joinedAt: input.now, email: null }],
+      version: 0,
     });
   }
 
@@ -54,6 +59,7 @@ export class Group {
         joinedAt: parseInstant(member.joinedAt),
         email: member.email,
       })),
+      version: snapshot.version,
     });
   }
 
@@ -73,6 +79,21 @@ export class Group {
     return this.members.find((member) => member.userId === userId)?.email ?? "Member";
   }
 
+  /** Invites created since the group was loaded. Pending-change tracking arrives with Group.invite. */
+  newInvites(): GroupInviteSnapshot[] {
+    return [];
+  }
+
+  /** Invites used since the group was loaded. */
+  usedInvites(): UsedInvite[] {
+    return [];
+  }
+
+  /** Members added since the group was loaded. */
+  newMembers(): GroupMember[] {
+    return [];
+  }
+
   toSnapshot(): GroupSnapshot {
     return {
       id: this.id,
@@ -84,6 +105,8 @@ export class Group {
         joinedAt: member.joinedAt.toISOString(),
         email: member.email,
       })),
+      version: this.version,
+      invites: [],
     };
   }
 }

@@ -1,6 +1,6 @@
 import { Group } from "@/lib/groups/group.aggregate";
 import { GroupName } from "@/lib/groups/group-name.value";
-import type { GroupError, GroupRepository, Result } from "@/lib/groups/types";
+import type { GroupError, GroupRepository, InvitePreview, Result } from "@/lib/groups/types";
 
 /** In-memory GroupRepository for unit tests. It returns whatever groups it holds, like a repository scoped to "me". */
 export class FakeGroupRepository implements GroupRepository {
@@ -29,6 +29,18 @@ export class FakeGroupRepository implements GroupRepository {
     }
     this.groups.push(group);
     return Promise.resolve({ data: undefined });
+  }
+
+  findByInviteToken(): Promise<Result<Group | null>> {
+    return Promise.resolve(this.failure ?? { data: null });
+  }
+
+  previewInvite(): Promise<Result<InvitePreview | null>> {
+    return Promise.resolve(this.failure ?? { data: null });
+  }
+
+  save(): Promise<Result<"saved" | "conflict">> {
+    return Promise.resolve(this.failure ?? { data: "saved" });
   }
 }
 

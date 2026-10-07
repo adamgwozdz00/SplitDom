@@ -3,7 +3,14 @@ import type { Database, Json } from "@/db";
 import { Group } from "@/lib/groups/group.aggregate";
 import { groupError } from "@/lib/groups/group-error.messages";
 import { GroupService } from "@/lib/groups/group.service";
-import type { GroupError, GroupRepository, GroupSnapshot, Result } from "@/lib/groups/types";
+import type {
+  GroupError,
+  GroupInviteSnapshot,
+  GroupRepository,
+  GroupSnapshot,
+  InvitePreview,
+  Result,
+} from "@/lib/groups/types";
 
 type JsonObject = Record<string, Json | undefined>;
 
@@ -25,7 +32,7 @@ export function createSupabaseGroupRepository(client: SupabaseClient<Database>):
     },
 
     async listGroupsOfCurrentUser() {
-      const { data, error } = await client.rpc("list_my_groups");
+      const { data, error } = await client.rpc("list_my_group_aggregates");
       if (error) {
         return fromDbError(error);
       }
@@ -45,11 +52,65 @@ export function createSupabaseGroupRepository(client: SupabaseClient<Database>):
     },
 
     async findGroupOfCurrentUser(groupId) {
-      const { data, error } = await client.rpc("get_my_group", { p_group_id: groupId });
+      const { data, error } = await client.rpc("get_group_aggregate", { p_group_id: groupId });
       if (error) {
         return fromDbError(error);
       }
       return data === null ? { data: null } : restore(data, groupId);
+    },
+
+    async findByInviteToken(tokenHash) {
+      const { data, error } = await client.rpc("get_group_by_invite_token", { p_token_hash: tokenHash });
+      if (error) {
+        return fromDbError(error);
+      }
+      return data === null ? { data: null } : restore(data, idOf(data));
+    },
+
+    async previewInvite(tokenHash) {
+      const { data, error } = await client.rpc("get_invite_preview", { p_token_hash: tokenHash });
+      if (error) {
+        return fromDbError(error);
+      }
+      if (data === null) {
+        return { data: null };
+      }
+      try {
+        return { data: toInvitePreview(data) };
+      } catch {
+        return groupError("unexpected");
+      }
+    },
+
+    async save(group) {
+      const { data, error } = await client.rpc("save_group", {
+        p_group_id: group.id,
+        p_expected_version: group.version,
+        p_new_invites: group.newInvites().map((invite) => ({
+          id: invite.id,
+          created_by: invite.createdBy,
+          created_at: invite.createdAt,
+          expires_at: invite.expiresAt,
+          token_hash: invite.tokenHash,
+        })),
+        p_used_invites: group.usedInvites().map((invite) => ({
+          id: invite.id,
+          used_at: invite.usedAt.toISOString(),
+          used_by: invite.usedBy,
+        })),
+        p_new_members: group.newMembers().map((member) => ({
+          user_id: member.userId,
+          joined_at: member.joinedAt.toISOString(),
+        })),
+      });
+      // SD001: an invite was claimed meanwhile (by the previous redeem path); the save rolled back, a reload will tell.
+      if (error?.code === "SD001") {
+        return { data: "conflict" };
+      }
+      if (error) {
+        return fromDbError(error);
+      }
+      return typeof data === "boolean" ? { data: data ? "saved" : "conflict" } : groupError("unexpected");
     },
   };
 }
@@ -91,6 +152,13 @@ function toSnapshot(value: Json): GroupSnapshot {
   if (!Array.isArray(members)) {
     throw new TypeError("group.members: expected an array");
   }
+  const invites = group.invites;
+  if (!Array.isArray(invites)) {
+    throw new TypeError("group.invites: expected an array");
+  }
+  if (typeof group.version !== "number") {
+    throw new TypeError("group.version: expected a number");
+  }
   return {
     id: asString(group.id, "group.id"),
     name: asString(group.name, "group.name"),
@@ -104,6 +172,33 @@ function toSnapshot(value: Json): GroupSnapshot {
         email: row.email === null ? null : asString(row.email, "member.email"),
       };
     }),
+    version: group.version,
+    invites: invites.map(toInviteSnapshot),
+  };
+}
+
+function toInviteSnapshot(value: Json): GroupInviteSnapshot {
+  const row = asObject(value, "group.invites[]");
+  return {
+    id: asString(row.id, "invite.id"),
+    createdBy: asString(row.created_by, "invite.created_by"),
+    createdAt: asInstant(row.created_at, "invite.created_at"),
+    expiresAt: asInstant(row.expires_at, "invite.expires_at"),
+    tokenHash: asString(row.token_hash, "invite.token_hash"),
+  };
+}
+
+function toInvitePreview(value: Json): InvitePreview {
+  const row = asObject(value, "invite preview");
+  if (typeof row.caller_is_member !== "boolean") {
+    throw new TypeError("invite preview.caller_is_member: expected a boolean");
+  }
+  return {
+    groupId: asString(row.group_id, "invite preview.group_id"),
+    groupName: asString(row.group_name, "invite preview.group_name"),
+    expiresAt: new Date(asInstant(row.expires_at, "invite preview.expires_at")),
+    ...(row.used_at === null ? {} : { usedAt: new Date(asInstant(row.used_at, "invite preview.used_at")) }),
+    callerIsMember: row.caller_is_member,
   };
 }
 

@@ -70,6 +70,8 @@ describe("Group", () => {
       hostId: HOST,
       createdAt: "2026-10-15T12:00:00.000Z",
       members: [{ userId: HOST, joinedAt: "2026-10-15T12:00:00.000Z", email: null }],
+      version: 0,
+      invites: [],
     });
     expect(restored.toSnapshot()).toEqual(snapshot);
     expect(restored.isHost(HOST)).toBe(true);
