@@ -309,26 +309,26 @@ Expand only: new column with a default and new functions, nothing dropped. The p
 
 #### Automated
 
-- [x] 1.1 Migration applies cleanly and types are in sync
-- [x] 1.2 Unit tests pass
-- [x] 1.3 Type check passes
-- [x] 1.4 Lint passes
+- [x] 1.1 Migration applies cleanly and types are in sync — be9e625
+- [x] 1.2 Unit tests pass — be9e625
+- [x] 1.3 Type check passes — be9e625
+- [x] 1.4 Lint passes — be9e625
 
 #### Manual
 
-- [x] 1.5 The old functions are untouched in the migration diff
+- [x] 1.5 The old functions are untouched in the migration diff — be9e625
 
 ### Phase 2: Group aggregate (test-first)
 
 #### Automated
 
-- [ ] 2.1 Aggregate and entity tests pass
-- [ ] 2.2 Type check passes
-- [ ] 2.3 Lint passes
+- [x] 2.1 Aggregate and entity tests pass
+- [x] 2.2 Type check passes
+- [x] 2.3 Lint passes
 
 #### Manual
 
-- [ ] 2.4 Test list reviewed against the rules
+- [x] 2.4 Test list reviewed against the rules
 
 ### Phase 3: GroupService (test-first)
 

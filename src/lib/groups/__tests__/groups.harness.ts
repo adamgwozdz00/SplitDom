@@ -1,5 +1,7 @@
 import { Group } from "@/lib/groups/group.aggregate";
 import { GroupName } from "@/lib/groups/group-name.value";
+import { InviteToken } from "@/lib/groups/invite-token.value";
+import { InviteTokenHash } from "@/lib/groups/invite-token-hash.value";
 import type { GroupError, GroupRepository, InvitePreview, Result } from "@/lib/groups/types";
 
 /** In-memory GroupRepository for unit tests. It returns whatever groups it holds, like a repository scoped to "me". */
@@ -60,4 +62,22 @@ export function aGroup(overrides: { id?: string; hostId?: string; now?: Date; na
     hostId: overrides.hostId ?? "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa",
     now: overrides.now ?? new Date("2026-10-15T12:00:00.000Z"),
   });
+}
+
+/** A token hash of 32 repetitions of a two-digit hex pair, e.g. `aTokenHash("ab")`. */
+export function aTokenHash(pair: string): InviteTokenHash {
+  const hash = InviteTokenHash.parse(pair.repeat(32));
+  if (!hash) {
+    throw new Error(`Invalid test token hash pair "${pair}"`);
+  }
+  return hash;
+}
+
+/** A valid token made of 43 repetitions of one character. */
+export function aToken(char: string): InviteToken {
+  const token = InviteToken.parse(char.repeat(43));
+  if (!token) {
+    throw new Error(`Invalid test token character "${char}"`);
+  }
+  return token;
 }
