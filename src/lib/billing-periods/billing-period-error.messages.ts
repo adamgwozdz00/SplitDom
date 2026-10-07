@@ -6,6 +6,7 @@ const MESSAGES: Record<BillingPeriodErrorCode, string> = {
   invalid_amount: "Amount must be between 0,01 and 1 000 000,00 zł, e.g. 12,50",
   invalid_purchase_date: "Purchase date must fall within the current billing period and not be in the future",
   billing_period_closed: "This billing period is closed, so expenses can no longer be added",
+  period_changed: "Someone else just changed this billing period, try again",
   group_not_found: "Group not found",
   not_authenticated: "Sign in to continue",
   unexpected: "Something went wrong, try again",

@@ -8,6 +8,7 @@ export type BillingPeriodErrorCode =
   | "invalid_amount"
   | "invalid_purchase_date"
   | "billing_period_closed"
+  | "period_changed"
   | "group_not_found"
   | "not_authenticated"
   | "unexpected";
