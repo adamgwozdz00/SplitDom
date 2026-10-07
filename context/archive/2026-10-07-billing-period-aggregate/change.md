@@ -1,10 +1,10 @@
 ---
 change_id: billing-period-aggregate
 title: BillingPeriod as the aggregate root for expenses (F-02)
-status: impl_reviewed
+status: archived
 created: 2026-10-07
 updated: 2026-10-07
-archived_at: null
+archived_at: 2026-10-07T11:48:39Z
 ---
 
 ## Notes
