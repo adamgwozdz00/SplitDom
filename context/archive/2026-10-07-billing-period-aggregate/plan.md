@@ -504,55 +504,55 @@ A follow-up contract change drops `create_group`, `add_expense`, `list_period_ex
 
 #### Automated
 
-- [x] 1.1 No import of the old module remains: `grep -rn "@/lib/expenses" src` prints nothing — 1e36d76
-- [x] 1.2 Unit tests pass: `npm test` — 1e36d76
-- [x] 1.3 Type check passes: `npx astro check` — 1e36d76
-- [x] 1.4 Lint passes: `npm run lint` — 1e36d76
+- [x] 1.1 No import of the old module remains: `grep -rn "@/lib/expenses" src` prints nothing — 19e9ef7
+- [x] 1.2 Unit tests pass: `npm test` — 19e9ef7
+- [x] 1.3 Type check passes: `npx astro check` — 19e9ef7
+- [x] 1.4 Lint passes: `npm run lint` — 19e9ef7
 
 ### Phase 2: BillingPeriod aggregate
 
 #### Automated
 
-- [x] 2.1 Aggregate and policy tests pass: `npx vitest run src/lib/billing-periods/__tests__/billing-period.aggregate.test.ts src/lib/billing-periods/__tests__/split-policy.test.ts` — 1074602
-- [x] 2.2 Unit tests pass: `npm test` — 1074602
-- [x] 2.3 Type check passes: `npx astro check` — 1074602
-- [x] 2.4 Lint passes: `npm run lint` — 1074602
+- [x] 2.1 Aggregate and policy tests pass: `npx vitest run src/lib/billing-periods/__tests__/billing-period.aggregate.test.ts src/lib/billing-periods/__tests__/split-policy.test.ts` — 19e9ef7
+- [x] 2.2 Unit tests pass: `npm test` — 19e9ef7
+- [x] 2.3 Type check passes: `npx astro check` — 19e9ef7
+- [x] 2.4 Lint passes: `npm run lint` — 19e9ef7
 
 ### Phase 3: Persistence
 
 #### Automated
 
-- [x] 3.1 Migrations apply and types are current: `npm run db:reset && npm run db:types` leaves `src/db/database.types.ts` unchanged after commit — 8114f08
-- [x] 3.2 Unit tests pass: `npm test` — 8114f08
-- [x] 3.3 Type check passes: `npx astro check` — 8114f08
-- [x] 3.4 Lint passes: `npm run lint` — 8114f08
-- [x] 3.5 Existing flows unaffected: `npm run smoke` against the local dev server — 8114f08
+- [x] 3.1 Migrations apply and types are current: `npm run db:reset && npm run db:types` leaves `src/db/database.types.ts` unchanged after commit — 19e9ef7
+- [x] 3.2 Unit tests pass: `npm test` — 19e9ef7
+- [x] 3.3 Type check passes: `npx astro check` — 19e9ef7
+- [x] 3.4 Lint passes: `npm run lint` — 19e9ef7
+- [x] 3.5 Existing flows unaffected: `npm run smoke` against the local dev server — 19e9ef7
 
 ### Phase 4: BillingPeriodService
 
 #### Automated
 
-- [x] 4.1 Service tests pass: `npx vitest run src/lib/billing-periods/__tests__/billing-period.service.test.ts` — 1ac2988
-- [x] 4.2 Unit tests pass: `npm test` — 1ac2988
-- [x] 4.3 Type check passes: `npx astro check` — 1ac2988
-- [x] 4.4 Lint passes: `npm run lint` — 1ac2988
+- [x] 4.1 Service tests pass: `npx vitest run src/lib/billing-periods/__tests__/billing-period.service.test.ts` — 19e9ef7
+- [x] 4.2 Unit tests pass: `npm test` — 19e9ef7
+- [x] 4.3 Type check passes: `npx astro check` — 19e9ef7
+- [x] 4.4 Lint passes: `npm run lint` — 19e9ef7
 
 ### Phase 5: Switch-over
 
 #### Automated
 
-- [x] 5.1 Old path gone: `grep -rn "ExpenseService\|openPeriod" src` prints nothing — 234ad7e
-- [x] 5.2 Unit tests pass: `npm test` — 234ad7e
-- [x] 5.3 Type check passes: `npx astro check` — 234ad7e
-- [x] 5.4 Lint passes: `npm run lint` — 234ad7e
-- [x] 5.5 Build passes: `npm run build` — 234ad7e
-- [x] 5.6 Types are current: `npm run db:types` leaves `src/db/database.types.ts` unchanged — 234ad7e
-- [x] 5.7 Smoke passes against the local dev server: `npm run smoke` — 234ad7e
+- [x] 5.1 Old path gone: `grep -rn "ExpenseService\|openPeriod" src` prints nothing — 19e9ef7
+- [x] 5.2 Unit tests pass: `npm test` — 19e9ef7
+- [x] 5.3 Type check passes: `npx astro check` — 19e9ef7
+- [x] 5.4 Lint passes: `npm run lint` — 19e9ef7
+- [x] 5.5 Build passes: `npm run build` — 19e9ef7
+- [x] 5.6 Types are current: `npm run db:types` leaves `src/db/database.types.ts` unchanged — 19e9ef7
+- [x] 5.7 Smoke passes against the local dev server: `npm run smoke` — 19e9ef7
 
 #### Manual
 
-- [x] 5.8 Dashboard shows "Open period: <month>" for every group, as before — 234ad7e
-- [x] 5.9 New group: the group page shows the current month, and adding an expense updates balances and the list as before — 234ad7e
-- [x] 5.10 Self-repair: after deleting a fresh group's only period in local SQL, opening the group page shows a new open period for the current month — 234ad7e
-- [x] 5.11 Closed period: after setting `closed_at` on the open period in local SQL, adding an expense shows "This billing period is closed…" and stores nothing — 234ad7e
-- [x] 5.12 F-02 board item and roadmap entries reflect the change — 234ad7e
+- [x] 5.8 Dashboard shows "Open period: <month>" for every group, as before — 19e9ef7
+- [x] 5.9 New group: the group page shows the current month, and adding an expense updates balances and the list as before — 19e9ef7
+- [x] 5.10 Self-repair: after deleting a fresh group's only period in local SQL, opening the group page shows a new open period for the current month — 19e9ef7
+- [x] 5.11 Closed period: after setting `closed_at` on the open period in local SQL, adding an expense shows "This billing period is closed…" and stores nothing — 19e9ef7
+- [x] 5.12 F-02 board item and roadmap entries reflect the change — 19e9ef7
