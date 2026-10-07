@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { InviteToken } from "@/lib/invites/invite-token.value";
+import { InviteToken } from "@/lib/groups/invite-token.value";
 
 describe("InviteToken", () => {
   it("generates 43 base64url characters", () => {

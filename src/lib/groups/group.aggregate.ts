@@ -1,5 +1,8 @@
+import { groupError } from "@/lib/groups/group-error.messages";
 import { GroupName } from "@/lib/groups/group-name.value";
-import type { GroupMember, GroupSnapshot } from "@/lib/groups/types";
+import { Invite } from "@/lib/groups/invite.entity";
+import type { InviteTokenHash } from "@/lib/groups/invite-token-hash.value";
+import type { GroupInviteSnapshot, GroupMember, GroupSnapshot, Result, UsedInvite } from "@/lib/groups/types";
 
 interface GroupState {
   id: string;
@@ -7,18 +10,28 @@ interface GroupState {
   hostId: string;
   createdAt: Date;
   members: readonly GroupMember[];
+  version: number;
+  invites: readonly Invite[];
 }
 
 /**
- * A settlement group: its permanent host and its members. The billing period lives in its own aggregate.
- * Invariants: the host is a member, and the host never changes.
+ * A settlement group: its permanent host, its members and its active invites. The billing period lives in its own
+ * aggregate. Invariants: the host is a member and never changes, nobody removes members, a user is a member at most
+ * once, and an invite is used at most once. Changes since loading are tracked for the repository to save.
  */
 export class Group {
   readonly id: string;
   readonly name: GroupName;
   readonly hostId: string;
   readonly createdAt: Date;
-  readonly members: readonly GroupMember[];
+  /** The version this group was loaded at; 0 for a new group. */
+  readonly version: number;
+
+  private memberList: readonly GroupMember[];
+  private inviteList: readonly Invite[];
+  private readonly createdInvites: Invite[] = [];
+  private readonly consumedInvites: UsedInvite[] = [];
+  private readonly addedMembers: GroupMember[] = [];
 
   private constructor(state: GroupState) {
     if (!state.members.some((member) => member.userId === state.hostId)) {
@@ -28,7 +41,13 @@ export class Group {
     this.name = state.name;
     this.hostId = state.hostId;
     this.createdAt = state.createdAt;
-    this.members = Object.freeze(state.members.map((member) => Object.freeze({ ...member })));
+    this.memberList = state.members.map((member) => Object.freeze({ ...member }));
+    this.inviteList = state.invites;
+    this.version = state.version;
+  }
+
+  get members(): readonly GroupMember[] {
+    return this.memberList;
   }
 
   static create(input: { id: string; name: GroupName; hostId: string; now: Date }): Group {
@@ -39,6 +58,8 @@ export class Group {
       createdAt: input.now,
       // The email is not persisted by add_group; it is loaded with the group.
       members: [{ userId: input.hostId, joinedAt: input.now, email: null }],
+      version: 0,
+      invites: [],
     });
   }
 
@@ -54,6 +75,8 @@ export class Group {
         joinedAt: parseInstant(member.joinedAt),
         email: member.email,
       })),
+      version: snapshot.version,
+      invites: snapshot.invites.map((invite) => Invite.restore(invite)),
     });
   }
 
@@ -65,12 +88,52 @@ export class Group {
     return this.members.some((member) => member.userId === userId);
   }
 
-  /** How a member is shown to `viewerId`: "You", their email, or "Member" when the email is unknown. */
-  memberLabel(userId: string, viewerId: string): string {
-    if (userId === viewerId) {
-      return "You";
+  /** Only a member may invite; to anyone else the group does not exist. */
+  invite(input: { id: string; by: string; tokenHash: InviteTokenHash; now: Date }): Result<Invite> {
+    if (!this.isMember(input.by)) {
+      return groupError("group_not_found", { groupId: this.id });
     }
-    return this.members.find((member) => member.userId === userId)?.email ?? "Member";
+    const invite = Invite.create({ id: input.id, createdBy: input.by, tokenHash: input.tokenHash, now: input.now });
+    this.inviteList = [...this.inviteList, invite];
+    this.createdInvites.push(invite);
+    return { data: invite };
+  }
+
+  /**
+   * Uses up the active invite with this hash for `userId`, who becomes a member unless they already are
+   * (`joined = false`; the invite is still used up).
+   */
+  join(input: { tokenHash: InviteTokenHash; userId: string; now: Date }): Result<{ joined: boolean }> {
+    const invite = this.inviteList.find(
+      (candidate) => candidate.tokenHash.value === input.tokenHash.value && candidate.isActive(input.now),
+    );
+    if (!invite) {
+      return groupError("invite_invalid", { groupId: this.id });
+    }
+    this.inviteList = this.inviteList.filter((candidate) => candidate !== invite);
+    this.consumedInvites.push({ id: invite.id, usedAt: input.now, usedBy: input.userId });
+    if (this.isMember(input.userId)) {
+      return { data: { joined: false } };
+    }
+    const member: GroupMember = Object.freeze({ userId: input.userId, joinedAt: input.now, email: null });
+    this.memberList = [...this.memberList, member];
+    this.addedMembers.push(member);
+    return { data: { joined: true } };
+  }
+
+  /** Invites created since the group was loaded. */
+  newInvites(): GroupInviteSnapshot[] {
+    return this.createdInvites.map((invite) => invite.toSnapshot());
+  }
+
+  /** Invites used since the group was loaded. */
+  usedInvites(): UsedInvite[] {
+    return [...this.consumedInvites];
+  }
+
+  /** Members added since the group was loaded. */
+  newMembers(): GroupMember[] {
+    return [...this.addedMembers];
   }
 
   toSnapshot(): GroupSnapshot {
@@ -84,6 +147,8 @@ export class Group {
         joinedAt: member.joinedAt.toISOString(),
         email: member.email,
       })),
+      version: this.version,
+      invites: this.inviteList.map((invite) => invite.toSnapshot()),
     };
   }
 }
