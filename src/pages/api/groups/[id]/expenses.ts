@@ -1,5 +1,5 @@
 import type { APIRoute } from "astro";
-import { createExpenseService } from "@/lib/expenses";
+import { createExpenseService } from "@/lib/billing-periods";
 import { createGroupService } from "@/lib/groups";
 import { createClient } from "@/lib/supabase";
 

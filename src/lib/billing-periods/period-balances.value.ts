@@ -1,5 +1,5 @@
-import type { Expense } from "@/lib/expenses/expense.aggregate";
-import { Money } from "@/lib/expenses/money.value";
+import type { Expense } from "@/lib/billing-periods/expense.aggregate";
+import { Money } from "@/lib/billing-periods/money.value";
 
 export interface MemberBalance {
   readonly userId: string;

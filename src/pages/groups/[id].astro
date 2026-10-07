@@ -5,7 +5,7 @@ import BalancesPanel from "@/components/expenses/BalancesPanel.astro";
 import ExpenseForm from "@/components/expenses/ExpenseForm.astro";
 import ExpenseList from "@/components/expenses/ExpenseList.astro";
 import InvitePanel from "@/components/invites/InvitePanel.astro";
-import { createExpenseService, EXPENSES_LOAD_FAILED_MESSAGE, expenseErrorMessage } from "@/lib/expenses";
+import { createExpenseService, EXPENSES_LOAD_FAILED_MESSAGE, billingPeriodErrorMessage } from "@/lib/billing-periods";
 import { createGroupService, groupErrorMessage, GROUPS_LOAD_FAILED_MESSAGE } from "@/lib/groups";
 import { inviteErrorMessage, takeNewInvite } from "@/lib/invites";
 import { createClient } from "@/lib/supabase";
@@ -38,7 +38,7 @@ if (inviteUrl) {
 const errorParam = Astro.url.searchParams.get("error");
 const inviteError = group && errorParam ? inviteErrorMessage(errorParam) : null;
 const expenseErrorParam = Astro.url.searchParams.get("expenseError");
-const expenseError = group && expenseErrorParam ? expenseErrorMessage(expenseErrorParam) : null;
+const expenseError = group && expenseErrorParam ? billingPeriodErrorMessage(expenseErrorParam) : null;
 
 // A failure to load expenses only replaces the expenses section; the rest of the page still renders.
 const summary = group && supabase ? await createExpenseService(supabase).summarizeOpenPeriod(group) : null;

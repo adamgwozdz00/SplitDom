@@ -1,4 +1,4 @@
-import type { BillingMonth } from "@/lib/groups/billing-month.value";
+import type { BillingMonth } from "@/lib/billing-periods";
 import type { Group } from "@/lib/groups/group.aggregate";
 
 export type GroupErrorCode = "invalid_group_name" | "group_not_found" | "not_authenticated" | "unexpected";

@@ -1,7 +1,13 @@
 import { describe, expect, it } from "vitest";
-import { aGroup, anExpense, FakeExpenseRepository, HOST_ID, memberId } from "@/lib/expenses/__tests__/expenses.harness";
-import { expenseError } from "@/lib/expenses/expense-error.messages";
-import { ExpenseService } from "@/lib/expenses/expense.service";
+import {
+  aGroup,
+  anExpense,
+  FakeExpenseRepository,
+  HOST_ID,
+  memberId,
+} from "@/lib/billing-periods/__tests__/expenses.harness";
+import { billingPeriodError } from "@/lib/billing-periods/billing-period-error.messages";
+import { ExpenseService } from "@/lib/billing-periods/expense.service";
 
 const NOW = new Date("2026-10-15T09:15:30.123Z");
 const B = memberId(1);
@@ -116,7 +122,7 @@ describe("ExpenseService.add", () => {
 
   it("passes a repository error through unchanged", async () => {
     const repository = new FakeExpenseRepository();
-    const failure = expenseError("unexpected", { dbCode: "23503" });
+    const failure = billingPeriodError("unexpected", { dbCode: "23503" });
     repository.failure = failure;
 
     expect(await serviceWith(repository).add({ group: aGroup(), payerId: HOST_ID, ...valid })).toBe(failure);
@@ -183,7 +189,7 @@ describe("ExpenseService.summarizeOpenPeriod", () => {
 
   it("passes a repository error through unchanged", async () => {
     const repository = new FakeExpenseRepository();
-    const failure = expenseError("unexpected", { dbCode: "XX000" });
+    const failure = billingPeriodError("unexpected", { dbCode: "XX000" });
     repository.failure = failure;
 
     expect(await serviceWith(repository).summarizeOpenPeriod(aGroup())).toBe(failure);

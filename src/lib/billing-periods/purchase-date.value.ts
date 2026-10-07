@@ -1,6 +1,6 @@
-import { BillingMonth } from "@/lib/groups";
-import { expenseError } from "@/lib/expenses/expense-error.messages";
-import type { Result } from "@/lib/expenses/types";
+import { BillingMonth } from "@/lib/billing-periods/billing-month.value";
+import { billingPeriodError } from "@/lib/billing-periods/billing-period-error.messages";
+import type { Result } from "@/lib/billing-periods/types";
 
 // "Today" is the household's calendar day in Poland, whatever timezone the server runs in.
 const WARSAW_CALENDAR = new Intl.DateTimeFormat("en-US", {
@@ -81,11 +81,11 @@ export class PurchaseDate {
 
   static create(raw: string, context: { month: BillingMonth; now: Date }): Result<PurchaseDate> {
     if (!parseCalendarDate(raw)) {
-      return expenseError("invalid_purchase_date", { value: raw });
+      return billingPeriodError("invalid_purchase_date", { value: raw });
     }
     const window = PurchaseDate.window(context.month, context.now);
     if (raw < window.min || raw > window.max) {
-      return expenseError("invalid_purchase_date", { value: raw, min: window.min, max: window.max });
+      return billingPeriodError("invalid_purchase_date", { value: raw, min: window.min, max: window.max });
     }
     return { data: new PurchaseDate(raw) };
   }

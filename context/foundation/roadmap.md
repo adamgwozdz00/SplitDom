@@ -3,7 +3,7 @@ project: SplitDom
 version: 1
 status: draft
 created: 2026-09-26
-updated: 2026-10-06
+updated: 2026-10-07
 prd_version: 1
 main_goal: speed
 top_blocker: time
@@ -46,7 +46,7 @@ People who share household costs — partners or roommates — settle shared exp
 | S-02 | create-settlement-group       | user can create a settlement group, becomes its host, and it has an open period     | F-01          | FR-002                     | done |
 | S-03 | invite-member-by-link         | user can invite someone with a link/code, and that person joins the group           | S-02          | FR-003                     | done        |
 | S-04 | add-expense-see-balances      | member can add an expense split equally and immediately see every member's balance  | S-03          | US-01, FR-004, FR-005      | in-progress |
-| F-02 | billing-period-aggregate      | (foundation) `BillingPeriod` is the aggregate root that adds expenses and splits them | S-04          | FR-004, FR-005, FR-015     | proposed |
+| F-02 | billing-period-aggregate      | (foundation) `BillingPeriod` is the aggregate root that adds expenses and splits them | S-04          | FR-004, FR-005, FR-015     | planning |
 | F-03 | group-membership-aggregate    | (foundation) `Group` is the membership aggregate; `Invite` is an entity inside it   | S-03          | FR-002, FR-003             | proposed |
 | S-05 | edit-own-expense-rules        | expense author can edit or delete their own expense only while it is still editable | F-02          | FR-005                     | proposed |
 | S-06 | generate-transfer-details     | debtor can copy transfer details (account number, amount, title) for a debt         | S-04          | FR-007                     | proposed |
@@ -108,7 +108,7 @@ Foundations below assume these are present and do NOT re-scaffold them.
   - Concurrent writes: two members adding an expense at once both change the same aggregate, so `billing_periods` needs a version column (optimistic locking) or an equivalent guard. — Owner: user. Block: no.
   - Does the open period move out of the `Group` aggregate into its own `billing_periods` repository? — Owner: user. Block: no.
 - **Risk:** A refactor right after the north star; the risk is regressing balance correctness, so the existing expense and balance tests must keep passing and the new aggregate is driven by tests written first. Sequenced before S-05, S-07 and S-08 so they build on the new boundary instead of being reworked later.
-- **Status:** proposed
+- **Status:** planning
 
 ### F-03: Group as the membership aggregate
 
