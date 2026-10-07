@@ -46,7 +46,7 @@ People who share household costs — partners or roommates — settle shared exp
 | S-02 | create-settlement-group       | user can create a settlement group, becomes its host, and it has an open period     | F-01          | FR-002                     | done |
 | S-03 | invite-member-by-link         | user can invite someone with a link/code, and that person joins the group           | S-02          | FR-003                     | done        |
 | S-04 | add-expense-see-balances      | member can add an expense split equally and immediately see every member's balance  | S-03          | US-01, FR-004, FR-005      | in-progress |
-| F-02 | billing-period-aggregate      | (foundation) `BillingPeriod` is the aggregate root that adds expenses and splits them | S-04          | FR-004, FR-005, FR-015     | in-progress |
+| F-02 | billing-period-aggregate      | (foundation) `BillingPeriod` is the aggregate root that adds expenses and splits them | S-04          | FR-004, FR-005, FR-015     | done |
 | F-03 | group-membership-aggregate    | (foundation) `Group` is the membership aggregate; `Invite` is an entity inside it   | S-03          | FR-002, FR-003             | done |
 | S-05 | edit-own-expense-rules        | expense author can edit or delete their own expense only while it is still editable | F-02          | FR-005                     | proposed |
 | S-06 | generate-transfer-details     | debtor can copy transfer details (account number, amount, title) for a debt         | S-04          | FR-007                     | proposed |
@@ -108,7 +108,7 @@ Foundations below assume these are present and do NOT re-scaffold them.
   - ~~Concurrent writes: two members adding an expense at once both change the same aggregate, so `billing_periods` needs a version column (optimistic locking) or an equivalent guard.~~ Resolved (F-02 planning): a `version` column on `billing_periods`, bumped by a conditional update in `save_billing_period`; the service reloads and retries once, then returns `period_changed` (`context/changes/billing-period-aggregate/plan.md`).
   - ~~Does the open period move out of the `Group` aggregate into its own `billing_periods` repository?~~ Resolved (F-02 planning): yes, `Group` keeps membership and the host, and the period lives in the `BillingPeriod` aggregate with its own repository; creating a group is two writes, repaired by `openFor`.
 - **Risk:** A refactor right after the north star; the risk is regressing balance correctness, so the existing expense and balance tests must keep passing and the new aggregate is driven by tests written first. Sequenced before S-05, S-07 and S-08 so they build on the new boundary instead of being reworked later.
-- **Status:** in-progress
+- **Status:** done
 
 ### F-03: Group as the membership aggregate
 
@@ -308,3 +308,4 @@ Mirrored on GitHub: milestone [M-1](https://github.com/adamgwozdz00/SplitDom/mil
 - **S-01: user can sign in with one external identity provider and land in the app signed in.** — Archived 2026-10-03 → `context/archive/2026-09-28-external-identity-sign-in/`. Lesson: —.
 - **S-02: user can create a settlement group, becomes its permanent host, and the group starts with one open billing period; the group's tables come from this slice's domain model and ship with the first two-user isolation test (user B cannot read user A's group), built on the F-01 harness.** — Archived 2026-10-03 → `context/archive/2026-10-02-create-settlement-group/`. Lesson: —.
 - **S-03: user can generate an invite link/code, send it through any channel, and the invited person joins the group after signing in.** — Archived 2026-10-05 → `context/archive/2026-10-02-invite-member-by-link/`. Lesson: —.
+- **F-02: (foundation) the expenses model is reshaped around behaviour instead of tables: `BillingPeriod` becomes the aggregate root that adds expenses, splits them through a `SplitPolicy` and derives balances.** — Archived 2026-10-07 → `context/archive/2026-10-07-billing-period-aggregate/`. Lesson: —.
