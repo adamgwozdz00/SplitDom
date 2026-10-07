@@ -1,4 +1,5 @@
 import type { APIRoute } from "astro";
+import { createBillingPeriodService } from "@/lib/billing-periods";
 import { createGroupService } from "@/lib/groups";
 import { createClient } from "@/lib/supabase";
 
@@ -25,5 +26,8 @@ export const POST: APIRoute = async (context) => {
     return context.redirect(`/dashboard?error=${result.error.code}`);
   }
 
-  return context.redirect(`/groups/${result.data.groupId}`);
+  // Creating a group is two writes. If opening its period fails, the group page opens it on first visit.
+  await createBillingPeriodService(supabase).openFor(result.data);
+
+  return context.redirect(`/groups/${result.data.id}`);
 };

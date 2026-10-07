@@ -532,27 +532,27 @@ A follow-up contract change drops `create_group`, `add_expense`, `list_period_ex
 
 #### Automated
 
-- [x] 4.1 Service tests pass: `npx vitest run src/lib/billing-periods/__tests__/billing-period.service.test.ts`
-- [x] 4.2 Unit tests pass: `npm test`
-- [x] 4.3 Type check passes: `npx astro check`
-- [x] 4.4 Lint passes: `npm run lint`
+- [x] 4.1 Service tests pass: `npx vitest run src/lib/billing-periods/__tests__/billing-period.service.test.ts` — 1ac2988
+- [x] 4.2 Unit tests pass: `npm test` — 1ac2988
+- [x] 4.3 Type check passes: `npx astro check` — 1ac2988
+- [x] 4.4 Lint passes: `npm run lint` — 1ac2988
 
 ### Phase 5: Switch-over
 
 #### Automated
 
-- [ ] 5.1 Old path gone: `grep -rn "ExpenseService\|openPeriod" src` prints nothing
-- [ ] 5.2 Unit tests pass: `npm test`
-- [ ] 5.3 Type check passes: `npx astro check`
-- [ ] 5.4 Lint passes: `npm run lint`
-- [ ] 5.5 Build passes: `npm run build`
-- [ ] 5.6 Types are current: `npm run db:types` leaves `src/db/database.types.ts` unchanged
-- [ ] 5.7 Smoke passes against the local dev server: `npm run smoke`
+- [x] 5.1 Old path gone: `grep -rn "ExpenseService\|openPeriod" src` prints nothing
+- [x] 5.2 Unit tests pass: `npm test`
+- [x] 5.3 Type check passes: `npx astro check`
+- [x] 5.4 Lint passes: `npm run lint`
+- [x] 5.5 Build passes: `npm run build`
+- [x] 5.6 Types are current: `npm run db:types` leaves `src/db/database.types.ts` unchanged
+- [x] 5.7 Smoke passes against the local dev server: `npm run smoke`
 
 #### Manual
 
-- [ ] 5.8 Dashboard shows "Open period: <month>" for every group, as before
-- [ ] 5.9 New group: the group page shows the current month, and adding an expense updates balances and the list as before
-- [ ] 5.10 Self-repair: after deleting a fresh group's only period in local SQL, opening the group page shows a new open period for the current month
-- [ ] 5.11 Closed period: after setting `closed_at` on the open period in local SQL, adding an expense shows "This billing period is closed…" and stores nothing
-- [ ] 5.12 F-02 board item and roadmap entries reflect the change
+- [x] 5.8 Dashboard shows "Open period: <month>" for every group, as before
+- [x] 5.9 New group: the group page shows the current month, and adding an expense updates balances and the list as before
+- [x] 5.10 Self-repair: after deleting a fresh group's only period in local SQL, opening the group page shows a new open period for the current month
+- [x] 5.11 Closed period: after setting `closed_at` on the open period in local SQL, adding an expense shows "This billing period is closed…" and stores nothing
+- [x] 5.12 F-02 board item and roadmap entries reflect the change

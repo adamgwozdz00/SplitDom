@@ -2,7 +2,7 @@ import { ExpenseTitle } from "@/lib/billing-periods/expense-title.value";
 import { Money } from "@/lib/billing-periods/money.value";
 import { PurchaseDate } from "@/lib/billing-periods/purchase-date.value";
 import type { ExpenseShare } from "@/lib/billing-periods/split-policy";
-import type { PeriodExpenseSnapshot } from "@/lib/billing-periods/types";
+import type { ExpenseSnapshot } from "@/lib/billing-periods/types";
 
 interface ExpenseState {
   id: string;
@@ -56,7 +56,7 @@ export class Expense {
   }
 
   /** Rebuilds an expense from storage; throws when the stored data breaks an invariant. */
-  static restore(snapshot: PeriodExpenseSnapshot): Expense {
+  static restore(snapshot: ExpenseSnapshot): Expense {
     return new Expense({
       id: snapshot.id,
       payerId: snapshot.payerId,
@@ -68,7 +68,7 @@ export class Expense {
     });
   }
 
-  toSnapshot(): PeriodExpenseSnapshot {
+  toSnapshot(): ExpenseSnapshot {
     return {
       id: this.id,
       payerId: this.payerId,

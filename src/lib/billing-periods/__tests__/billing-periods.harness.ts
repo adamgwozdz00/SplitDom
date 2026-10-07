@@ -1,5 +1,6 @@
 import { BillingMonth } from "@/lib/billing-periods/billing-month.value";
 import { BillingPeriod } from "@/lib/billing-periods/billing-period.aggregate";
+import type { Expense } from "@/lib/billing-periods/expense.entity";
 import { ExpenseTitle } from "@/lib/billing-periods/expense-title.value";
 import { Money } from "@/lib/billing-periods/money.value";
 import type {
@@ -129,7 +130,6 @@ export function aGroup(overrides: { id?: string; memberCount?: number } = {}): G
     name: name.data,
     hostId: HOST_ID,
     now: new Date("2026-10-01T08:00:00.000Z"),
-    periodId: PERIOD_ID,
   });
   const snapshot = created.toSnapshot();
   const count = overrides.memberCount ?? 2;
@@ -180,6 +180,31 @@ export function anOctoberPeriod(
     }
   }
   return { ...period.toSnapshot(), version: input.version ?? 0, closedAt: input.closedAt ?? null };
+}
+
+/** An expense paid by `payerId` (default: the host) in October 2026, split among `group`'s members by a period. */
+export function anExpense(
+  input: { id?: string; group?: Group; payerId?: string; title?: string; grosze?: number; purchasedOn?: string } = {},
+): Expense {
+  const group = input.group ?? aGroup();
+  const period = BillingPeriod.open({
+    id: PERIOD_ID,
+    groupId: group.id,
+    participants: group.members.map((member) => member.userId),
+    now: new Date("2026-10-01T08:00:00.000Z"),
+  });
+  const added = period.addExpense({
+    id: input.id ?? "33333333-3333-4333-8333-333333333333",
+    payerId: input.payerId ?? HOST_ID,
+    title: title(input.title),
+    amount: Money.ofGrosze(input.grosze ?? 40000),
+    purchasedOn: input.purchasedOn ?? "2026-10-10",
+    now: new Date("2026-10-10T12:00:00.000Z"),
+  });
+  if ("error" in added) {
+    throw new Error(`Invalid test expense: ${added.error.code}`);
+  }
+  return added.data;
 }
 
 function title(raw = "Czynsz"): ExpenseTitle {

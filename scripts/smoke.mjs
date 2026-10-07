@@ -123,11 +123,11 @@ function checkGroupALocation(actual) {
 }
 
 // Calls a persistence function straight through the Data API, as a user holding their token could.
-async function directRpc(name, { token, headers = {} }) {
+async function directRpc(name, { token, headers = {}, args = {} }) {
   const response = await fetch(`${SUPABASE_URL}/rest/v1/rpc/${name}`, {
     method: "POST",
     headers: { apikey: SUPABASE_KEY, Authorization: `Bearer ${token}`, "Content-Type": "application/json", ...headers },
-    body: "{}",
+    body: JSON.stringify(args),
   });
   return { status: response.status, location: "", body: await response.text() };
 }
@@ -146,8 +146,9 @@ async function firstUserToken() {
 }
 
 // The gate judges `x-app-key` on every Data API request; only the app's key gets through.
-async function firstUserCallsDirectly(appKey) {
-  return directRpc("list_my_groups", {
+async function firstUserCallsDirectly(appKey, rpcName = "list_my_groups", args = {}) {
+  return directRpc(rpcName, {
+    args,
     token: await firstUserToken(),
     headers: appKey === undefined ? {} : { "x-app-key": appKey },
   });
@@ -345,6 +346,11 @@ const steps = [
   [
     "signed-in user calling an RPC directly with a wrong key is refused",
     () => firstUserCallsDirectly("not-the-app-key"),
+    { status: 403, check: bodyContains('"code":"APPGATE"') },
+  ],
+  [
+    "signed-in user calling the billing period loader directly without the app key is refused",
+    () => firstUserCallsDirectly(undefined, "get_current_billing_period", { p_group_id: groupIds[0] }),
     { status: 403, check: bodyContains('"code":"APPGATE"') },
   ],
   // Positive control: the same call with the app's key reaches the function and returns the user's data.

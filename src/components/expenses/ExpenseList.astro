@@ -1,20 +1,21 @@
 ---
-import type { Expense } from "@/lib/billing-periods";
+import type { BillingMonth, Expense } from "@/lib/billing-periods";
 import type { Group } from "@/lib/groups";
 
 interface Props {
   group: Group;
+  month: BillingMonth;
   expenses: readonly Expense[];
   viewerId: string;
 }
 
-const { group, expenses, viewerId } = Astro.props;
+const { group, month, expenses, viewerId } = Astro.props;
 ---
 
 <div data-expense-list>
   <h3 class="mb-2 text-sm font-semibold text-blue-100/80">Expenses</h3>
   {expenses.length === 0 ? (
-    <p class="text-sm text-blue-100/70">No expenses in {group.openPeriod.month.label()} yet</p>
+    <p class="text-sm text-blue-100/70">No expenses in {month.label()} yet</p>
   ) : (
     <ul class="space-y-3">
       {expenses.map((expense) => (

@@ -105,8 +105,8 @@ Foundations below assume these are present and do NOT re-scaffold them.
 - **Unknowns:**
   - Do transfers and paid-debt confirmations (FR-008/009) live inside `BillingPeriod`? Leaning yes, since they block edits and closing. — Owner: user. Block: no (F-02 only leaves room for them).
   - FR-005 locks an expense once "its debt" is paid, but debts are netted per pair of members across many expenses. Does a paid debt lock every expense of that pair in the period, or freeze the balance and let later edits create a compensating debt? — Owner: user. Block: S-05, S-08.
-  - Concurrent writes: two members adding an expense at once both change the same aggregate, so `billing_periods` needs a version column (optimistic locking) or an equivalent guard. — Owner: user. Block: no.
-  - Does the open period move out of the `Group` aggregate into its own `billing_periods` repository? — Owner: user. Block: no.
+  - ~~Concurrent writes: two members adding an expense at once both change the same aggregate, so `billing_periods` needs a version column (optimistic locking) or an equivalent guard.~~ Resolved (F-02 planning): a `version` column on `billing_periods`, bumped by a conditional update in `save_billing_period`; the service reloads and retries once, then returns `period_changed` (`context/changes/billing-period-aggregate/plan.md`).
+  - ~~Does the open period move out of the `Group` aggregate into its own `billing_periods` repository?~~ Resolved (F-02 planning): yes, `Group` keeps membership and the host, and the period lives in the `BillingPeriod` aggregate with its own repository; creating a group is two writes, repaired by `openFor`.
 - **Risk:** A refactor right after the north star; the risk is regressing balance correctness, so the existing expense and balance tests must keep passing and the new aggregate is driven by tests written first. Sequenced before S-05, S-07 and S-08 so they build on the new boundary instead of being reworked later.
 - **Status:** in-progress
 
@@ -239,8 +239,8 @@ Foundations below assume these are present and do NOT re-scaffold them.
 - **Parallel with:** S-01, S-06, S-07, S-10
 - **Blockers:** —
 - **Unknowns:**
-  - ~~Which timezone defines "the calendar month has ended"?~~ Resolved 2026-10-02 (S-02 planning): Europe/Warsaw; timestamps stay in UTC, and `BillingMonth` in `src/lib/groups/` is the single place that maps a moment to its billing month.
-  - How does `add_expense` stay safe against a period closed between loading the group and storing the expense? It does not check that the period is open (S-04 left this to S-09 on purpose); a race-safe guard needs a `closed_at is null` check with `for share` on the period row in `add_expense` and `for update` in the closing function. (S-04 implementation review, 2026-10-06)
+  - ~~Which timezone defines "the calendar month has ended"?~~ Resolved 2026-10-02 (S-02 planning): Europe/Warsaw; timestamps stay in UTC, and `BillingMonth` in `src/lib/billing-periods/` is the single place that maps a moment to its billing month.
+  - ~~How does `add_expense` stay safe against a period closed between loading the group and storing the expense?~~ Resolved by F-02: `save_billing_period` only stores expenses if the period's `version` is unchanged, so a close that bumped `version` makes the stale add fail, and its retry reloads the closed period, which the aggregate refuses. S-09's close must bump `version`. (S-04 implementation review, 2026-10-06)
   - Can the new open period's month start after today in Europe/Warsaw? If so, `PurchaseDate.window` gives min > max and rejects every purchase date, so either the next period opens only once its month has started or the window rule changes. (S-04 implementation review, 2026-10-06)
 - **Risk:** The most rule-heavy slice (host-only, month ended, host's debts paid, exactly one new open period); placed last because it consumes the edit-lock and paid-debt rules from S-05 and S-08.
 - **Status:** proposed
