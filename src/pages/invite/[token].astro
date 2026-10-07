@@ -1,6 +1,6 @@
 ---
 import Layout from "@/layouts/Layout.astro";
-import { createInviteService, InviteToken, inviteErrorMessage, rememberPendingInvite } from "@/lib/invites";
+import { createGroupService, groupErrorMessage, InviteToken, rememberPendingInvite } from "@/lib/groups";
 import { createClient } from "@/lib/supabase";
 
 // The token is a bearer secret in the URL: keep it out of Referer headers sent to other sites and out of every cache.
@@ -30,7 +30,7 @@ let preview: { groupName: string; callerIsMember: boolean } | null = null;
 
 if (token && user) {
   const supabase = createClient(Astro.request.headers, Astro.cookies);
-  const result = supabase ? await createInviteService(supabase).preview({ token: token.value }) : null;
+  const result = supabase ? await createGroupService(supabase).previewInvite({ token: token.value }) : null;
   if (result && "data" in result) {
     preview = result.data;
   } else if (result?.error.code === "invite_invalid") {
@@ -46,7 +46,7 @@ if (invalid) {
 }
 
 const errorParam = Astro.url.searchParams.get("error");
-const redeemError = errorParam ? inviteErrorMessage(errorParam) : null;
+const redeemError = errorParam ? groupErrorMessage(errorParam) : null;
 ---
 
 <Layout title={preview ? "Join group" : "Invite"}>
@@ -87,7 +87,7 @@ const redeemError = errorParam ? inviteErrorMessage(errorParam) : null;
             Invite
           </h1>
           <p role="alert" class="rounded-lg border border-red-500/30 bg-red-900/30 px-3 py-2 text-sm text-red-300">
-            {loadFailed ? INVITE_LOAD_FAILED_MESSAGE : inviteErrorMessage("invite_invalid")}
+            {loadFailed ? INVITE_LOAD_FAILED_MESSAGE : groupErrorMessage("invite_invalid")}
           </p>
           {user && (
             <a href="/dashboard" class="mt-6 inline-block text-sm text-purple-300 hover:underline">

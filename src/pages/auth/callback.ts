@@ -1,5 +1,5 @@
 import type { APIRoute } from "astro";
-import { takePendingInvitePath } from "@/lib/invites";
+import { takePendingInvitePath } from "@/lib/groups";
 import { createClient } from "@/lib/supabase";
 
 export const GET: APIRoute = async (context) => {

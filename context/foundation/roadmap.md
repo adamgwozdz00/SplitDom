@@ -47,7 +47,7 @@ People who share household costs — partners or roommates — settle shared exp
 | S-03 | invite-member-by-link         | user can invite someone with a link/code, and that person joins the group           | S-02          | FR-003                     | done        |
 | S-04 | add-expense-see-balances      | member can add an expense split equally and immediately see every member's balance  | S-03          | US-01, FR-004, FR-005      | in-progress |
 | F-02 | billing-period-aggregate      | (foundation) `BillingPeriod` is the aggregate root that adds expenses and splits them | S-04          | FR-004, FR-005, FR-015     | in-progress |
-| F-03 | group-membership-aggregate    | (foundation) `Group` is the membership aggregate; `Invite` is an entity inside it   | S-03          | FR-002, FR-003             | proposed |
+| F-03 | group-membership-aggregate    | (foundation) `Group` is the membership aggregate; `Invite` is an entity inside it   | S-03          | FR-002, FR-003             | in-progress |
 | S-05 | edit-own-expense-rules        | expense author can edit or delete their own expense only while it is still editable | F-02          | FR-005                     | proposed |
 | S-06 | generate-transfer-details     | debtor can copy transfer details (account number, amount, title) for a debt         | S-04          | FR-007                     | proposed |
 | S-07 | mark-transfer-sent            | debtor can mark a transfer as sent, as a reminder for themselves                    | F-02          | FR-008                     | proposed |
@@ -123,7 +123,7 @@ Foundations below assume these are present and do NOT re-scaffold them.
   - Concurrent joins with the same token: a version column on `groups` (optimistic locking, as for `billing_periods` in F-02), or keep the atomic claim in SQL as the guard? — Owner: user. Block: no.
   - Token lookup: the repository finds the `groupId` by the token hash first, then loads the group; does the invite preview page keep its own read model? — Owner: user. Block: no.
 - **Risk:** Touches the invite flow that already works in production and is covered by the smoke test; kept separate from F-02 so each refactor is reviewed and tested on its own.
-- **Status:** proposed
+- **Status:** in-progress
 
 ## Slices
 

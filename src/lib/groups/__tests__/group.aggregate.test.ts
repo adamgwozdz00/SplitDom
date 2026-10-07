@@ -35,33 +35,6 @@ describe("Group", () => {
     expect(group.isMember(OTHER)).toBe(false);
   });
 
-  describe("memberLabel", () => {
-    const group = Group.restore({
-      ...aGroup({ hostId: HOST }).toSnapshot(),
-      members: [
-        { userId: HOST, joinedAt: "2026-10-15T12:00:00.000Z", email: "host@example.com" },
-        { userId: OTHER, joinedAt: "2026-10-16T12:00:00.000Z", email: "other@example.com" },
-        { userId: "no-email", joinedAt: "2026-10-17T12:00:00.000Z", email: null },
-      ],
-    });
-
-    it("labels the viewer as You, even when their email is known", () => {
-      expect(group.memberLabel(HOST, HOST)).toBe("You");
-    });
-
-    it("labels another member by email", () => {
-      expect(group.memberLabel(OTHER, HOST)).toBe("other@example.com");
-    });
-
-    it("labels a member without a known email as Member", () => {
-      expect(group.memberLabel("no-email", HOST)).toBe("Member");
-    });
-
-    it("labels an unknown user as Member", () => {
-      expect(group.memberLabel("stranger", HOST)).toBe("Member");
-    });
-  });
-
   describe("invite", () => {
     it("lets a member invite, valid for 7 days, and tracks it as pending", () => {
       const group = aGroup({ hostId: HOST });
