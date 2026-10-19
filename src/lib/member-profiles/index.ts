@@ -5,3 +5,7 @@ export { AccountNumber } from "@/lib/member-profiles/account-number.value";
 export { MemberProfile } from "@/lib/member-profiles/member-profile.aggregate";
 export { memberProfileErrorMessage } from "@/lib/member-profiles/member-profile-error.messages";
 export { MemberProfileService } from "@/lib/member-profiles/member-profile.service";
+export {
+  createMemberProfileService,
+  createSupabaseMemberProfileRepository,
+} from "@/lib/member-profiles/member-profile.repository";
