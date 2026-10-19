@@ -366,7 +366,7 @@ export type Database = {
         Returns: boolean
       }
       save_my_member_profile: {
-        Args: { p_account_number: string; p_expected_version: number }
+        Args: { p_account_number?: string; p_expected_version: number }
         Returns: boolean
       }
     }

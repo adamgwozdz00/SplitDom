@@ -57,7 +57,7 @@ comment on function public.get_my_member_profile() is
 -- Stores the signed-in user's profile. Version 0 creates it; any other version updates it only while the
 -- stored version still equals `p_expected_version`, and bumps it. Returns false and stores nothing when the
 -- version moved on (a concurrent write); that is a persistence concurrency signal, not a business rule.
-create function public.save_my_member_profile(p_account_number text, p_expected_version integer)
+create function public.save_my_member_profile(p_expected_version integer, p_account_number text default null)
 returns boolean
 language plpgsql
 security definer
@@ -85,7 +85,7 @@ begin
 end;
 $$;
 
-comment on function public.save_my_member_profile(text, integer) is
+comment on function public.save_my_member_profile(integer, text) is
   'Persistence only — stores the signed-in user''s profile guarded by its version. Rules live in src/lib/member-profiles.';
 
 -- The stored account numbers of those of `p_user_ids` who have one and are members of `p_group_id`, only when
@@ -128,7 +128,7 @@ comment on function public.get_group_member_account_numbers(uuid, uuid[]) is
 
 revoke execute on function public.get_my_member_profile() from public, anon;
 grant execute on function public.get_my_member_profile() to authenticated;
-revoke execute on function public.save_my_member_profile(text, integer) from public, anon;
-grant execute on function public.save_my_member_profile(text, integer) to authenticated;
+revoke execute on function public.save_my_member_profile(integer, text) from public, anon;
+grant execute on function public.save_my_member_profile(integer, text) to authenticated;
 revoke execute on function public.get_group_member_account_numbers(uuid, uuid[]) from public, anon;
 grant execute on function public.get_group_member_account_numbers(uuid, uuid[]) to authenticated;

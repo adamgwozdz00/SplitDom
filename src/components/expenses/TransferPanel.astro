@@ -1,0 +1,124 @@
+---
+import { TransferDetails } from "@/lib/billing-periods";
+import type { PeriodBalances } from "@/lib/billing-periods";
+import type { Group } from "@/lib/groups";
+import type { AccountNumber } from "@/lib/member-profiles";
+import { memberLabel } from "@/components/expenses/member-label";
+
+interface Props {
+  group: Group;
+  balances: PeriodBalances;
+  viewerId: string;
+  monthLabel: string;
+  /** Account numbers of the viewer's creditors; a creditor missing from the map has none (or it could not be loaded). */
+  accountNumbers: Map<string, AccountNumber>;
+}
+
+const { group, balances, viewerId, monthLabel, accountNumbers } = Astro.props;
+
+const transfers = balances.debts
+  .filter((debt) => debt.debtorId === viewerId)
+  .map((debt) => {
+    const account = accountNumbers.get(debt.creditorId) ?? null;
+    return {
+      creditor: memberLabel(group.members, debt.creditorId, viewerId),
+      amountLabel: debt.amount.label(),
+      accountLabel: account?.label() ?? null,
+      details: TransferDetails.of({
+        amount: debt.amount,
+        accountDigits: account?.digits ?? null,
+        groupName: group.name.value,
+        monthLabel,
+      }),
+    };
+  });
+---
+
+{transfers.length > 0 && (
+  <div data-transfer-panel>
+    <h3 class="mb-2 text-sm font-semibold text-blue-100/80">Transfer details</h3>
+    <ul class="space-y-3">
+      {transfers.map((transfer) => (
+        <li class="rounded-lg border border-white/10 bg-white/5 p-3 text-sm" data-transfer>
+          <p class="mb-2 break-words text-white">
+            Pay <span class="font-semibold">{transfer.creditor}</span>{" "}
+            <span class="font-semibold">{transfer.amountLabel}</span>
+          </p>
+          <dl class="space-y-2">
+            {transfer.details.account ? (
+              <div class="flex items-center justify-between gap-2">
+                <div class="min-w-0">
+                  <dt class="text-xs text-blue-100/60">Account number</dt>
+                  <dd class="break-all text-white">{transfer.accountLabel}</dd>
+                </div>
+                <button
+                  type="button"
+                  data-copy-value={transfer.details.account}
+                  class="shrink-0 rounded-lg border border-white/20 bg-white/10 px-3 py-1 text-white transition-colors hover:bg-white/20"
+                >
+                  Copy
+                </button>
+              </div>
+            ) : (
+              <p class="text-blue-100/70" data-no-account>
+                {transfer.creditor} hasn't added a bank account number yet. Ask them to add it in their profile.
+              </p>
+            )}
+            <div class="flex items-center justify-between gap-2">
+              <div class="min-w-0">
+                <dt class="text-xs text-blue-100/60">Amount</dt>
+                <dd class="text-white">{transfer.details.amount}</dd>
+              </div>
+              <button
+                type="button"
+                data-copy-value={transfer.details.amount}
+                class="shrink-0 rounded-lg border border-white/20 bg-white/10 px-3 py-1 text-white transition-colors hover:bg-white/20"
+              >
+                Copy
+              </button>
+            </div>
+            <div class="flex items-center justify-between gap-2">
+              <div class="min-w-0">
+                <dt class="text-xs text-blue-100/60">Transfer title</dt>
+                <dd class="break-words text-white">{transfer.details.title}</dd>
+              </div>
+              <button
+                type="button"
+                data-copy-value={transfer.details.title}
+                class="shrink-0 rounded-lg border border-white/20 bg-white/10 px-3 py-1 text-white transition-colors hover:bg-white/20"
+              >
+                Copy
+              </button>
+            </div>
+          </dl>
+          <p role="status" data-copy-status class="mt-2 min-h-5 text-sm text-green-300"></p>
+        </li>
+      ))}
+    </ul>
+  </div>
+)}
+
+<script>
+  // Progressive enhancement: without JavaScript the values stay visible for manual copying.
+  for (const block of document.querySelectorAll<HTMLElement>("[data-transfer]")) {
+    const status = block.querySelector<HTMLElement>("[data-copy-status]");
+    for (const button of block.querySelectorAll<HTMLButtonElement>("[data-copy-value]")) {
+      const value = button.dataset.copyValue ?? "";
+      button.addEventListener("click", () => {
+        // Called synchronously inside the click handler: Safari rejects clipboard writes after an await.
+        if (!navigator.clipboard) {
+          if (status) status.textContent = "Select the text and copy it manually";
+          return;
+        }
+        navigator.clipboard.writeText(value).then(
+          () => {
+            if (status) status.textContent = "Copied";
+          },
+          () => {
+            if (status) status.textContent = "Could not copy — select the text and copy it manually";
+          },
+        );
+      });
+    }
+  }
+</script>

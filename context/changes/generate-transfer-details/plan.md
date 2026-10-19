@@ -276,11 +276,11 @@ Expand-only: a new table and three new functions, nothing existing changes, so t
 
 #### Automated
 
-- [x] 2.1 Migration applies cleanly: `npm run db:reset`
-- [x] 2.2 Generated types are current: `npm run db:types` leaves `git diff src/db/database.types.ts` showing only the new functions/table
-- [x] 2.3 Unit tests pass: `npm test`
-- [x] 2.4 Type checking passes: `npx astro check`
-- [x] 2.5 Linting passes: `npm run lint`
+- [x] 2.1 Migration applies cleanly: `npm run db:reset` — 23963f8
+- [x] 2.2 Generated types are current: `npm run db:types` leaves `git diff src/db/database.types.ts` showing only the new functions/table — 23963f8
+- [x] 2.3 Unit tests pass: `npm test` — 23963f8
+- [x] 2.4 Type checking passes: `npx astro check` — 23963f8
+- [x] 2.5 Linting passes: `npm run lint` — 23963f8
 
 #### Manual
 
@@ -291,10 +291,10 @@ Expand-only: a new table and three new functions, nothing existing changes, so t
 
 #### Automated
 
-- [ ] 3.1 Unit tests pass: `npm test`
-- [ ] 3.2 Type checking passes: `npx astro check`
-- [ ] 3.3 Linting passes: `npm run lint`
-- [ ] 3.4 Production build succeeds: `npm run build`
+- [x] 3.1 Unit tests pass: `npm test`
+- [x] 3.2 Type checking passes: `npx astro check`
+- [x] 3.3 Linting passes: `npm run lint`
+- [x] 3.4 Production build succeeds: `npm run build`
 
 #### Manual
 
