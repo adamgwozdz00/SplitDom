@@ -308,10 +308,10 @@ Expand-only: a new table and three new functions, nothing existing changes, so t
 
 #### Automated
 
-- [x] 4.1 Smoke passes against local Supabase and the dev server: `npm run smoke`
-- [x] 4.2 Unit tests pass: `npm test`
-- [x] 4.3 Type checking passes: `npx astro check`
-- [x] 4.4 Linting passes: `npm run lint`
+- [x] 4.1 Smoke passes against local Supabase and the dev server: `npm run smoke` — 341040b
+- [x] 4.2 Unit tests pass: `npm test` — 341040b
+- [x] 4.3 Type checking passes: `npx astro check` — 341040b
+- [x] 4.4 Linting passes: `npm run lint` — 341040b
 
 #### Manual
 
