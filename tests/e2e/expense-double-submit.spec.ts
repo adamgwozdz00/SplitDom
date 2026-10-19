@@ -62,7 +62,7 @@ test.describe("risk #3: double submit stores one expense", () => {
     await expect(expense).toHaveCount(1);
     await expect(expense).toContainText("12,34 zł");
 
-    // No cleanup: the app cannot delete groups or expenses yet (S-05), so each run leaves its
-    // uniquely named group in the local database until `npm run db:reset`.
+    // No cleanup: the app cannot delete groups, so each run leaves its uniquely named group (with its
+    // expense) in the local database until `npm run db:reset`.
   });
 });

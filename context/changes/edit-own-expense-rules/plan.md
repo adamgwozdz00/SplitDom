@@ -300,24 +300,24 @@ Expand only: the new function sits beside `save_billing_period`; the previously 
 
 #### Automated
 
-- [x] 3.1 `npx astro check`, `npm run lint`, `npm run build` pass
+- [x] 3.1 `npx astro check`, `npm run lint`, `npm run build` pass — b574650
 
 #### Manual
 
-- [x] 3.2 As the author: edit title, amount and date; balances update; delete via confirmation (a repeated delete submit shows no error); balances recompute
-- [x] 3.3 As another member: no Edit link, edit URL redirects with the not-the-author message, a hand-sent POST is refused
-- [x] 3.4 Invalid amount on the edit page shows the message and keeps the user on the edit page
-- [x] 3.5 Two browsers editing the same period: retry transparently or show "Someone else just changed this billing period"
+- [x] 3.2 As the author: edit title, amount and date; balances update; delete via confirmation (a repeated delete submit shows no error); balances recompute — b574650
+- [x] 3.3 As another member: no Edit link, edit URL redirects with the not-the-author message, a hand-sent POST is refused — b574650
+- [x] 3.4 Invalid amount on the edit page shows the message and keeps the user on the edit page — b574650
+- [x] 3.5 Two browsers editing the same period: retry transparently or show "Someone else just changed this billing period" — b574650
 
 ### Phase 4: Smoke, E2E and documentation
 
 #### Automated
 
-- [ ] 4.1 Smoke passes: `npm run smoke`
-- [ ] 4.2 E2E passes: `npx playwright test tests/e2e/expense-delete-duplicate.spec.ts`
-- [ ] 4.3 Deliberate break: removing the author check in the aggregate makes a unit test and the smoke step (which expects `not_expense_author`) fail
-- [ ] 4.4 `npm test`, `npx astro check`, `npm run lint`, `npm run build` pass
+- [x] 4.1 Smoke passes: `npm run smoke`
+- [x] 4.2 E2E passes: `npx playwright test tests/e2e/expense-delete-duplicate.spec.ts`
+- [x] 4.3 Deliberate break: removing the author check in the aggregate makes a unit test and the smoke step (which expects `not_expense_author`) fail
+- [x] 4.4 `npm test`, `npx astro check`, `npm run lint`, `npm run build` pass
 
 #### Manual
 
-- [ ] 4.5 Docs read correctly; roadmap and board statuses aligned
+- [x] 4.5 Docs read correctly; roadmap and board statuses aligned
