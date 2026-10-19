@@ -54,7 +54,13 @@ const formError = errorCode ? groupErrorMessage(errorCode) : null;
         <CreateGroupForm error={formError} />
       </section>
 
-      <form method="POST" action="/api/auth/signout" class="mt-8 text-center">
+      <p class="mt-6 text-center text-sm">
+        <a href="/profile" class="text-purple-300 hover:underline">
+          Profile and bank account
+        </a>
+      </p>
+
+      <form method="POST" action="/api/auth/signout" class="mt-4 text-center">
         <button
           type="submit"
           class="rounded-lg border border-white/20 bg-white/10 px-4 py-2 text-sm transition-colors hover:bg-white/20"

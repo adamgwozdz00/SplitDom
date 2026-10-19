@@ -2,15 +2,18 @@
 import Layout from "@/layouts/Layout.astro";
 import GroupCard from "@/components/groups/GroupCard.astro";
 import BalancesPanel from "@/components/expenses/BalancesPanel.astro";
+import TransferPanel from "@/components/expenses/TransferPanel.astro";
 import ExpenseForm from "@/components/expenses/ExpenseForm.astro";
 import ExpenseList from "@/components/expenses/ExpenseList.astro";
 import InvitePanel from "@/components/invites/InvitePanel.astro";
 import {
   createBillingPeriodService,
+  creditorIdsOf,
   EXPENSES_LOAD_FAILED_MESSAGE,
   billingPeriodErrorMessage,
 } from "@/lib/billing-periods";
 import { createGroupService, groupErrorMessage, GROUPS_LOAD_FAILED_MESSAGE, takeNewInvite } from "@/lib/groups";
+import { createMemberProfileService } from "@/lib/member-profiles";
 import { createClient } from "@/lib/supabase";
 
 const { user } = Astro.locals;
@@ -46,6 +49,19 @@ const expenseError = group && expenseErrorParam ? billingPeriodErrorMessage(expe
 // A failure to load expenses only replaces the expenses section; the rest of the page still renders.
 const summary = group && supabase ? await createBillingPeriodService(supabase).summarizeOpen(group) : null;
 const open = summary && "data" in summary ? summary.data : null;
+
+// Only the creditors of the viewer's own debts have their account numbers requested. A failed lookup shows
+// the "no number yet" state rather than breaking the page.
+const creditorIds = open ? creditorIdsOf(open.balances, user.id) : [];
+const accounts =
+  group && supabase && creditorIds.length > 0
+    ? await createMemberProfileService(supabase).accountNumbersFor({ groupId: group.id, userIds: creditorIds })
+    : null;
+const accountNumbers = accounts && "data" in accounts ? accounts.data : new Map();
+// The page can show an account number, so neither the browser nor a proxy may keep a copy.
+if (creditorIds.length > 0) {
+  Astro.response.headers.set("Cache-Control", "no-store");
+}
 ---
 
 <Layout title={group ? group.name.value : notFound ? groupErrorMessage("group_not_found") : "Group"}>
@@ -61,6 +77,13 @@ const open = summary && "data" in summary ? summary.data : null;
                 <ExpenseForm group={group} period={open.period} error={expenseError} />
                 <div class="mt-6 space-y-6">
                   <BalancesPanel group={group} balances={open.balances} viewerId={user.id} />
+                  <TransferPanel
+                    group={group}
+                    balances={open.balances}
+                    viewerId={user.id}
+                    monthLabel={open.period.month.label()}
+                    accountNumbers={accountNumbers}
+                  />
                   <ExpenseList
                     group={group}
                     period={open.period}
