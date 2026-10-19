@@ -274,27 +274,27 @@ Expand only: the new function sits beside `save_billing_period`; the previously 
 
 #### Automated
 
-- [x] 1.1 Aggregate tests cover author edit/delete, non-author, closed period, unknown expense, date window, re-split between original sharers, share sum, edit-after-add and balances
-- [x] 1.2 Service tests cover retry once, period_changed, closed-meanwhile refusal and validation order
-- [x] 1.3 Unit tests pass: `npm test`
-- [x] 1.4 Types pass: `npx astro check`
-- [x] 1.5 Lint passes: `npm run lint`
+- [x] 1.1 Aggregate tests cover author edit/delete, non-author, closed period, unknown expense, date window, re-split between original sharers, share sum, edit-after-add and balances — 3f04d04
+- [x] 1.2 Service tests cover retry once, period_changed, closed-meanwhile refusal and validation order — 3f04d04
+- [x] 1.3 Unit tests pass: `npm test` — 3f04d04
+- [x] 1.4 Types pass: `npx astro check` — 3f04d04
+- [x] 1.5 Lint passes: `npm run lint` — 3f04d04
 
 #### Manual
 
-- [x] 1.6 Review the aggregate API: `canEdit` is the only place that decides editability
+- [x] 1.6 Review the aggregate API: `canEdit` is the only place that decides editability — 3f04d04
 
 ### Phase 2: Persistence (expand migration) and repository
 
 #### Automated
 
-- [ ] 2.1 Migration applies cleanly: `npm run db:reset`
-- [ ] 2.2 Types regenerated with no diff afterwards: `npm run db:types && git diff --exit-code src/db/database.types.ts`
-- [ ] 2.3 Unit tests, `npx astro check` and `npm run lint` pass
+- [x] 2.1 Migration applies cleanly: `npm run db:reset`
+- [x] 2.2 Types regenerated with no diff afterwards: `npm run db:types && git diff --exit-code src/db/database.types.ts`
+- [x] 2.3 Unit tests, `npx astro check` and `npm run lint` pass
 
 #### Manual
 
-- [ ] 2.4 `save_billing_period_changes` is executable by `authenticated` only and a direct call without `x-app-key` is refused (403)
+- [x] 2.4 `save_billing_period_changes` is executable by `authenticated` only and a direct call without `x-app-key` is refused (403)
 
 ### Phase 3: Endpoints and UI
 
