@@ -1,0 +1,104 @@
+---
+import Layout from "@/layouts/Layout.astro";
+import { createMemberProfileService, memberProfileErrorMessage } from "@/lib/member-profiles";
+import { createClient } from "@/lib/supabase";
+
+const { user } = Astro.locals;
+// The middleware redirects anonymous requests, so reaching here without a user is a wiring bug.
+if (!user) {
+  throw new Error("/profile rendered without a signed-in user");
+}
+
+// A failure to load only replaces the form, never a 500. The page shows a bank account number: never cache it.
+Astro.response.headers.set("Cache-Control", "no-store");
+const supabase = createClient(Astro.request.headers, Astro.cookies);
+const loaded = supabase ? await createMemberProfileService(supabase).getOwn(user.id) : null;
+const profile = loaded && "data" in loaded ? loaded.data : null;
+
+// Only the mapped message is rendered, never the raw query value.
+const errorCode = Astro.url.searchParams.get("error");
+const error = errorCode ? memberProfileErrorMessage(errorCode) : null;
+const saved = Astro.url.searchParams.get("saved") === "1";
+const current = profile?.accountNumber ?? null;
+---
+
+<Layout title="Profile">
+  <div class="bg-cosmic flex min-h-screen items-center justify-center p-4">
+    <div class="w-full max-w-md rounded-2xl border border-white/10 bg-white/10 p-8 text-white backdrop-blur-xl">
+      <h1 class="mb-4 bg-gradient-to-r from-blue-200 to-purple-200 bg-clip-text text-3xl font-bold text-transparent">
+        Profile
+      </h1>
+      <p class="mb-4 text-sm text-blue-100/80">
+        Members who owe you money see this number so they can copy it into their banking. Nobody else sees it.
+      </p>
+      {profile ? (
+        <form method="POST" action="/api/profile/account" class="space-y-3" data-account-form>
+          <div>
+            <label for="account-number" class="mb-1 block text-sm text-blue-100/80">
+              Bank account number (NRB)
+            </label>
+            <input
+              id="account-number"
+              name="accountNumber"
+              type="text"
+              inputmode="numeric"
+              autocomplete="off"
+              value={current ? current.label() : ""}
+              placeholder="26 digits, e.g. 61 1090 1014 0000 0712 1981 2874"
+              aria-invalid={error ? "true" : undefined}
+              aria-describedby={error ? "account-number-error" : undefined}
+              class:list={[
+                "w-full rounded-lg border bg-white/10 px-3 py-2 text-white placeholder-white/40 transition-colors focus:ring-2 focus:outline-none",
+                error ? "border-red-400/60 focus:ring-red-400" : "border-white/20 focus:ring-purple-400",
+              ]}
+            />
+            <p class="mt-1 text-xs text-blue-100/60">Leave it empty to remove your number.</p>
+          </div>
+          {error && (
+            <p
+              id="account-number-error"
+              role="alert"
+              class="rounded-lg border border-red-500/30 bg-red-900/30 px-3 py-2 text-sm text-red-300"
+            >
+              {error}
+            </p>
+          )}
+          {saved && !error && (
+            <p
+              role="status"
+              class="rounded-lg border border-green-500/30 bg-green-900/30 px-3 py-2 text-sm text-green-300"
+            >
+              Saved
+            </p>
+          )}
+          <button
+            type="submit"
+            class="w-full rounded-lg bg-purple-600 px-4 py-2 font-medium text-white transition-colors hover:bg-purple-500 disabled:opacity-60"
+          >
+            Save
+          </button>
+        </form>
+      ) : (
+        <p role="alert" class="rounded-lg border border-red-500/30 bg-red-900/30 px-3 py-2 text-sm text-red-300">
+          Couldn't load your profile, try again
+        </p>
+      )}
+      <a href="/dashboard" class="mt-6 inline-block text-sm text-purple-300 hover:underline">
+        Back to dashboard
+      </a>
+    </div>
+  </div>
+</Layout>
+
+<script>
+  // Progressive enhancement: a double tap must not send the form twice. Without JavaScript it still submits.
+  for (const form of document.querySelectorAll<HTMLFormElement>("form[data-account-form]")) {
+    const button = form.querySelector<HTMLButtonElement>("button[type=submit]");
+    form.addEventListener("submit", () => {
+      if (button) button.disabled = true;
+    });
+    window.addEventListener("pageshow", () => {
+      if (button) button.disabled = false;
+    });
+  }
+</script>

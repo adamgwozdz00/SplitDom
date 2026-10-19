@@ -49,7 +49,7 @@ People who share household costs — partners or roommates — settle shared exp
 | F-02 | billing-period-aggregate    | (foundation) `BillingPeriod` is the aggregate root that adds expenses and splits them | S-04          | FR-004, FR-005, FR-015 | done        |
 | F-03 | group-membership-aggregate  | (foundation) `Group` is the membership aggregate; `Invite` is an entity inside it     | S-03          | FR-002, FR-003         | done        |
 | S-05 | edit-own-expense-rules      | expense author can edit or delete their own expense only while it is still editable   | F-02          | FR-005                 | done |
-| S-06 | generate-transfer-details   | debtor can copy transfer details (account number, amount, title) for a debt           | S-04          | FR-007                 | proposed    |
+| S-06 | generate-transfer-details   | debtor can copy transfer details (account number, amount, title) for a debt           | S-04          | FR-007                 | in-progress |
 | S-07 | mark-transfer-sent          | debtor can mark a transfer as sent, as a reminder for themselves                      | F-02          | FR-008                 | proposed    |
 | S-08 | confirm-debt-paid           | creditor can confirm a debt as paid, which closes it                                  | F-02          | FR-009                 | proposed    |
 | S-09 | host-closes-period          | host can close a finished period, which freezes it and opens the next one             | S-05, S-08    | US-02, FR-015          | proposed    |
@@ -203,9 +203,9 @@ Foundations below assume these are present and do NOT re-scaffold them.
 - **Parallel with:** S-01, S-05, S-07, S-08, S-09, S-10
 - **Blockers:** —
 - **Unknowns:**
-  - Where and when does a member provide their bank account number? — Owner: user. Block: no.
+  - ~~Where and when does a member provide their bank account number?~~ Resolved 2026-10-19 (S-06 planning): on a `/profile` page, in a per-user `MemberProfile` aggregate holding the account number only; S-10 adds the display name to the same table (`context/changes/generate-transfer-details/plan.md`).
 - **Risk:** Introduces the most sensitive data in the app (account numbers), so it must follow the F-01 isolation model (and stays behind the app-key gate); low logic risk otherwise. Design note (2026-10-06): the account number belongs to the person, not to a group, so it fits a separate per-user aggregate (`MemberProfile`, shared with S-10) that only its owner edits and that validates the account number (NRB/IBAN), rather than the `Group` or `BillingPeriod` aggregates.
-- **Status:** proposed
+- **Status:** in-progress
 
 ### S-07: Mark a transfer as sent
 
@@ -257,7 +257,7 @@ Foundations below assume these are present and do NOT re-scaffold them.
 - **Blockers:** —
 - **Unknowns:**
   - Is the display name per user (one name in every group) or per group membership? — Owner: user. Block: no.
-  - Should the profile also hold the bank account number that S-06 needs (S-06 unknown "where and when does a member provide their bank account number")? — Owner: user. Block: no.
+  - ~~Should the profile also hold the bank account number that S-06 needs?~~ Resolved 2026-10-19 (S-06 planning): yes, S-06 creates `member_profiles` with the account number; S-10 extends it with the display name.
 - **Risk:** Low logic risk, provided S-04 keeps the member-labelling rule in one place, so this slice changes the label source without touching the balance views. Added 2026-10-05 during S-04 planning. Design note (2026-10-06): the display name belongs to the person across all their groups, so it fits a separate per-user aggregate (`MemberProfile`, shared with S-06) rather than `Group`.
 - **Status:** proposed
 

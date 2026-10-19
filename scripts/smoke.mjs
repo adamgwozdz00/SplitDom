@@ -16,6 +16,11 @@ const email = `smoke-${Date.now()}@example.com`;
 const password = "Smoke-Test-Passw0rd!";
 // The second user joins group A through the invite link.
 const email2 = `smoke-joiner-${Date.now()}@example.com`;
+// The third user never joins any group: the stranger of the account-number privacy steps.
+const email3 = `smoke-stranger-${Date.now()}@example.com`;
+// A valid Polish account number (NRB checksum passes) the creditor saves on the profile page.
+const ACCOUNT_DIGITS = "34109010140000000000000000";
+const ACCOUNT_LABEL = "34 1090 1014 0000 0000 0000 0000";
 const jar = new Map();
 const stamp = Date.now();
 const groupA = `Smoke household A ${stamp}`;
@@ -145,6 +150,30 @@ async function firstUserToken() {
   return session.access_token;
 }
 
+// A session straight from Supabase Auth (signing the user up first when `signUp` is set), not from the app.
+async function authSession(userEmail, { signUp = false } = {}) {
+  const path = signUp ? "signup" : "token?grant_type=password";
+  const response = await fetch(`${SUPABASE_URL}/auth/v1/${path}`, {
+    method: "POST",
+    headers: { apikey: SUPABASE_KEY, "Content-Type": "application/json" },
+    body: JSON.stringify({ email: userEmail, password }),
+  });
+  if (!response.ok) throw new Error(`${path} for ${userEmail} failed with ${response.status}`);
+  const session = await response.json();
+  return { token: session.access_token, userId: session.user.id };
+}
+
+// Reads the account numbers of `userId` in group A straight through the Data API, as `userEmail` could.
+async function readAccountNumberAs(userEmail, { signUp = false } = {}) {
+  const creditor = await authSession(email2);
+  const reader = await authSession(userEmail, { signUp });
+  return directRpc("get_group_member_account_numbers", {
+    token: reader.token,
+    headers: { "x-app-key": SUPABASE_APP_KEY },
+    args: { p_group_id: groupIds[0], p_user_ids: [creditor.userId] },
+  });
+}
+
 // The gate judges `x-app-key` on every Data API request; only the app's key gets through.
 async function firstUserCallsDirectly(appKey, rpcName = "list_my_groups", args = {}) {
   return directRpc(rpcName, {
@@ -253,6 +282,12 @@ const steps = [
     { status: 302, location: "/auth/signin?error=Sign-in%20was%20cancelled" },
   ],
   ["dashboard redirects anonymous user", () => request("/dashboard"), { status: 302, location: "/auth/signin" }],
+  ["profile redirects anonymous user", () => request("/profile"), { status: 302, location: "/auth/signin" }],
+  [
+    "saving an account number redirects anonymous user",
+    () => request("/api/profile/account", { method: "POST", form: { accountNumber: ACCOUNT_DIGITS } }),
+    { status: 302, location: "/auth/signin" },
+  ],
   [
     "signup creates account",
     () => request("/api/auth/signup", { method: "POST", form: { email, password } }),
@@ -383,6 +418,31 @@ const steps = [
     { status: 200, check: bodyContains("Czynsz (edited)", "300,00") },
   ],
   [
+    "an invalid account number is rejected",
+    () => request("/api/profile/account", { method: "POST", form: { accountNumber: "123" } }),
+    { status: 302, location: "/profile?error=invalid_account_number" },
+  ],
+  [
+    "a number with a wrong checksum is rejected",
+    () => request("/api/profile/account", { method: "POST", form: { accountNumber: "34109010140000000000000001" } }),
+    { status: 302, location: "/profile?error=invalid_account_number" },
+  ],
+  [
+    "the creditor saves a valid account number",
+    () => request("/api/profile/account", { method: "POST", form: { accountNumber: ACCOUNT_LABEL } }),
+    { status: 302, location: "/profile?saved=1" },
+  ],
+  [
+    "the profile page shows the saved number",
+    () => request("/profile"),
+    { status: 200, check: bodyContains(ACCOUNT_LABEL) },
+  ],
+  [
+    "the creditor sees no transfer details for the debt owed to them",
+    requestGroupA,
+    { status: 200, check: bodyLacks("Transfer details", ACCOUNT_DIGITS) },
+  ],
+  [
     "non-member cannot add an expense to another group",
     () => postExpense(1, { title: "Czynsz", amount: "400,00", purchasedOn: todayInWarsaw }),
     { status: 302, check: checkExpenseLocation(1, "?expenseError=group_not_found") },
@@ -404,6 +464,19 @@ const steps = [
     { status: 302, location: "/dashboard" },
   ],
   ["first user sees the amount they owe", requestGroupA, { status: 200, check: bodyContains("You owe", "300,00") }],
+  [
+    "the debtor sees the creditor's transfer details",
+    requestGroupA,
+    {
+      status: 200,
+      check: bodyContains("Transfer details", ACCOUNT_LABEL, ACCOUNT_DIGITS, "300,00", `SplitDom ${groupA}`),
+    },
+  ],
+  [
+    "the debtor's own profile page does not show the creditor's number",
+    () => request("/profile"),
+    { status: 200, check: bodyLacks(ACCOUNT_LABEL, ACCOUNT_DIGITS) },
+  ],
   ["a member who did not pay sees no Edit link", requestGroupA, { status: 200, check: bodyLacks("/edit") }],
   [
     "a member who did not pay cannot open the edit page",
@@ -483,6 +556,16 @@ const steps = [
     "signed-in user calling the billing period loader directly without the app key is refused",
     () => firstUserCallsDirectly(undefined, "get_current_billing_period", { p_group_id: groupIds[0] }),
     { status: 403, check: bodyContains('"code":"APPGATE"') },
+  ],
+  [
+    "a stranger outside the group cannot read the creditor's account number",
+    () => readAccountNumberAs(email3, { signUp: true }),
+    { status: 200, check: (actual) => (actual.body.trim() === "[]" ? true : `body is ${actual.body}`) },
+  ],
+  [
+    "a fellow member can read the creditor's account number through the function",
+    () => readAccountNumberAs(email),
+    { status: 200, check: bodyContains(ACCOUNT_DIGITS) },
   ],
   // Positive control: the same call with the app's key reaches the function and returns the user's data.
   [
