@@ -261,12 +261,12 @@ Expand-only: a new table and three new functions, nothing existing changes, so t
 
 #### Automated
 
-- [x] 1.1 AccountNumber tests cover valid, checksum-failing, wrong length, non-digit, `PL` prefix and spacing inputs
-- [x] 1.2 MemberProfile tests cover owner-only change, clear, version conflict retry and `profile_changed`
-- [x] 1.3 TransferDetails tests cover title truncation, missing number and creditor selection
-- [x] 1.4 Unit tests pass: `npm test`
-- [x] 1.5 Type checking passes: `npx astro check`
-- [x] 1.6 Linting passes: `npm run lint`
+- [x] 1.1 AccountNumber tests cover valid, checksum-failing, wrong length, non-digit, `PL` prefix and spacing inputs — 08482f5
+- [x] 1.2 MemberProfile tests cover owner-only change, clear, version conflict retry and `profile_changed` — 08482f5
+- [x] 1.3 TransferDetails tests cover title truncation, missing number and creditor selection — 08482f5
+- [x] 1.4 Unit tests pass: `npm test` — 08482f5
+- [x] 1.5 Type checking passes: `npx astro check` — 08482f5
+- [x] 1.6 Linting passes: `npm run lint` — 08482f5
 
 #### Manual
 
@@ -276,11 +276,11 @@ Expand-only: a new table and three new functions, nothing existing changes, so t
 
 #### Automated
 
-- [ ] 2.1 Migration applies cleanly: `npm run db:reset`
-- [ ] 2.2 Generated types are current: `npm run db:types` leaves `git diff src/db/database.types.ts` showing only the new functions/table
-- [ ] 2.3 Unit tests pass: `npm test`
-- [ ] 2.4 Type checking passes: `npx astro check`
-- [ ] 2.5 Linting passes: `npm run lint`
+- [x] 2.1 Migration applies cleanly: `npm run db:reset`
+- [x] 2.2 Generated types are current: `npm run db:types` leaves `git diff src/db/database.types.ts` showing only the new functions/table
+- [x] 2.3 Unit tests pass: `npm test`
+- [x] 2.4 Type checking passes: `npx astro check`
+- [x] 2.5 Linting passes: `npm run lint`
 
 #### Manual
 
