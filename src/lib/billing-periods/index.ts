@@ -21,3 +21,4 @@ export { PurchaseDate } from "@/lib/billing-periods/purchase-date.value";
 export type { PurchaseDateWindow } from "@/lib/billing-periods/purchase-date.value";
 export { EqualSplitPolicy } from "@/lib/billing-periods/split-policy";
 export type { ExpenseShare, SplitPolicy } from "@/lib/billing-periods/split-policy";
+export { TransferDetails, creditorIdsOf } from "@/lib/billing-periods/transfer-details.value";

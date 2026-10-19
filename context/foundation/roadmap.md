@@ -49,7 +49,7 @@ People who share household costs — partners or roommates — settle shared exp
 | F-02 | billing-period-aggregate    | (foundation) `BillingPeriod` is the aggregate root that adds expenses and splits them | S-04          | FR-004, FR-005, FR-015 | done        |
 | F-03 | group-membership-aggregate  | (foundation) `Group` is the membership aggregate; `Invite` is an entity inside it     | S-03          | FR-002, FR-003         | done        |
 | S-05 | edit-own-expense-rules      | expense author can edit or delete their own expense only while it is still editable   | F-02          | FR-005                 | done |
-| S-06 | generate-transfer-details   | debtor can copy transfer details (account number, amount, title) for a debt           | S-04          | FR-007                 | proposed    |
+| S-06 | generate-transfer-details   | debtor can copy transfer details (account number, amount, title) for a debt           | S-04          | FR-007                 | in-progress |
 | S-07 | mark-transfer-sent          | debtor can mark a transfer as sent, as a reminder for themselves                      | F-02          | FR-008                 | proposed    |
 | S-08 | confirm-debt-paid           | creditor can confirm a debt as paid, which closes it                                  | F-02          | FR-009                 | proposed    |
 | S-09 | host-closes-period          | host can close a finished period, which freezes it and opens the next one             | S-05, S-08    | US-02, FR-015          | proposed    |
@@ -205,7 +205,7 @@ Foundations below assume these are present and do NOT re-scaffold them.
 - **Unknowns:**
   - Where and when does a member provide their bank account number? — Owner: user. Block: no.
 - **Risk:** Introduces the most sensitive data in the app (account numbers), so it must follow the F-01 isolation model (and stays behind the app-key gate); low logic risk otherwise. Design note (2026-10-06): the account number belongs to the person, not to a group, so it fits a separate per-user aggregate (`MemberProfile`, shared with S-10) that only its owner edits and that validates the account number (NRB/IBAN), rather than the `Group` or `BillingPeriod` aggregates.
-- **Status:** proposed
+- **Status:** in-progress
 
 ### S-07: Mark a transfer as sent
 
