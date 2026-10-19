@@ -169,6 +169,52 @@ function postExpense(groupIndex, form) {
   return request(`/api/groups/${groupIds[groupIndex]}/expenses`, { method: "POST", form });
 }
 
+// The id of the group A expense the second user adds; the edit and delete steps read it from the group page.
+let expenseId;
+const EXPENSE_EDIT_LINK = /\/groups\/[0-9a-f-]{36}\/expenses\/([0-9a-f-]{36})\/edit/;
+
+function checkEditLinkShown(actual) {
+  const match = EXPENSE_EDIT_LINK.exec(actual.body);
+  if (!match) return "no Edit link on the group page";
+  expenseId = match[1];
+  return true;
+}
+
+function bodyLacks(...texts) {
+  return (actual) => {
+    const found = texts.filter((text) => actual.body.includes(text));
+    return found.length ? `body unexpectedly contains ${found.map((text) => JSON.stringify(text)).join(", ")}` : true;
+  };
+}
+
+// Steps on the expense need both ids; without them they fail instead of silently requesting /undefined.
+function expensePath(groupIndex, suffix) {
+  if (groupIds[groupIndex] === undefined || expenseId === undefined) return null;
+  return `/groups/${groupIds[groupIndex]}/expenses/${expenseId}${suffix}`;
+}
+
+function requestExpense(groupIndex, suffix, options) {
+  const path = expensePath(groupIndex, suffix);
+  if (path === null) return Promise.resolve({ status: 0, location: "(no group or expense id yet)", body: "" });
+  return request(options?.api ? `/api${path}` : path, options);
+}
+
+const edited = { title: "Czynsz (edited)", amount: "600,00", purchasedOn: todayInWarsaw };
+
+function checkExpenseError(groupIndex, error, suffix = "") {
+  return (actual) =>
+    actual.location === `/groups/${groupIds[groupIndex]}${suffix}?expenseError=${error}`
+      ? true
+      : `location is ${actual.location}`;
+}
+
+function checkEditPageError(error) {
+  return (actual) =>
+    actual.location === `/groups/${groupIds[0]}/expenses/${expenseId}/edit?expenseError=${error}`
+      ? true
+      : `location is ${actual.location}`;
+}
+
 function checkExpenseLocation(groupIndex, suffix = "") {
   return (actual) =>
     actual.location === `/groups/${groupIds[groupIndex]}${suffix}` ? true : `location is ${actual.location}`;
@@ -315,6 +361,27 @@ const steps = [
     () => postExpense(0, { title: "Czynsz", amount: "abc", purchasedOn: todayInWarsaw }),
     { status: 302, check: checkExpenseLocation(0, "?expenseError=invalid_amount") },
   ],
+  ["the author sees an Edit link", requestGroupA, { status: 200, check: checkEditLinkShown }],
+  [
+    "the author's edit page is prefilled",
+    () => requestExpense(0, "/edit"),
+    { status: 200, check: bodyContains("Edit expense", 'value="Czynsz"', 'value="400,00"') },
+  ],
+  [
+    "an invalid amount on the edit form returns to the edit page",
+    () => requestExpense(0, "/edit", { method: "POST", api: true, form: { ...edited, amount: "abc" } }),
+    { status: 302, check: checkEditPageError("invalid_amount") },
+  ],
+  [
+    "the author edits the expense",
+    () => requestExpense(0, "/edit", { method: "POST", api: true, form: edited }),
+    { status: 302, check: checkExpenseLocation(0) },
+  ],
+  [
+    "group page shows the edited expense and the new debt",
+    requestGroupA,
+    { status: 200, check: bodyContains("Czynsz (edited)", "300,00") },
+  ],
   [
     "non-member cannot add an expense to another group",
     () => postExpense(1, { title: "Czynsz", amount: "400,00", purchasedOn: todayInWarsaw }),
@@ -336,8 +403,72 @@ const steps = [
     () => request("/api/auth/signin", { method: "POST", form: { email, password } }),
     { status: 302, location: "/dashboard" },
   ],
-  ["first user sees the amount they owe", requestGroupA, { status: 200, check: bodyContains("You owe", "200,00") }],
+  ["first user sees the amount they owe", requestGroupA, { status: 200, check: bodyContains("You owe", "300,00") }],
+  ["a member who did not pay sees no Edit link", requestGroupA, { status: 200, check: bodyLacks("/edit") }],
+  [
+    "a member who did not pay cannot open the edit page",
+    () => requestExpense(0, "/edit"),
+    { status: 302, check: checkExpenseError(0, "not_expense_author") },
+  ],
+  [
+    "a member who did not pay cannot edit the expense",
+    () => requestExpense(0, "/edit", { method: "POST", api: true, form: { ...edited, title: "Hijacked" } }),
+    { status: 302, check: checkExpenseError(0, "not_expense_author") },
+  ],
+  [
+    "a member who did not pay cannot delete the expense",
+    () => requestExpense(0, "/delete", { method: "POST", api: true }),
+    { status: 302, check: checkExpenseError(0, "not_expense_author") },
+  ],
+  [
+    "the expense is untouched by the refused attempts",
+    requestGroupA,
+    { status: 200, check: bodyContains("Czynsz (edited)", "300,00") },
+  ],
   ["first user signs out", () => request("/api/auth/signout", { method: "POST" }), { status: 302, location: "/" }],
+  [
+    "second user signs in again",
+    () => request("/api/auth/signin", { method: "POST", form: { email: email2, password } }),
+    { status: 302, location: "/dashboard" },
+  ],
+  [
+    "the author deletes the expense",
+    () => requestExpense(0, "/delete", { method: "POST", api: true }),
+    { status: 302, check: checkExpenseLocation(0) },
+  ],
+  [
+    "group page no longer shows the expense or the debt",
+    requestGroupA,
+    { status: 200, check: bodyLacks("Czynsz (edited)", "/edit") },
+  ],
+  [
+    "deleting it again is not an error",
+    () => requestExpense(0, "/delete", { method: "POST", api: true }),
+    { status: 302, check: checkExpenseLocation(0) },
+  ],
+  [
+    "editing a deleted expense reports it as not found",
+    () => requestExpense(0, "/edit", { method: "POST", api: true, form: edited }),
+    { status: 302, check: checkExpenseError(0, "expense_not_found") },
+  ],
+  [
+    "second user signs out again",
+    () => request("/api/auth/signout", { method: "POST" }),
+    { status: 302, location: "/" },
+  ],
+  [
+    "signed-in user calling the expense changes function directly without the app key is refused",
+    () =>
+      firstUserCallsDirectly(undefined, "save_billing_period_changes", {
+        p_period_id: randomUUID(),
+        p_group_id: groupIds[0],
+        p_expected_version: 0,
+        p_added: [],
+        p_changed: [],
+        p_removed: [],
+      }),
+    { status: 403, check: bodyContains('"code":"APPGATE"') },
+  ],
   [
     "signed-in user calling an RPC directly without the app key is refused",
     () => firstUserCallsDirectly(),
