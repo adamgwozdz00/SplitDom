@@ -125,7 +125,7 @@ function restore(value: Json, group: Group): Result<BillingPeriod> {
   }
 }
 
-/** Maps an expense to the snake_case shape `save_billing_period` stores. */
+/** Maps an expense to the snake_case shape `save_billing_period_changes` stores. */
 function toRow(expense: ExpenseSnapshot): Json {
   return {
     id: expense.id,

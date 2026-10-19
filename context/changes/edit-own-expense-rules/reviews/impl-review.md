@@ -31,7 +31,7 @@ Automated criteria re-run: `npm test` 339 passed, `npx astro check` 0 errors, `n
 - **Location**: CLAUDE.md:54
 - **Detail**: "Billing period concurrency" describes `save_billing_period` as the version-guarded save; the app now calls `save_billing_period_changes` (which also requires an open period). Future agents would read the wrong function.
 - **Fix**: Name `save_billing_period_changes` there and note it stores added, changed and removed expenses.
-- **Decision**: PENDING
+- **Decision**: FIXED
 
 ### F2 — Stale doc comment on toRow
 
@@ -41,7 +41,7 @@ Automated criteria re-run: `npm test` 339 passed, `npx astro check` 0 errors, `n
 - **Location**: src/lib/billing-periods/billing-period.repository.ts:128
 - **Detail**: Comment still names `save_billing_period` (raised in the Phase 2 review and skipped then).
 - **Fix**: Reword to `save_billing_period_changes`.
-- **Decision**: PENDING
+- **Decision**: FIXED
 
 ### F3 — Unplanned additions are not recorded in the plan
 
