@@ -274,50 +274,50 @@ Expand only: the new function sits beside `save_billing_period`; the previously 
 
 #### Automated
 
-- [x] 1.1 Aggregate tests cover author edit/delete, non-author, closed period, unknown expense, date window, re-split between original sharers, share sum, edit-after-add and balances — 3f04d04
-- [x] 1.2 Service tests cover retry once, period_changed, closed-meanwhile refusal and validation order — 3f04d04
-- [x] 1.3 Unit tests pass: `npm test` — 3f04d04
-- [x] 1.4 Types pass: `npx astro check` — 3f04d04
-- [x] 1.5 Lint passes: `npm run lint` — 3f04d04
+- [x] 1.1 Aggregate tests cover author edit/delete, non-author, closed period, unknown expense, date window, re-split between original sharers, share sum, edit-after-add and balances — 2153638
+- [x] 1.2 Service tests cover retry once, period_changed, closed-meanwhile refusal and validation order — 2153638
+- [x] 1.3 Unit tests pass: `npm test` — 2153638
+- [x] 1.4 Types pass: `npx astro check` — 2153638
+- [x] 1.5 Lint passes: `npm run lint` — 2153638
 
 #### Manual
 
-- [x] 1.6 Review the aggregate API: `canEdit` is the only place that decides editability — 3f04d04
+- [x] 1.6 Review the aggregate API: `canEdit` is the only place that decides editability — 2153638
 
 ### Phase 2: Persistence (expand migration) and repository
 
 #### Automated
 
-- [x] 2.1 Migration applies cleanly: `npm run db:reset` — f22fe2b
-- [x] 2.2 Types regenerated with no diff afterwards: `npm run db:types && git diff --exit-code src/db/database.types.ts` — f22fe2b
-- [x] 2.3 Unit tests, `npx astro check` and `npm run lint` pass — f22fe2b
+- [x] 2.1 Migration applies cleanly: `npm run db:reset` — 2153638
+- [x] 2.2 Types regenerated with no diff afterwards: `npm run db:types && git diff --exit-code src/db/database.types.ts` — 2153638
+- [x] 2.3 Unit tests, `npx astro check` and `npm run lint` pass — 2153638
 
 #### Manual
 
-- [x] 2.4 `save_billing_period_changes` is executable by `authenticated` only and a direct call without `x-app-key` is refused (403) — f22fe2b
+- [x] 2.4 `save_billing_period_changes` is executable by `authenticated` only and a direct call without `x-app-key` is refused (403) — 2153638
 
 ### Phase 3: Endpoints and UI
 
 #### Automated
 
-- [x] 3.1 `npx astro check`, `npm run lint`, `npm run build` pass — b574650
+- [x] 3.1 `npx astro check`, `npm run lint`, `npm run build` pass — 2153638
 
 #### Manual
 
-- [x] 3.2 As the author: edit title, amount and date; balances update; delete via confirmation (a repeated delete submit shows no error); balances recompute — b574650
-- [x] 3.3 As another member: no Edit link, edit URL redirects with the not-the-author message, a hand-sent POST is refused — b574650
-- [x] 3.4 Invalid amount on the edit page shows the message and keeps the user on the edit page — b574650
-- [x] 3.5 Two browsers editing the same period: retry transparently or show "Someone else just changed this billing period" — b574650
+- [x] 3.2 As the author: edit title, amount and date; balances update; delete via confirmation (a repeated delete submit shows no error); balances recompute — 2153638
+- [x] 3.3 As another member: no Edit link, edit URL redirects with the not-the-author message, a hand-sent POST is refused — 2153638
+- [x] 3.4 Invalid amount on the edit page shows the message and keeps the user on the edit page — 2153638
+- [x] 3.5 Two browsers editing the same period: retry transparently or show "Someone else just changed this billing period" — 2153638
 
 ### Phase 4: Smoke, E2E and documentation
 
 #### Automated
 
-- [x] 4.1 Smoke passes: `npm run smoke` — df39798
-- [x] 4.2 E2E passes: `npx playwright test tests/e2e/expense-delete-duplicate.spec.ts` — df39798
-- [x] 4.3 Deliberate break: removing the author check in the aggregate makes a unit test and the smoke step (which expects `not_expense_author`) fail — df39798
-- [x] 4.4 `npm test`, `npx astro check`, `npm run lint`, `npm run build` pass — df39798
+- [x] 4.1 Smoke passes: `npm run smoke` — 2153638
+- [x] 4.2 E2E passes: `npx playwright test tests/e2e/expense-delete-duplicate.spec.ts` — 2153638
+- [x] 4.3 Deliberate break: removing the author check in the aggregate makes a unit test and the smoke step (which expects `not_expense_author`) fail — 2153638
+- [x] 4.4 `npm test`, `npx astro check`, `npm run lint`, `npm run build` pass — 2153638
 
 #### Manual
 
-- [x] 4.5 Docs read correctly; roadmap and board statuses aligned — df39798
+- [x] 4.5 Docs read correctly; roadmap and board statuses aligned — 2153638
