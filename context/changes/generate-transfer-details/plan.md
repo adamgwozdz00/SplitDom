@@ -291,10 +291,10 @@ Expand-only: a new table and three new functions, nothing existing changes, so t
 
 #### Automated
 
-- [x] 3.1 Unit tests pass: `npm test`
-- [x] 3.2 Type checking passes: `npx astro check`
-- [x] 3.3 Linting passes: `npm run lint`
-- [x] 3.4 Production build succeeds: `npm run build`
+- [x] 3.1 Unit tests pass: `npm test` — a78e9bc
+- [x] 3.2 Type checking passes: `npx astro check` — a78e9bc
+- [x] 3.3 Linting passes: `npm run lint` — a78e9bc
+- [x] 3.4 Production build succeeds: `npm run build` — a78e9bc
 
 #### Manual
 
@@ -308,10 +308,10 @@ Expand-only: a new table and three new functions, nothing existing changes, so t
 
 #### Automated
 
-- [ ] 4.1 Smoke passes against local Supabase and the dev server: `npm run smoke`
-- [ ] 4.2 Unit tests pass: `npm test`
-- [ ] 4.3 Type checking passes: `npx astro check`
-- [ ] 4.4 Linting passes: `npm run lint`
+- [x] 4.1 Smoke passes against local Supabase and the dev server: `npm run smoke`
+- [x] 4.2 Unit tests pass: `npm test`
+- [x] 4.3 Type checking passes: `npx astro check`
+- [x] 4.4 Linting passes: `npm run lint`
 
 #### Manual
 

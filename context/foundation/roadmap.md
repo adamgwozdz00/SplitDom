@@ -203,7 +203,7 @@ Foundations below assume these are present and do NOT re-scaffold them.
 - **Parallel with:** S-01, S-05, S-07, S-08, S-09, S-10
 - **Blockers:** —
 - **Unknowns:**
-  - Where and when does a member provide their bank account number? — Owner: user. Block: no.
+  - ~~Where and when does a member provide their bank account number?~~ Resolved 2026-10-19 (S-06 planning): on a `/profile` page, in a per-user `MemberProfile` aggregate holding the account number only; S-10 adds the display name to the same table (`context/changes/generate-transfer-details/plan.md`).
 - **Risk:** Introduces the most sensitive data in the app (account numbers), so it must follow the F-01 isolation model (and stays behind the app-key gate); low logic risk otherwise. Design note (2026-10-06): the account number belongs to the person, not to a group, so it fits a separate per-user aggregate (`MemberProfile`, shared with S-10) that only its owner edits and that validates the account number (NRB/IBAN), rather than the `Group` or `BillingPeriod` aggregates.
 - **Status:** in-progress
 
@@ -257,7 +257,7 @@ Foundations below assume these are present and do NOT re-scaffold them.
 - **Blockers:** —
 - **Unknowns:**
   - Is the display name per user (one name in every group) or per group membership? — Owner: user. Block: no.
-  - Should the profile also hold the bank account number that S-06 needs (S-06 unknown "where and when does a member provide their bank account number")? — Owner: user. Block: no.
+  - ~~Should the profile also hold the bank account number that S-06 needs?~~ Resolved 2026-10-19 (S-06 planning): yes, S-06 creates `member_profiles` with the account number; S-10 extends it with the display name.
 - **Risk:** Low logic risk, provided S-04 keeps the member-labelling rule in one place, so this slice changes the label source without touching the balance views. Added 2026-10-05 during S-04 planning. Design note (2026-10-06): the display name belongs to the person across all their groups, so it fits a separate per-user aggregate (`MemberProfile`, shared with S-06) rather than `Group`.
 - **Status:** proposed
 

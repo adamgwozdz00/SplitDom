@@ -153,6 +153,10 @@ A duplicate submit of the add-expense form is blocked only by disabling the butt
 
 The migration `edit_delete_expenses` adds one `security definer` function, `save_billing_period_changes`, which stores added, changed and removed expenses of a period if its `version` is unchanged. It only adds an object, so it is compatible with the previously deployed Worker (which keeps calling `save_billing_period`) and needs no Supabase or Cloudflare configuration change. `save_billing_period` stays until the contract migration. The paid-debt part of FR-005 (no edits once a debt is paid) arrives with S-08.
 
+## Account numbers and transfer details (added 2026-10-19, change `generate-transfer-details`, S-06)
+
+The migration `member_profiles` adds the table `member_profiles` (one row per user: the bank account number, a `version`) and three `security definer` functions: `get_my_member_profile`, `save_my_member_profile` and `get_group_member_account_numbers`. It only adds objects, so it is compatible with the previously deployed Worker and needs no Supabase or Cloudflare configuration change. The table has row-level security with no policies and no grants for `anon`/`authenticated`; the numbers are the most sensitive data in the app, so the pages that show one are sent with `Cache-Control: no-store`. The numbers are stored as plain text (no column encryption beyond Supabase's disk encryption). Unlike the group tables, the user foreign key cascades, so deleting a user deletes their profile.
+
 ## Out of scope
 
 Multi-region HA, Docker, and anything beyond first MVP deploy — per `infrastructure.md`'s own scope boundary.
