@@ -1,10 +1,10 @@
 ---
 change_id: add-expense-see-balances
 title: Add an expense and see balances
-status: impl_reviewed
+status: archived
 created: 2026-10-05
-updated: 2026-10-06
-archived_at: null
+updated: 2026-10-19
+archived_at: 2026-10-19T11:41:52Z
 ---
 
 ## Notes
