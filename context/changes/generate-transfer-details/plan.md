@@ -270,7 +270,7 @@ Expand-only: a new table and three new functions, nothing existing changes, so t
 
 #### Manual
 
-- [ ] 1.7 Module layout matches `src/lib/groups` (index.ts, types.ts, `__tests__/`, `feature.role.ts` naming)
+- [x] 1.7 Module layout matches `src/lib/groups` (index.ts, types.ts, `__tests__/`, `feature.role.ts` naming)
 
 ### Phase 2: Persistence and repository
 
@@ -284,8 +284,8 @@ Expand-only: a new table and three new functions, nothing existing changes, so t
 
 #### Manual
 
-- [ ] 2.6 In local Supabase Studio the table has RLS on and no `anon`/`authenticated` grants
-- [ ] 2.7 Calling the functions without the app key returns 403 `APPGATE`
+- [x] 2.6 In local Supabase Studio the table has RLS on and no `anon`/`authenticated` grants
+- [x] 2.7 Calling the functions without the app key returns 403 `APPGATE`
 
 ### Phase 3: Profile page, endpoint and transfer panel
 
@@ -298,11 +298,11 @@ Expand-only: a new table and three new functions, nothing existing changes, so t
 
 #### Manual
 
-- [ ] 3.5 `/profile` rejects a number with a bad checksum with a readable message and saves a valid one; clearing works
-- [ ] 3.6 A debtor sees the panel; the creditor sees no panel for the same debt
-- [ ] 3.7 Copy buttons put the 26 digits, `400,50` style amount and title on the clipboard
-- [ ] 3.8 A creditor without a number shows the "no number yet" message
-- [ ] 3.9 Mobile width layout is usable
+- [x] 3.5 `/profile` rejects a number with a bad checksum with a readable message and saves a valid one; clearing works
+- [x] 3.6 A debtor sees the panel; the creditor sees no panel for the same debt
+- [x] 3.7 Copy buttons put the 26 digits, `400,50` style amount and title on the clipboard
+- [x] 3.8 A creditor without a number shows the "no number yet" message
+- [x] 3.9 Mobile width layout is usable
 
 ### Phase 4: Smoke test and documentation
 
@@ -315,4 +315,4 @@ Expand-only: a new table and three new functions, nothing existing changes, so t
 
 #### Manual
 
-- [ ] 4.5 Documentation changes read correctly and the roadmap row matches the issue state
+- [x] 4.5 Documentation changes read correctly and the roadmap row matches the issue state
