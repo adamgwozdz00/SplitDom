@@ -1,7 +1,7 @@
 ---
 change_id: edit-own-expense-rules
 title: Edit and delete rules for own expenses (S-05)
-status: implemented
+status: impl_reviewed
 created: 2026-10-19
 updated: 2026-10-19
 ---
