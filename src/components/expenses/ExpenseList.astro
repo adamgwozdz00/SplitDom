@@ -1,16 +1,17 @@
 ---
-import type { BillingMonth, Expense } from "@/lib/billing-periods";
+import type { BillingMonth, BillingPeriod, Expense } from "@/lib/billing-periods";
 import type { Group } from "@/lib/groups";
 import { memberLabel } from "@/components/expenses/member-label";
 
 interface Props {
   group: Group;
+  period: BillingPeriod;
   month: BillingMonth;
   expenses: readonly Expense[];
   viewerId: string;
 }
 
-const { group, month, expenses, viewerId } = Astro.props;
+const { group, period, month, expenses, viewerId } = Astro.props;
 ---
 
 <div data-expense-list>
@@ -27,6 +28,17 @@ const { group, month, expenses, viewerId } = Astro.props;
           </div>
           <div class="text-blue-100/70">
             Paid by {memberLabel(group.members, expense.payerId, viewerId)} · {expense.purchasedOn.label()}
+            {period.canEdit(expense, viewerId) && (
+              <>
+                {" · "}
+                <a
+                  href={`/groups/${encodeURIComponent(group.id)}/expenses/${encodeURIComponent(expense.id)}/edit`}
+                  class="text-purple-300 hover:underline"
+                >
+                  Edit
+                </a>
+              </>
+            )}
           </div>
         </li>
       ))}

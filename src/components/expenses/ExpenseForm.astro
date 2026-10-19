@@ -1,22 +1,26 @@
 ---
 import { ExpenseTitle } from "@/lib/billing-periods";
-import type { BillingPeriod } from "@/lib/billing-periods";
+import type { BillingPeriod, Expense } from "@/lib/billing-periods";
 import type { Group } from "@/lib/groups";
 
 interface Props {
   group: Group;
   period: BillingPeriod;
   error: string | null;
+  /** When set, the form edits this expense (prefilled) instead of adding a new one. */
+  expense?: Expense;
 }
 
-const { group, period, error } = Astro.props;
+const { group, period, error, expense } = Astro.props;
 const window = period.purchaseDateWindow(new Date());
+const groupPath = `/api/groups/${encodeURIComponent(group.id)}/expenses`;
+const action = expense ? `${groupPath}/${encodeURIComponent(expense.id)}/edit` : groupPath;
 const field =
   "w-full rounded-lg border bg-white/10 px-3 py-2 text-white placeholder-white/40 transition-colors focus:ring-2 focus:outline-none";
 const fieldState = error ? "border-red-400/60 focus:ring-red-400" : "border-white/20 focus:ring-purple-400";
 ---
 
-<form method="POST" action={`/api/groups/${encodeURIComponent(group.id)}/expenses`} class="space-y-3" data-add-expense>
+<form method="POST" action={action} class="space-y-3" data-guard-submit>
   <div>
     <label for="expense-title" class="mb-1 block text-sm text-blue-100/80">
       Title
@@ -29,6 +33,7 @@ const fieldState = error ? "border-red-400/60 focus:ring-red-400" : "border-whit
       maxlength={ExpenseTitle.MAX_LENGTH}
       autocomplete="off"
       placeholder="e.g. Rent"
+      value={expense?.title.value}
       aria-invalid={error ? "true" : undefined}
       aria-describedby={error ? "expense-error" : undefined}
       class:list={[field, fieldState]}
@@ -47,6 +52,7 @@ const fieldState = error ? "border-red-400/60 focus:ring-red-400" : "border-whit
         required
         autocomplete="off"
         placeholder="0,00"
+        value={expense?.amount.formInput()}
         aria-invalid={error ? "true" : undefined}
         aria-describedby={error ? "expense-error" : undefined}
         class:list={[field, fieldState, "pr-10"]}
@@ -65,7 +71,7 @@ const fieldState = error ? "border-red-400/60 focus:ring-red-400" : "border-whit
       required
       min={window.min}
       max={window.max}
-      value={window.default}
+      value={expense?.purchasedOn.value ?? window.default}
       aria-invalid={error ? "true" : undefined}
       aria-describedby={error ? "expense-error" : undefined}
       class:list={[field, fieldState]}
@@ -84,14 +90,14 @@ const fieldState = error ? "border-red-400/60 focus:ring-red-400" : "border-whit
     type="submit"
     class="w-full rounded-lg bg-purple-600 px-4 py-2 font-medium text-white transition-colors hover:bg-purple-500 disabled:opacity-60"
   >
-    Add expense
+    {expense ? "Save changes" : "Add expense"}
   </button>
 </form>
 
 <script>
-  // Progressive enhancement: a double tap on a phone must not store a duplicate expense.
-  // Without JavaScript the form still submits normally.
-  for (const form of document.querySelectorAll<HTMLFormElement>("form[data-add-expense]")) {
+  // Progressive enhancement: a double tap on a phone must not store a duplicate expense (or repeat a delete).
+  // Without JavaScript the forms still submit normally.
+  for (const form of document.querySelectorAll<HTMLFormElement>("form[data-guard-submit]")) {
     const button = form.querySelector<HTMLButtonElement>("button[type=submit]");
     form.addEventListener("submit", () => {
       if (button) button.disabled = true;
