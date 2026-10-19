@@ -7,6 +7,8 @@ export type BillingPeriodErrorCode =
   | "invalid_amount"
   | "invalid_purchase_date"
   | "billing_period_closed"
+  | "expense_not_found"
+  | "not_expense_author"
   | "period_changed"
   | "group_not_found"
   | "not_authenticated"
@@ -50,7 +52,7 @@ export interface BillingPeriodRepository {
   findCurrentOfGroup(group: Group): Promise<Result<BillingPeriod | null>>;
   /** Stores a newly opened period; `"conflict"` when the group already got one concurrently. */
   open(period: BillingPeriod): Promise<Result<"opened" | "conflict">>;
-  /** Stores the expenses added since load if the period's version is unchanged; `"conflict"` otherwise. */
+  /** Stores the expenses added, changed and removed since load if the period's version is unchanged; `"conflict"` otherwise. */
   save(period: BillingPeriod): Promise<Result<"saved" | "conflict">>;
   /** The open period's month of every group the signed-in user belongs to. */
   listOpenMonthsOfCurrentUser(): Promise<Result<{ groupId: string; month: BillingMonth }[]>>;

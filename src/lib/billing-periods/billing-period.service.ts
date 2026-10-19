@@ -87,15 +87,64 @@ export class BillingPeriodService {
       now: this.clock(),
     };
 
-    const first = await this.addAndSave(await this.openFor(input.group), command);
-    if (first !== "conflict") {
-      return first;
+    const added = await this.change(input.group, (period) => period.addExpense(command));
+    return "error" in added ? added : { data: { expenseId: command.id } };
+  }
+
+  /**
+   * Changes `userId`'s own expense in the group's open period. Validates the title, then the amount; the
+   * period judges the expense, its author and the date. Retried like `addExpense` on a lost race.
+   */
+  async editExpense(input: {
+    group: Group;
+    userId: string;
+    expenseId: string;
+    title: string;
+    amount: string;
+    purchasedOn: string;
+  }): Promise<Result<{ expenseId: string }>> {
+    const title = ExpenseTitle.create(input.title);
+    if ("error" in title) {
+      return title;
     }
-    const retry = await this.addAndSave(await this.reload(input.group), command);
-    if (retry !== "conflict") {
-      return retry;
+    const amount = Money.parse(input.amount);
+    if ("error" in amount) {
+      return amount;
     }
-    return billingPeriodError("period_changed", { groupId: input.group.id });
+    const now = this.clock();
+
+    const edited = await this.change(input.group, (period) =>
+      period.editExpense({
+        expenseId: input.expenseId,
+        userId: input.userId,
+        title: title.data,
+        amount: amount.data,
+        purchasedOn: input.purchasedOn,
+        now,
+      }),
+    );
+    return "error" in edited ? edited : { data: { expenseId: input.expenseId } };
+  }
+
+  /** Deletes `userId`'s own expense from the group's open period, retried like `addExpense` on a lost race. */
+  async deleteExpense(input: { group: Group; userId: string; expenseId: string }): Promise<Result<void>> {
+    return this.change(input.group, (period) =>
+      period.removeExpense({ expenseId: input.expenseId, userId: input.userId }),
+    );
+  }
+
+  /** The open period and one of its expenses, when `userId` may change it (for the edit page). */
+  async getEditableExpense(input: {
+    group: Group;
+    userId: string;
+    expenseId: string;
+  }): Promise<Result<{ period: BillingPeriod; expense: Expense }>> {
+    const period = await this.openFor(input.group);
+    if ("error" in period) {
+      return period;
+    }
+    const expense = period.data.editableExpense(input.expenseId, input.userId);
+    return "error" in expense ? expense : { data: { period: period.data, expense: expense.data } };
   }
 
   /** The open period with its expenses newest first and the balances of its participants. */
@@ -120,22 +169,36 @@ export class BillingPeriodService {
     return { data: new Map(result.data.map((row) => [row.groupId, row.month])) };
   }
 
-  private async addAndSave(
+  // Runs a command on the open period and saves it; a save that lost a race is retried once on the reloaded
+  // period (closed or not, so the aggregate decides whether the command still applies).
+  private async change<T>(group: Group, command: (period: BillingPeriod) => Result<T>): Promise<Result<T>> {
+    const first = await this.runAndSave(await this.openFor(group), command);
+    if (first !== "conflict") {
+      return first;
+    }
+    const retry = await this.runAndSave(await this.reload(group), command);
+    if (retry !== "conflict") {
+      return retry;
+    }
+    return billingPeriodError("period_changed", { groupId: group.id });
+  }
+
+  private async runAndSave<T>(
     loaded: Result<BillingPeriod>,
-    command: Parameters<BillingPeriod["addExpense"]>[0],
-  ): Promise<Result<{ expenseId: string }> | "conflict"> {
+    command: (period: BillingPeriod) => Result<T>,
+  ): Promise<Result<T> | "conflict"> {
     if ("error" in loaded) {
       return loaded;
     }
-    const added = loaded.data.addExpense(command);
-    if ("error" in added) {
-      return added;
+    const result = command(loaded.data);
+    if ("error" in result) {
+      return result;
     }
     const saved = await this.repository.save(loaded.data);
     if ("error" in saved) {
       return saved;
     }
-    return saved.data === "saved" ? { data: { expenseId: command.id } } : "conflict";
+    return saved.data === "saved" ? result : "conflict";
   }
 
   // The latest period as stored now, closed or not, so the aggregate decides whether the command still applies.

@@ -311,3 +311,204 @@ describe("BillingPeriodService.openMonthsOf", () => {
     expect(await serviceWith(repository).openMonthsOf()).toBe(failure);
   });
 });
+
+const edited = { title: "Prąd", amount: "90", purchasedOn: "2026-10-12" };
+
+function storedWith(group = aGroup(), version = 0) {
+  return anOctoberPeriod({ group, expenses: [{ id: "mine", payerId: HOST_ID, grosze: 40000 }], version });
+}
+
+describe("BillingPeriodService.editExpense", () => {
+  it("validates the title, then the amount, without touching the repository", async () => {
+    const repository = new FakeBillingPeriodRepository([storedWith()]);
+    const service = serviceWith(repository, { ids: [] });
+    const base = { group: aGroup(), userId: HOST_ID, expenseId: "mine" };
+
+    const badTitle = await service.editExpense({ ...base, ...edited, title: " ", amount: "abc" });
+    const badAmount = await service.editExpense({ ...base, ...edited, amount: "0" });
+
+    expect("error" in badTitle && badTitle.error.code).toBe("invalid_expense_title");
+    expect("error" in badAmount && badAmount.error.code).toBe("invalid_amount");
+    expect(repository.findCalls).toHaveLength(0);
+  });
+
+  it("saves exactly the changed expense and bumps the version", async () => {
+    const group = aGroup();
+    const repository = new FakeBillingPeriodRepository([storedWith(group)]);
+
+    const result = await serviceWith(repository, { ids: [] }).editExpense({
+      group,
+      userId: HOST_ID,
+      expenseId: "mine",
+      ...edited,
+    });
+
+    expect(result).toEqual({ data: { expenseId: "mine" } });
+    expect(repository.saveCalls).toHaveLength(1);
+    expect(repository.saveCalls[0]?.changedExpenses().map((expense) => expense.id)).toEqual(["mine"]);
+    expect(repository.saveCalls[0]?.newExpenses()).toEqual([]);
+    const stored = repository.stored(group.id);
+    expect(stored?.version).toBe(1);
+    expect(stored?.expenses[0]).toMatchObject({ id: "mine", title: "Prąd", amount: 9000, purchasedOn: "2026-10-12" });
+  });
+
+  it("saves nothing when the period refuses a non-author", async () => {
+    const group = aGroup();
+    const repository = new FakeBillingPeriodRepository([storedWith(group)]);
+
+    const result = await serviceWith(repository, { ids: [] }).editExpense({
+      group,
+      userId: B,
+      expenseId: "mine",
+      ...edited,
+    });
+
+    expect("error" in result && result.error.code).toBe("not_expense_author");
+    expect(repository.saveCalls).toHaveLength(0);
+  });
+
+  it("retries once on a conflict, on top of the concurrent write", async () => {
+    const group = aGroup();
+    const repository = new FakeBillingPeriodRepository([storedWith(group)]);
+    repository.saveConflicts = 1;
+    repository.onConflict = () => {
+      repository.put(
+        anOctoberPeriod({
+          group,
+          expenses: [
+            { id: "mine", payerId: HOST_ID, grosze: 40000 },
+            { id: "theirs", payerId: B },
+          ],
+          version: 1,
+        }),
+      );
+    };
+
+    const result = await serviceWith(repository, { ids: [] }).editExpense({
+      group,
+      userId: HOST_ID,
+      expenseId: "mine",
+      ...edited,
+    });
+
+    expect(result).toEqual({ data: { expenseId: "mine" } });
+    expect(repository.saveCalls).toHaveLength(2);
+    expect(repository.stored(group.id)?.expenses.map((expense) => expense.id)).toEqual(["mine", "theirs"]);
+    expect(repository.stored(group.id)?.version).toBe(2);
+  });
+
+  it("gives up with period_changed after a second conflict", async () => {
+    const group = aGroup();
+    const repository = new FakeBillingPeriodRepository([storedWith(group)]);
+    repository.saveConflicts = 2;
+
+    const result = await serviceWith(repository, { ids: [] }).editExpense({
+      group,
+      userId: HOST_ID,
+      expenseId: "mine",
+      ...edited,
+    });
+
+    expect(result).toEqual(billingPeriodError("period_changed", { groupId: GROUP_ID }));
+  });
+
+  it("reports billing_period_closed when the period is closed by the time it is reloaded", async () => {
+    const group = aGroup();
+    const repository = new FakeBillingPeriodRepository([storedWith(group)]);
+    repository.saveConflicts = 1;
+    repository.onConflict = () => {
+      repository.put({ ...storedWith(group, 1), closedAt: "2026-10-15T09:00:00.000Z" });
+    };
+
+    const result = await serviceWith(repository, { ids: [] }).editExpense({
+      group,
+      userId: HOST_ID,
+      expenseId: "mine",
+      ...edited,
+    });
+
+    // A closed latest period is reported by openFor/reload as unexpected only on the first load; here it is the reload.
+    expect("error" in result && result.error.code).toBe("billing_period_closed");
+    expect(repository.saveCalls).toHaveLength(1);
+  });
+});
+
+describe("BillingPeriodService.deleteExpense", () => {
+  it("deletes the author's expense and bumps the version", async () => {
+    const group = aGroup();
+    const repository = new FakeBillingPeriodRepository([storedWith(group)]);
+
+    const result = await serviceWith(repository, { ids: [] }).deleteExpense({
+      group,
+      userId: HOST_ID,
+      expenseId: "mine",
+    });
+
+    expect(result).toEqual({ data: undefined });
+    expect(repository.saveCalls[0]?.removedExpenseIds()).toEqual(["mine"]);
+    expect(repository.stored(group.id)?.expenses).toEqual([]);
+    expect(repository.stored(group.id)?.version).toBe(1);
+  });
+
+  it.each([
+    ["someone else's expense", B, "mine", "not_expense_author"],
+    ["an unknown expense", HOST_ID, "nope", "expense_not_found"],
+  ] as const)("refuses %s and saves nothing", async (_, userId, expenseId, expected) => {
+    const group = aGroup();
+    const repository = new FakeBillingPeriodRepository([storedWith(group)]);
+
+    const result = await serviceWith(repository, { ids: [] }).deleteExpense({ group, userId, expenseId });
+
+    expect("error" in result && result.error.code).toBe(expected);
+    expect(repository.saveCalls).toHaveLength(0);
+  });
+
+  it("reports expense_not_found when a concurrent write already deleted it", async () => {
+    const group = aGroup();
+    const repository = new FakeBillingPeriodRepository([storedWith(group)]);
+    repository.saveConflicts = 1;
+    repository.onConflict = () => {
+      repository.put(anOctoberPeriod({ group, version: 1 }));
+    };
+
+    const result = await serviceWith(repository, { ids: [] }).deleteExpense({
+      group,
+      userId: HOST_ID,
+      expenseId: "mine",
+    });
+
+    expect("error" in result && result.error.code).toBe("expense_not_found");
+  });
+});
+
+describe("BillingPeriodService.getEditableExpense", () => {
+  it("returns the period and the expense for its author", async () => {
+    const group = aGroup();
+    const repository = new FakeBillingPeriodRepository([storedWith(group)]);
+
+    const result = await serviceWith(repository, { ids: [] }).getEditableExpense({
+      group,
+      userId: HOST_ID,
+      expenseId: "mine",
+    });
+
+    if ("error" in result) {
+      throw new Error(result.error.code);
+    }
+    expect(result.data.expense.id).toBe("mine");
+    expect(result.data.period.id).toBe(PERIOD_ID);
+    expect(repository.saveCalls).toHaveLength(0);
+  });
+
+  it.each([
+    ["someone else's expense", B, "mine", "not_expense_author"],
+    ["an unknown expense", HOST_ID, "nope", "expense_not_found"],
+  ] as const)("refuses %s", async (_, userId, expenseId, expected) => {
+    const group = aGroup();
+    const repository = new FakeBillingPeriodRepository([storedWith(group)]);
+
+    const result = await serviceWith(repository, { ids: [] }).getEditableExpense({ group, userId, expenseId });
+
+    expect("error" in result && result.error.code).toBe(expected);
+  });
+});

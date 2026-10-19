@@ -205,3 +205,187 @@ describe("BillingPeriod.restore", () => {
     expect(() => BillingPeriod.restore({ ...snapshot, ...override }, [HOST, MEMBER])).toThrow();
   });
 });
+
+function edit(
+  period: BillingPeriod,
+  input: { expenseId?: string; userId?: string; grosze?: number; purchasedOn?: string; titleText?: string } = {},
+) {
+  return period.editExpense({
+    expenseId: input.expenseId ?? "e-1",
+    userId: input.userId ?? HOST,
+    title: title(input.titleText ?? "Prąd"),
+    amount: Money.ofGrosze(input.grosze ?? 9000),
+    purchasedOn: input.purchasedOn ?? "2026-10-12",
+    now: MID_OCTOBER,
+  });
+}
+
+function closedWithExpense(): BillingPeriod {
+  const period = octoberPeriod();
+  add(period, { id: "e-1" });
+  return BillingPeriod.restore({ ...period.toSnapshot(), closedAt: "2026-11-02T08:00:00.000Z" }, [HOST, MEMBER]);
+}
+
+function code(result: { data: unknown } | { error: { code: string } }): string {
+  return "error" in result ? result.error.code : "ok";
+}
+
+describe("BillingPeriod.editExpense", () => {
+  it("changes title, amount and date, keeping id, payer and creation time, and re-splits the amount", () => {
+    const period = octoberPeriod();
+    add(period, { id: "e-1", payerId: HOST, grosze: 40000 });
+
+    const result = edit(period, { grosze: 9000, purchasedOn: "2026-10-12", titleText: "Prąd" });
+
+    if ("error" in result) {
+      throw new Error(result.error.code);
+    }
+    expect(result.data.toSnapshot()).toEqual({
+      id: "e-1",
+      payerId: HOST,
+      title: "Prąd",
+      amount: 9000,
+      purchasedOn: "2026-10-12",
+      createdAt: MID_OCTOBER.toISOString(),
+      shares: [
+        { userId: HOST, amount: 4500 },
+        { userId: MEMBER, amount: 4500 },
+      ],
+    });
+    expect(period.expenses).toEqual([result.data]);
+  });
+
+  it("splits the new amount between the original sharers only, the payer absorbing the remainder", () => {
+    const stored = octoberPeriod();
+    add(stored, { id: "e-1", payerId: HOST, grosze: 40000 });
+    // "late" joined the group after the expense was added, so it holds no share of it.
+    const period = BillingPeriod.restore(stored.toSnapshot(), [HOST, MEMBER, "late"]);
+
+    const result = edit(period, { grosze: 10001 });
+
+    if ("error" in result) {
+      throw new Error(result.error.code);
+    }
+    expect(result.data.shares.map((share) => [share.userId, share.amount.grosze])).toEqual([
+      [HOST, 5001],
+      [MEMBER, 5000],
+    ]);
+    expect(period.balances().members.find((member) => member.userId === "late")?.balance.grosze).toBe(0);
+  });
+
+  it("reports a stored expense as changed, not new, and reflects it in the balances", () => {
+    const stored = octoberPeriod();
+    add(stored, { id: "e-1", payerId: HOST, grosze: 40000 });
+    const period = BillingPeriod.restore(stored.toSnapshot(), [HOST, MEMBER]);
+
+    edit(period, { grosze: 10000 });
+
+    expect(period.changedExpenses().map((expense) => expense.id)).toEqual(["e-1"]);
+    expect(period.newExpenses()).toEqual([]);
+    expect(period.removedExpenseIds()).toEqual([]);
+    expect(period.balances().members.map((member) => [member.userId, member.balance.grosze])).toEqual([
+      [HOST, 5000],
+      [MEMBER, -5000],
+    ]);
+  });
+
+  it("changes an expense added since the period was loaded in place", () => {
+    const period = octoberPeriod();
+    add(period, { id: "e-1" });
+
+    edit(period, { grosze: 2000 });
+
+    expect(period.newExpenses().map((expense) => expense.amount.grosze)).toEqual([2000]);
+    expect(period.changedExpenses()).toEqual([]);
+  });
+
+  it.each([
+    ["a closed period", closedWithExpense, { expenseId: "e-1" }, "billing_period_closed"],
+    ["an unknown expense", () => octoberPeriodWith("e-1"), { expenseId: "nope" }, "expense_not_found"],
+    ["someone else's expense", () => octoberPeriodWith("e-1"), { userId: MEMBER }, "not_expense_author"],
+    ["a date in the future", () => octoberPeriodWith("e-1"), { purchasedOn: "2026-10-16" }, "invalid_purchase_date"],
+    [
+      "a date outside the month",
+      () => octoberPeriodWith("e-1"),
+      { purchasedOn: "2026-09-30" },
+      "invalid_purchase_date",
+    ],
+  ] as const)("refuses %s and changes nothing", (_, build, input, expected) => {
+    const period = build();
+    const before = period.toSnapshot();
+
+    expect(code(edit(period, input))).toBe(expected);
+    expect(period.toSnapshot()).toEqual(before);
+    expect(period.changedExpenses()).toEqual([]);
+  });
+
+  it("checks the period, then the expense, then its author, then the date", () => {
+    expect(code(edit(closedWithExpense(), { expenseId: "nope", userId: MEMBER, purchasedOn: "2026-09-30" }))).toBe(
+      "billing_period_closed",
+    );
+    expect(code(edit(octoberPeriodWith("e-1"), { expenseId: "nope", userId: MEMBER, purchasedOn: "2026-09-30" }))).toBe(
+      "expense_not_found",
+    );
+    expect(code(edit(octoberPeriodWith("e-1"), { userId: MEMBER, purchasedOn: "2026-09-30" }))).toBe(
+      "not_expense_author",
+    );
+  });
+});
+
+function octoberPeriodWith(expenseId: string): BillingPeriod {
+  const period = octoberPeriod();
+  add(period, { id: expenseId });
+  return period;
+}
+
+describe("BillingPeriod.removeExpense", () => {
+  it("removes the author's expense and drops it from the balances", () => {
+    const stored = octoberPeriodWith("e-1");
+    const period = BillingPeriod.restore(stored.toSnapshot(), [HOST, MEMBER]);
+
+    const result = period.removeExpense({ expenseId: "e-1", userId: HOST });
+
+    expect(code(result)).toBe("ok");
+    expect(period.expenses).toEqual([]);
+    expect(period.removedExpenseIds()).toEqual(["e-1"]);
+    expect(period.balances().debts).toEqual([]);
+  });
+
+  it("forgets an expense added since the period was loaded instead of reporting it removed", () => {
+    const period = octoberPeriodWith("e-1");
+
+    period.removeExpense({ expenseId: "e-1", userId: HOST });
+
+    expect(period.newExpenses()).toEqual([]);
+    expect(period.removedExpenseIds()).toEqual([]);
+  });
+
+  it.each([
+    ["a closed period", closedWithExpense, { expenseId: "e-1", userId: HOST }, "billing_period_closed"],
+    ["an unknown expense", () => octoberPeriodWith("e-1"), { expenseId: "nope", userId: HOST }, "expense_not_found"],
+    [
+      "someone else's expense",
+      () => octoberPeriodWith("e-1"),
+      { expenseId: "e-1", userId: MEMBER },
+      "not_expense_author",
+    ],
+  ] as const)("refuses %s and removes nothing", (_, build, input, expected) => {
+    const period = build();
+    const before = period.toSnapshot();
+
+    expect(code(period.removeExpense(input))).toBe(expected);
+    expect(period.toSnapshot()).toEqual(before);
+    expect(period.removedExpenseIds()).toEqual([]);
+  });
+});
+
+describe("BillingPeriod.canEdit", () => {
+  it("lets only the payer edit, and only while the period is open", () => {
+    const open = octoberPeriodWith("e-1");
+    const closed = closedWithExpense();
+
+    expect(open.canEdit(open.expenses[0], HOST)).toBe(true);
+    expect(open.canEdit(open.expenses[0], MEMBER)).toBe(false);
+    expect(closed.canEdit(closed.expenses[0], HOST)).toBe(false);
+  });
+});
