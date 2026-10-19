@@ -3,7 +3,7 @@ project: SplitDom
 version: 1
 status: draft
 created: 2026-09-26
-updated: 2026-10-07
+updated: 2026-10-19
 prd_version: 1
 main_goal: speed
 top_blocker: time
@@ -45,7 +45,7 @@ People who share household costs — partners or roommates — settle shared exp
 | S-01 | external-identity-sign-in     | user can sign in with an external identity provider                                 | —             | FR-001                     | done |
 | S-02 | create-settlement-group       | user can create a settlement group, becomes its host, and it has an open period     | F-01          | FR-002                     | done |
 | S-03 | invite-member-by-link         | user can invite someone with a link/code, and that person joins the group           | S-02          | FR-003                     | done        |
-| S-04 | add-expense-see-balances      | member can add an expense split equally and immediately see every member's balance  | S-03          | US-01, FR-004, FR-005      | in-progress |
+| S-04 | add-expense-see-balances      | member can add an expense split equally and immediately see every member's balance  | S-03          | US-01, FR-004, FR-005      | done |
 | F-02 | billing-period-aggregate      | (foundation) `BillingPeriod` is the aggregate root that adds expenses and splits them | S-04          | FR-004, FR-005, FR-015     | done |
 | F-03 | group-membership-aggregate    | (foundation) `Group` is the membership aggregate; `Invite` is an entity inside it   | S-03          | FR-002, FR-003             | done |
 | S-05 | edit-own-expense-rules        | expense author can edit or delete their own expense only while it is still editable | F-02          | FR-005                     | proposed |
@@ -179,7 +179,7 @@ Foundations below assume these are present and do NOT re-scaffold them.
   - ~~How are debts recorded: one debt per expense share, or netted into one debt per pair of members per period? This decides what S-06, S-08, S-05 and S-09 act on.~~ Resolved 2026-10-05 (S-04 planning): a netted debt per pair of members per period, derived from shares stored per expense (`context/changes/add-expense-see-balances/plan.md`).
   - ~~How are amounts that don't split evenly rounded (e.g. 100 zł / 3) while keeping "sum of expenses = sum of shares"?~~ Resolved 2026-10-05 (S-04 planning): integer grosze; debtors pay floor(amount / n), the payer's share absorbs the remainder (`context/changes/add-expense-see-balances/plan.md`).
 - **Risk:** This is the north star and carries the balance-correctness guardrail; a wrong debt model here forces rework in every settlement slice, which is why the debt-granularity question blocks planning.
-- **Status:** in-progress
+- **Status:** done
 
 ### S-05: Edit and delete rules for own expenses
 
@@ -310,3 +310,4 @@ Mirrored on GitHub: milestone [M-1](https://github.com/adamgwozdz00/SplitDom/mil
 - **S-03: user can generate an invite link/code, send it through any channel, and the invited person joins the group after signing in.** — Archived 2026-10-05 → `context/archive/2026-10-02-invite-member-by-link/`. Lesson: —.
 - **F-02: (foundation) the expenses model is reshaped around behaviour instead of tables: `BillingPeriod` becomes the aggregate root that adds expenses, splits them through a `SplitPolicy` and derives balances.** — Archived 2026-10-07 → `context/archive/2026-10-07-billing-period-aggregate/`. Lesson: —.
 - **F-03: (foundation) `Group` becomes the aggregate root of a household's membership: `Group.invite(by, now)` lets only a member create an invite, and `Group.join(token, userId, now)` uses up an active invite and adds the user as a member in one write of one aggregate. `Invite` becomes an entity inside `Group` (only active invites are loaded). Invariants owned by `Group`: the host is a member and never changes, an invite is used at most once, a user is a member at most once, nobody removes members (PRD). The documented exception in CLAUDE.md (`redeem_group_invite` writing `group_members` outside the `Group` repository) disappears: the rule "an active invite grants membership" moves back to TypeScript, and the conditional UPDATE in SQL stays only as a backstop. `memberLabel` moves from the domain to presentation; the open period leaves `Group` with F-02. Behaviour visible to users does not change. Built test-first (TDD).** — Archived 2026-10-07 → `context/archive/2026-10-07-group-membership-aggregate/`. Lesson: —.
+- **S-04: group member can add an expense in the open period, split equally between all members, and immediately see each member's debt or credit (e.g. 400 zł rent → the other member owes 200 zł).** — Archived 2026-10-19 → `context/archive/2026-10-05-add-expense-see-balances/`. Lesson: —.

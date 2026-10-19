@@ -523,42 +523,42 @@ The migration is forward-only and additive for the deployed Worker:
 
 #### Automated
 
-- [x] 1.1 Unit tests pass: `npm test` — 01ca55b
-- [x] 1.2 Type check passes: `npx astro check` — 01ca55b
-- [x] 1.3 Lint passes: `npm run lint` — 01ca55b
+- [x] 1.1 Unit tests pass: `npm test` — 2ca1a7f
+- [x] 1.2 Type check passes: `npx astro check` — 2ca1a7f
+- [x] 1.3 Lint passes: `npm run lint` — 2ca1a7f
 
 #### Manual
 
-- [x] 1.4 Reviewer confirms the test names cover US-01 (400 zł by 2 → 200 zł), the 100 zł / 3 example and the netting example from Testing Strategy — 01ca55b
+- [x] 1.4 Reviewer confirms the test names cover US-01 (400 zł by 2 → 200 zł), the 100 zł / 3 example and the netting example from Testing Strategy — 2ca1a7f
 
 ### Phase 2: Database and repositories
 
 #### Automated
 
-- [x] 2.1 Local database rebuilds from all migrations: `npm run db:reset` — 2259053
-- [x] 2.2 Generated types are current: `npm run db:types` leaves `git diff --exit-code src/db/database.types.ts` clean after the commit — 2259053
-- [x] 2.3 Unit tests pass: `npm test` — 2259053
-- [x] 2.4 Type check passes: `npx astro check` — 2259053
-- [x] 2.5 Lint passes: `npm run lint` — 2259053
-- [x] 2.6 Existing smoke flows still pass: `npm run smoke` — 2259053
+- [x] 2.1 Local database rebuilds from all migrations: `npm run db:reset` — 2ca1a7f
+- [x] 2.2 Generated types are current: `npm run db:types` leaves `git diff --exit-code src/db/database.types.ts` clean after the commit — 2ca1a7f
+- [x] 2.3 Unit tests pass: `npm test` — 2ca1a7f
+- [x] 2.4 Type check passes: `npx astro check` — 2ca1a7f
+- [x] 2.5 Lint passes: `npm run lint` — 2ca1a7f
+- [x] 2.6 Existing smoke flows still pass: `npm run smoke` — 2ca1a7f
 
 #### Manual
 
-- [x] 2.7 Supabase Advisor shows no new warnings beyond the expected lints 0029/0008 for the new functions and tables — 2259053
+- [x] 2.7 Supabase Advisor shows no new warnings beyond the expected lints 0029/0008 for the new functions and tables — 2ca1a7f
 
 ### Phase 3: Group page, endpoint, smoke and docs
 
 #### Automated
 
-- [x] 3.1 Unit tests pass: `npm test` — d7f63e6
-- [x] 3.2 Type check passes: `npx astro check` — d7f63e6
-- [x] 3.3 Lint passes: `npm run lint` — d7f63e6
-- [x] 3.4 Production build succeeds: `npm run build` — d7f63e6
-- [x] 3.5 Smoke test passes with the new expense steps: `npm run smoke` — d7f63e6
+- [x] 3.1 Unit tests pass: `npm test` — 2ca1a7f
+- [x] 3.2 Type check passes: `npx astro check` — 2ca1a7f
+- [x] 3.3 Lint passes: `npm run lint` — 2ca1a7f
+- [x] 3.4 Production build succeeds: `npm run build` — 2ca1a7f
+- [x] 3.5 Smoke test passes with the new expense steps: `npm run smoke` — 2ca1a7f
 
 #### Manual
 
-- [x] 3.6 In two browsers (two users in one group), adding "Czynsz" 400,00 zł shows +200,00 zł / −200,00 zł and "… owes … 200,00 zł" to both users immediately after the redirect — d7f63e6
-- [x] 3.7 Adding 100,00 zł in a three-member group shows the payer's share absorbing the extra grosz (debtors owe 33,33 zł each) — d7f63e6
-- [x] 3.8 The form shows a readable error for an empty title, `0`, `1000000,01` and a date outside the window; the date picker offers only days in the window — d7f63e6
-- [x] 3.9 The group page is usable at phone width (375 px), and a double tap on "Add expense" stores one expense — d7f63e6
+- [x] 3.6 In two browsers (two users in one group), adding "Czynsz" 400,00 zł shows +200,00 zł / −200,00 zł and "… owes … 200,00 zł" to both users immediately after the redirect — 2ca1a7f
+- [x] 3.7 Adding 100,00 zł in a three-member group shows the payer's share absorbing the extra grosz (debtors owe 33,33 zł each) — 2ca1a7f
+- [x] 3.8 The form shows a readable error for an empty title, `0`, `1000000,01` and a date outside the window; the date picker offers only days in the window — 2ca1a7f
+- [x] 3.9 The group page is usable at phone width (375 px), and a double tap on "Add expense" stores one expense — 2ca1a7f
