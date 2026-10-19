@@ -147,7 +147,11 @@ Production steps (human; the key's value never goes into the repo, SQL history o
 
 The migration `expenses` adds two tables (`expenses`, `expense_shares`; RLS on, no policies, no `anon`/`authenticated` grants) and the `security definer` functions `add_expense` and `list_period_expenses`, redefines `get_my_group` with each member's email, and drops the cascade from `group_members.user_id` (see "Known constraints on deleting a user"). It is compatible with the previously deployed Worker and needs no Supabase or Cloudflare configuration change.
 
-Known limitation (accepted until S-05): a duplicate submit of the add-expense form is blocked only by disabling the button in the browser. A POST sent without JavaScript, retried by the network or sent from a second tab stores a second expense, which cannot be deleted until S-05 adds deletion.
+A duplicate submit of the add-expense form is blocked only by disabling the button in the browser; a POST sent without JavaScript, retried by the network or sent from a second tab can still store a second expense. Since S-05 its author removes it from the expense's edit page (see "Editing and deleting expenses").
+
+## Editing and deleting expenses (added 2026-10-19, change `edit-own-expense-rules`, S-05)
+
+The migration `edit_delete_expenses` adds one `security definer` function, `save_billing_period_changes`, which stores added, changed and removed expenses of a period if its `version` is unchanged. It only adds an object, so it is compatible with the previously deployed Worker (which keeps calling `save_billing_period`) and needs no Supabase or Cloudflare configuration change. `save_billing_period` stays until the contract migration. The paid-debt part of FR-005 (no edits once a debt is paid) arrives with S-08.
 
 ## Out of scope
 

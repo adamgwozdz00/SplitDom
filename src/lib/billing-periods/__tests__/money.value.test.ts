@@ -79,3 +79,16 @@ describe("Money labels", () => {
     expect(plain(Money.ofGrosze(0).signedLabel())).toBe("0,00 zł");
   });
 });
+
+describe("Money.formInput", () => {
+  it.each([
+    [40000, "400,00"],
+    [40050, "400,50"],
+    [5, "0,05"],
+    [100000000, "1000000,00"],
+  ])("formats %i grosze as %s, which Money.parse reads back", (grosze, text) => {
+    expect(Money.ofGrosze(grosze).formInput()).toBe(text);
+    const parsed = Money.parse(text);
+    expect("data" in parsed && parsed.data.grosze).toBe(grosze);
+  });
+});

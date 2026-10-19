@@ -318,6 +318,17 @@ export type Database = {
         }
         Returns: boolean
       }
+      save_billing_period_changes: {
+        Args: {
+          p_added: Json
+          p_changed: Json
+          p_expected_version: number
+          p_group_id: string
+          p_period_id: string
+          p_removed: string[]
+        }
+        Returns: boolean
+      }
       save_group: {
         Args: {
           p_expected_version: number
