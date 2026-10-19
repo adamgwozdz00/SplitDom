@@ -313,11 +313,11 @@ Expand only: the new function sits beside `save_billing_period`; the previously 
 
 #### Automated
 
-- [x] 4.1 Smoke passes: `npm run smoke`
-- [x] 4.2 E2E passes: `npx playwright test tests/e2e/expense-delete-duplicate.spec.ts`
-- [x] 4.3 Deliberate break: removing the author check in the aggregate makes a unit test and the smoke step (which expects `not_expense_author`) fail
-- [x] 4.4 `npm test`, `npx astro check`, `npm run lint`, `npm run build` pass
+- [x] 4.1 Smoke passes: `npm run smoke` — df39798
+- [x] 4.2 E2E passes: `npx playwright test tests/e2e/expense-delete-duplicate.spec.ts` — df39798
+- [x] 4.3 Deliberate break: removing the author check in the aggregate makes a unit test and the smoke step (which expects `not_expense_author`) fail — df39798
+- [x] 4.4 `npm test`, `npx astro check`, `npm run lint`, `npm run build` pass — df39798
 
 #### Manual
 
-- [x] 4.5 Docs read correctly; roadmap and board statuses aligned
+- [x] 4.5 Docs read correctly; roadmap and board statuses aligned — df39798
