@@ -35,8 +35,10 @@ export class BillingPeriod {
   readonly closedAt: Date | null;
   readonly version: number;
   readonly participants: readonly string[];
-  private readonly stored: readonly Expense[];
+  private readonly stored: Expense[];
   private readonly added: Expense[] = [];
+  private readonly changed = new Set<string>();
+  private readonly removed: string[] = [];
 
   private constructor(state: BillingPeriodState) {
     if (state.closedAt !== null && state.closedAt.getTime() < state.openedAt.getTime()) {
@@ -49,7 +51,7 @@ export class BillingPeriod {
     this.closedAt = state.closedAt;
     this.version = state.version;
     this.participants = Object.freeze([...state.participants]);
-    this.stored = Object.freeze([...state.expenses]);
+    this.stored = [...state.expenses];
   }
 
   static open(input: { id: string; groupId: string; participants: readonly string[]; now: Date }): BillingPeriod {
@@ -125,6 +127,97 @@ export class BillingPeriod {
     });
     this.added.push(expense);
     return { data: expense };
+  }
+
+  /** Whether `userId` may change `expense`: the period is open and they paid it. */
+  canEdit(expense: Expense, userId: string): boolean {
+    return this.isOpen() && expense.payerId === userId;
+  }
+
+  /**
+   * The expense `userId` may change. Refuses, in this order, a closed period, an unknown expense and an
+   * expense someone else paid.
+   */
+  editableExpense(expenseId: string, userId: string): Result<Expense> {
+    if (!this.isOpen()) {
+      return billingPeriodError("billing_period_closed", { periodId: this.id });
+    }
+    const expense = this.expenses.find((candidate) => candidate.id === expenseId);
+    if (!expense) {
+      return billingPeriodError("expense_not_found", { periodId: this.id, expenseId });
+    }
+    if (!this.canEdit(expense, userId)) {
+      return billingPeriodError("not_expense_author", { periodId: this.id, expenseId });
+    }
+    return { data: expense };
+  }
+
+  /**
+   * Changes the title, amount and purchase date of `userId`'s own expense. The new amount is split equally
+   * between the users who already hold a share of it (the payer's share absorbs the remainder), so a member
+   * who joined later takes no part. After the checks of `editableExpense` it refuses a date outside the window.
+   */
+  editExpense(input: {
+    expenseId: string;
+    userId: string;
+    title: ExpenseTitle;
+    amount: Money;
+    purchasedOn: string;
+    now: Date;
+  }): Result<Expense> {
+    const editable = this.editableExpense(input.expenseId, input.userId);
+    if ("error" in editable) {
+      return editable;
+    }
+    const purchasedOn = PurchaseDate.create(input.purchasedOn, { month: this.month, now: input.now });
+    if ("error" in purchasedOn) {
+      return purchasedOn;
+    }
+    const expense = editable.data;
+    const revised = expense.revise({
+      title: input.title,
+      amount: input.amount,
+      purchasedOn: purchasedOn.data,
+      shares: EQUAL_SPLIT.split({ amount: input.amount, participants: expense.sharerIds(), payerId: expense.payerId }),
+    });
+    const addedAt = this.added.findIndex((candidate) => candidate.id === revised.id);
+    if (addedAt >= 0) {
+      this.added[addedAt] = revised;
+    } else {
+      this.stored[this.stored.findIndex((candidate) => candidate.id === revised.id)] = revised;
+      this.changed.add(revised.id);
+    }
+    return { data: revised };
+  }
+
+  /** Deletes `userId`'s own expense, under the same checks as `editableExpense`. */
+  removeExpense(input: { expenseId: string; userId: string }): Result<void> {
+    const editable = this.editableExpense(input.expenseId, input.userId);
+    if ("error" in editable) {
+      return editable;
+    }
+    const addedAt = this.added.findIndex((candidate) => candidate.id === input.expenseId);
+    if (addedAt >= 0) {
+      this.added.splice(addedAt, 1);
+    } else {
+      this.stored.splice(
+        this.stored.findIndex((candidate) => candidate.id === input.expenseId),
+        1,
+      );
+      this.changed.delete(input.expenseId);
+      this.removed.push(input.expenseId);
+    }
+    return { data: undefined };
+  }
+
+  /** The loaded expenses changed since, which the repository still has to store. */
+  changedExpenses(): readonly Expense[] {
+    return this.stored.filter((expense) => this.changed.has(expense.id));
+  }
+
+  /** The ids of the loaded expenses deleted since, which the repository still has to delete. */
+  removedExpenseIds(): readonly string[] {
+    return [...this.removed];
   }
 
   /** The expenses added since the period was opened or loaded, which the repository still has to store. */

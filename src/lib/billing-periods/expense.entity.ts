@@ -68,6 +68,29 @@ export class Expense {
     });
   }
 
+  /** The users holding a share of this expense, in share order. */
+  sharerIds(): readonly string[] {
+    return this.shares.map((share) => share.userId);
+  }
+
+  /** A copy with new details and shares; id, payer and creation time stay, and the invariants are checked again. */
+  revise(input: {
+    title: ExpenseTitle;
+    amount: Money;
+    purchasedOn: PurchaseDate;
+    shares: readonly ExpenseShare[];
+  }): Expense {
+    return new Expense({
+      id: this.id,
+      payerId: this.payerId,
+      title: input.title,
+      amount: input.amount,
+      purchasedOn: input.purchasedOn,
+      createdAt: this.createdAt,
+      shares: input.shares,
+    });
+  }
+
   toSnapshot(): ExpenseSnapshot {
     return {
       id: this.id,

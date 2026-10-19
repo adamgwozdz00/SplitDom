@@ -48,7 +48,7 @@ People who share household costs — partners or roommates — settle shared exp
 | S-04 | add-expense-see-balances      | member can add an expense split equally and immediately see every member's balance  | S-03          | US-01, FR-004, FR-005      | done |
 | F-02 | billing-period-aggregate      | (foundation) `BillingPeriod` is the aggregate root that adds expenses and splits them | S-04          | FR-004, FR-005, FR-015     | done |
 | F-03 | group-membership-aggregate    | (foundation) `Group` is the membership aggregate; `Invite` is an entity inside it   | S-03          | FR-002, FR-003             | done |
-| S-05 | edit-own-expense-rules        | expense author can edit or delete their own expense only while it is still editable | F-02          | FR-005                     | proposed |
+| S-05 | edit-own-expense-rules        | expense author can edit or delete their own expense only while it is still editable | F-02          | FR-005                     | in-progress |
 | S-06 | generate-transfer-details     | debtor can copy transfer details (account number, amount, title) for a debt         | S-04          | FR-007                     | proposed |
 | S-07 | mark-transfer-sent            | debtor can mark a transfer as sent, as a reminder for themselves                    | F-02          | FR-008                     | proposed |
 | S-08 | confirm-debt-paid             | creditor can confirm a debt as paid, which closes it                                | F-02          | FR-009                     | proposed |
@@ -191,7 +191,7 @@ Foundations below assume these are present and do NOT re-scaffold them.
 - **Blockers:** —
 - **Unknowns:** —
 - **Risk:** Kept separate from S-04 so the north star stays small; it must land before S-09 because closing a period relies on the "no edits after lock" rule. Until it lands, a duplicate expense (a POST sent without JavaScript or retried) cannot be removed (see `context/deployment/deploy-plan.md`, "Expenses").
-- **Status:** proposed
+- **Status:** in-progress
 
 ### S-06: Generate transfer details
 

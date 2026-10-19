@@ -87,10 +87,17 @@ export class FakeBillingPeriodRepository implements BillingPeriodRepository {
     if (stored?.id !== period.id || stored.version !== period.version) {
       return Promise.resolve({ data: "conflict" });
     }
+    const removed = new Set(period.removedExpenseIds());
+    const changed = new Map(period.changedExpenses().map((expense) => [expense.id, expense.toSnapshot()]));
     this.put({
       ...stored,
       version: stored.version + 1,
-      expenses: [...stored.expenses, ...period.newExpenses().map((expense) => expense.toSnapshot())],
+      expenses: [
+        ...stored.expenses
+          .filter((expense) => !removed.has(expense.id))
+          .map((expense) => changed.get(expense.id) ?? expense),
+        ...period.newExpenses().map((expense) => expense.toSnapshot()),
+      ],
     });
     return Promise.resolve({ data: "saved" });
   }
