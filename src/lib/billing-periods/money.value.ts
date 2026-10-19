@@ -55,6 +55,11 @@ export class Money {
     return this.grosze === other.grosze;
   }
 
+  /** The amount as the add/edit form takes it, e.g. "400,50": no currency, no thousands separators. */
+  formInput(): string {
+    return `${Math.trunc(this.grosze / 100)},${String(Math.abs(this.grosze) % 100).padStart(2, "0")}`;
+  }
+
   /** e.g. "400,00 zł" (the separators are non-breaking spaces). */
   label(): string {
     return PLN.format(this.grosze / 100);

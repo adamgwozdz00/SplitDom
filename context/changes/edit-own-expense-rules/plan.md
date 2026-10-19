@@ -288,26 +288,26 @@ Expand only: the new function sits beside `save_billing_period`; the previously 
 
 #### Automated
 
-- [x] 2.1 Migration applies cleanly: `npm run db:reset`
-- [x] 2.2 Types regenerated with no diff afterwards: `npm run db:types && git diff --exit-code src/db/database.types.ts`
-- [x] 2.3 Unit tests, `npx astro check` and `npm run lint` pass
+- [x] 2.1 Migration applies cleanly: `npm run db:reset` — f22fe2b
+- [x] 2.2 Types regenerated with no diff afterwards: `npm run db:types && git diff --exit-code src/db/database.types.ts` — f22fe2b
+- [x] 2.3 Unit tests, `npx astro check` and `npm run lint` pass — f22fe2b
 
 #### Manual
 
-- [x] 2.4 `save_billing_period_changes` is executable by `authenticated` only and a direct call without `x-app-key` is refused (403)
+- [x] 2.4 `save_billing_period_changes` is executable by `authenticated` only and a direct call without `x-app-key` is refused (403) — f22fe2b
 
 ### Phase 3: Endpoints and UI
 
 #### Automated
 
-- [ ] 3.1 `npx astro check`, `npm run lint`, `npm run build` pass
+- [x] 3.1 `npx astro check`, `npm run lint`, `npm run build` pass
 
 #### Manual
 
-- [ ] 3.2 As the author: edit title, amount and date; balances update; delete via confirmation (a repeated delete submit shows no error); balances recompute
-- [ ] 3.3 As another member: no Edit link, edit URL redirects with the not-the-author message, a hand-sent POST is refused
-- [ ] 3.4 Invalid amount on the edit page shows the message and keeps the user on the edit page
-- [ ] 3.5 Two browsers editing the same period: retry transparently or show "Someone else just changed this billing period"
+- [x] 3.2 As the author: edit title, amount and date; balances update; delete via confirmation (a repeated delete submit shows no error); balances recompute
+- [x] 3.3 As another member: no Edit link, edit URL redirects with the not-the-author message, a hand-sent POST is refused
+- [x] 3.4 Invalid amount on the edit page shows the message and keeps the user on the edit page
+- [x] 3.5 Two browsers editing the same period: retry transparently or show "Someone else just changed this billing period"
 
 ### Phase 4: Smoke, E2E and documentation
 
