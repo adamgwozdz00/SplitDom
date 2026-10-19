@@ -46,11 +46,13 @@ export function createSupabaseBillingPeriodRepository(client: SupabaseClient<Dat
     },
 
     async save(period) {
-      const { data, error } = await client.rpc("save_billing_period", {
+      const { data, error } = await client.rpc("save_billing_period_changes", {
         p_period_id: period.id,
         p_group_id: period.groupId,
         p_expected_version: period.version,
-        p_expenses: period.newExpenses().map((expense) => toRow(expense.toSnapshot())),
+        p_added: period.newExpenses().map((expense) => toRow(expense.toSnapshot())),
+        p_changed: period.changedExpenses().map((expense) => toRow(expense.toSnapshot())),
+        p_removed: [...period.removedExpenseIds()],
       });
       if (error) {
         return fromDbError(error);
@@ -99,7 +101,7 @@ function fromDbError(error: PostgrestError): BillingPeriodError {
   switch (error.code) {
     case "28000":
       return billingPeriodError("not_authenticated");
-    // Also raised by save_billing_period when the payer is not the caller; the aggregate checks the payer first,
+    // Also raised by save_billing_period_changes when an expense is not the caller's; the aggregate checks the author first,
     // so in practice this is a caller who is not a member of the group.
     case "42501":
       return billingPeriodError("group_not_found");
@@ -123,7 +125,7 @@ function restore(value: Json, group: Group): Result<BillingPeriod> {
   }
 }
 
-/** Maps an expense to the snake_case shape `save_billing_period` stores. */
+/** Maps an expense to the snake_case shape `save_billing_period_changes` stores. */
 function toRow(expense: ExpenseSnapshot): Json {
   return {
     id: expense.id,

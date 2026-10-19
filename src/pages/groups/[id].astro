@@ -61,7 +61,13 @@ const open = summary && "data" in summary ? summary.data : null;
                 <ExpenseForm group={group} period={open.period} error={expenseError} />
                 <div class="mt-6 space-y-6">
                   <BalancesPanel group={group} balances={open.balances} viewerId={user.id} />
-                  <ExpenseList group={group} month={open.period.month} expenses={open.expenses} viewerId={user.id} />
+                  <ExpenseList
+                    group={group}
+                    period={open.period}
+                    month={open.period.month}
+                    expenses={open.expenses}
+                    viewerId={user.id}
+                  />
                 </div>
               </>
             ) : (

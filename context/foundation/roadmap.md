@@ -39,31 +39,31 @@ People who share household costs — partners or roommates — settle shared exp
 
 ## At a glance
 
-| ID   | Change ID                     | Outcome (user can …)                                                                | Prerequisites | PRD refs                   | Status   |
-| ---- | ----------------------------- | ----------------------------------------------------------------------------------- | ------------- | -------------------------- | -------- |
-| F-01 | db-migrations-and-isolation   | (foundation) schema changes ship repo → hosted DB; two-user test harness + RLS guard | —             | NFR-3, Guardrails          | done |
-| S-01 | external-identity-sign-in     | user can sign in with an external identity provider                                 | —             | FR-001                     | done |
-| S-02 | create-settlement-group       | user can create a settlement group, becomes its host, and it has an open period     | F-01          | FR-002                     | done |
-| S-03 | invite-member-by-link         | user can invite someone with a link/code, and that person joins the group           | S-02          | FR-003                     | done        |
-| S-04 | add-expense-see-balances      | member can add an expense split equally and immediately see every member's balance  | S-03          | US-01, FR-004, FR-005      | done |
-| F-02 | billing-period-aggregate      | (foundation) `BillingPeriod` is the aggregate root that adds expenses and splits them | S-04          | FR-004, FR-005, FR-015     | done |
-| F-03 | group-membership-aggregate    | (foundation) `Group` is the membership aggregate; `Invite` is an entity inside it   | S-03          | FR-002, FR-003             | done |
-| S-05 | edit-own-expense-rules        | expense author can edit or delete their own expense only while it is still editable | F-02          | FR-005                     | proposed |
-| S-06 | generate-transfer-details     | debtor can copy transfer details (account number, amount, title) for a debt         | S-04          | FR-007                     | proposed |
-| S-07 | mark-transfer-sent            | debtor can mark a transfer as sent, as a reminder for themselves                    | F-02          | FR-008                     | proposed |
-| S-08 | confirm-debt-paid             | creditor can confirm a debt as paid, which closes it                                | F-02          | FR-009                     | proposed |
-| S-09 | host-closes-period            | host can close a finished period, which freezes it and opens the next one           | S-05, S-08    | US-02, FR-015              | proposed |
-| S-10 | member-profile-display-name   | member can set a display name that the group shows instead of their email           | S-04          | — (supports US-01)         | proposed |
+| ID   | Change ID                   | Outcome (user can …)                                                                  | Prerequisites | PRD refs               | Status      |
+| ---- | --------------------------- | ------------------------------------------------------------------------------------- | ------------- | ---------------------- | ----------- |
+| F-01 | db-migrations-and-isolation | (foundation) schema changes ship repo → hosted DB; two-user test harness + RLS guard  | —             | NFR-3, Guardrails      | done        |
+| S-01 | external-identity-sign-in   | user can sign in with an external identity provider                                   | —             | FR-001                 | done        |
+| S-02 | create-settlement-group     | user can create a settlement group, becomes its host, and it has an open period       | F-01          | FR-002                 | done        |
+| S-03 | invite-member-by-link       | user can invite someone with a link/code, and that person joins the group             | S-02          | FR-003                 | done        |
+| S-04 | add-expense-see-balances    | member can add an expense split equally and immediately see every member's balance    | S-03          | US-01, FR-004, FR-005  | done        |
+| F-02 | billing-period-aggregate    | (foundation) `BillingPeriod` is the aggregate root that adds expenses and splits them | S-04          | FR-004, FR-005, FR-015 | done        |
+| F-03 | group-membership-aggregate  | (foundation) `Group` is the membership aggregate; `Invite` is an entity inside it     | S-03          | FR-002, FR-003         | done        |
+| S-05 | edit-own-expense-rules      | expense author can edit or delete their own expense only while it is still editable   | F-02          | FR-005                 | in-progress |
+| S-06 | generate-transfer-details   | debtor can copy transfer details (account number, amount, title) for a debt           | S-04          | FR-007                 | proposed    |
+| S-07 | mark-transfer-sent          | debtor can mark a transfer as sent, as a reminder for themselves                      | F-02          | FR-008                 | proposed    |
+| S-08 | confirm-debt-paid           | creditor can confirm a debt as paid, which closes it                                  | F-02          | FR-009                 | proposed    |
+| S-09 | host-closes-period          | host can close a finished period, which freezes it and opens the next one             | S-05, S-08    | US-02, FR-015          | proposed    |
+| S-10 | member-profile-display-name | member can set a display name that the group shows instead of their email             | S-04          | — (supports US-01)     | proposed    |
 
 ## Streams
 
 Navigation aid — groups items that share a Prerequisites chain. Canonical ordering still lives in the dependency graph below; this table is the proposed reading order across parallel tracks.
 
-| Stream | Theme                   | Chain                                               | Note                                                                                     |
-| ------ | ----------------------- | --------------------------------------------------- | ---------------------------------------------------------------------------------------- |
-| A      | Group and expenses      | `F-01` → `S-02` → `S-03` → `S-04` → `F-02` → `S-05` · `S-10` · `F-03` | The must-have path to the north star; the critical path under the `speed` goal. `S-10` branches off `S-04` and `F-03` off `S-03`; both are off the critical path. |
-| B      | Sign-in                 | `S-01`                                              | Standalone; existing email/password sign-in keeps every other slice unblocked meanwhile. |
-| C      | Settlement and closing  | `S-06` · `S-07` · `S-08` → `S-09`                   | `S-06` joins Stream A at `S-04`, `S-07` and `S-08` at `F-02`; they can run in parallel; `S-09` also needs `S-05`. |
+| Stream | Theme                  | Chain                                                                 | Note                                                                                                                                                              |
+| ------ | ---------------------- | --------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| A      | Group and expenses     | `F-01` → `S-02` → `S-03` → `S-04` → `F-02` → `S-05` · `S-10` · `F-03` | The must-have path to the north star; the critical path under the `speed` goal. `S-10` branches off `S-04` and `F-03` off `S-03`; both are off the critical path. |
+| B      | Sign-in                | `S-01`                                                                | Standalone; existing email/password sign-in keeps every other slice unblocked meanwhile.                                                                          |
+| C      | Settlement and closing | `S-06` · `S-07` · `S-08` → `S-09`                                     | `S-06` joins Stream A at `S-04`, `S-07` and `S-08` at `F-02`; they can run in parallel; `S-09` also needs `S-05`.                                                 |
 
 ## Baseline
 
@@ -189,9 +189,10 @@ Foundations below assume these are present and do NOT re-scaffold them.
 - **Prerequisites:** F-02
 - **Parallel with:** S-01, S-06, S-07, S-08, S-10
 - **Blockers:** —
-- **Unknowns:** —
+- **Unknowns:**
+  - Does a paid debt lock every expense of its pair in the period, or freeze the balance? Still open and owned by S-08, which extends `BillingPeriod.canEdit` with the paid-debt lock; S-05 enforces only the author and the open period (`context/changes/edit-own-expense-rules/plan.md`).
 - **Risk:** Kept separate from S-04 so the north star stays small; it must land before S-09 because closing a period relies on the "no edits after lock" rule. Until it lands, a duplicate expense (a POST sent without JavaScript or retried) cannot be removed (see `context/deployment/deploy-plan.md`, "Expenses").
-- **Status:** proposed
+- **Status:** in-progress
 
 ### S-06: Generate transfer details
 
@@ -264,21 +265,21 @@ Foundations below assume these are present and do NOT re-scaffold them.
 
 Mirrored on GitHub: milestone [M-1](https://github.com/adamgwozdz00/SplitDom/milestone/1), board [SplitDom Roadmap](https://github.com/users/adamgwozdz00/projects/6).
 
-| Roadmap ID | Change ID                   | Suggested issue title                                        | Ready for `/10x-plan` | Notes                                                    |
-| ---------- | --------------------------- | ------------------------------------------------------------ | --------------------- | -------------------------------------------------------- |
-| F-01       | db-migrations-and-isolation | Set up DB migrations and a two-user group-isolation check    | done                  | [#5](https://github.com/adamgwozdz00/SplitDom/issues/5) · Delivered in [PR #18](https://github.com/adamgwozdz00/SplitDom/pull/18) |
-| S-01       | external-identity-sign-in   | Sign in with an external identity provider                   | done                  | [#6](https://github.com/adamgwozdz00/SplitDom/issues/6) · Delivered in [PR #20](https://github.com/adamgwozdz00/SplitDom/pull/20) |
-| S-02       | create-settlement-group     | Create a settlement group with its first open period         | done                  | [#7](https://github.com/adamgwozdz00/SplitDom/issues/7) · Delivered in [PR #23](https://github.com/adamgwozdz00/SplitDom/pull/23) |
+| Roadmap ID | Change ID                   | Suggested issue title                                        | Ready for `/10x-plan` | Notes                                                                                                                                                            |
+| ---------- | --------------------------- | ------------------------------------------------------------ | --------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| F-01       | db-migrations-and-isolation | Set up DB migrations and a two-user group-isolation check    | done                  | [#5](https://github.com/adamgwozdz00/SplitDom/issues/5) · Delivered in [PR #18](https://github.com/adamgwozdz00/SplitDom/pull/18)                                |
+| S-01       | external-identity-sign-in   | Sign in with an external identity provider                   | done                  | [#6](https://github.com/adamgwozdz00/SplitDom/issues/6) · Delivered in [PR #20](https://github.com/adamgwozdz00/SplitDom/pull/20)                                |
+| S-02       | create-settlement-group     | Create a settlement group with its first open period         | done                  | [#7](https://github.com/adamgwozdz00/SplitDom/issues/7) · Delivered in [PR #23](https://github.com/adamgwozdz00/SplitDom/pull/23)                                |
 | S-03       | invite-member-by-link       | Invite a member to the group by link/code                    | yes                   | [#8](https://github.com/adamgwozdz00/SplitDom/issues/8) · Run `/10x-plan invite-member-by-link`; research in `context/changes/invite-member-by-link/research.md` |
-| S-04       | add-expense-see-balances    | Add an expense split equally and show member balances        | no                    | [#9](https://github.com/adamgwozdz00/SplitDom/issues/9) · Needs S-03 and the debt-granularity decision |
-| F-02       | billing-period-aggregate    | Refactor: BillingPeriod as the aggregate root for expenses   | no                    | [#32](https://github.com/adamgwozdz00/SplitDom/issues/32) · Needs S-04; then `/10x-plan billing-period-aggregate` |
-| F-03       | group-membership-aggregate  | Refactor: Group as the membership aggregate (Invite inside)  | yes                   | [#34](https://github.com/adamgwozdz00/SplitDom/issues/34) · Needs S-03 (done); run `/10x-plan group-membership-aggregate` |
-| S-05       | edit-own-expense-rules      | Enforce edit/delete rules for an author's own expenses       | no                    | [#10](https://github.com/adamgwozdz00/SplitDom/issues/10) · Needs S-04 |
-| S-06       | generate-transfer-details   | Generate copyable transfer details for a debt                | no                    | [#11](https://github.com/adamgwozdz00/SplitDom/issues/11) · Needs S-04 |
-| S-07       | mark-transfer-sent          | Let the debtor mark a transfer as sent                       | no                    | [#12](https://github.com/adamgwozdz00/SplitDom/issues/12) · Needs S-04 |
-| S-08       | confirm-debt-paid           | Let the creditor confirm a debt as paid                      | no                    | [#13](https://github.com/adamgwozdz00/SplitDom/issues/13) · Needs S-04 |
-| S-09       | host-closes-period          | Let the host close a finished period and open the next one   | no                    | [#14](https://github.com/adamgwozdz00/SplitDom/issues/14) · Needs S-05 and S-08 |
-| S-10       | member-profile-display-name | Let a member set a display name shown instead of their email | no                    | [#27](https://github.com/adamgwozdz00/SplitDom/issues/27) · Needs S-04 |
+| S-04       | add-expense-see-balances    | Add an expense split equally and show member balances        | no                    | [#9](https://github.com/adamgwozdz00/SplitDom/issues/9) · Needs S-03 and the debt-granularity decision                                                           |
+| F-02       | billing-period-aggregate    | Refactor: BillingPeriod as the aggregate root for expenses   | no                    | [#32](https://github.com/adamgwozdz00/SplitDom/issues/32) · Needs S-04; then `/10x-plan billing-period-aggregate`                                                |
+| F-03       | group-membership-aggregate  | Refactor: Group as the membership aggregate (Invite inside)  | yes                   | [#34](https://github.com/adamgwozdz00/SplitDom/issues/34) · Needs S-03 (done); run `/10x-plan group-membership-aggregate`                                        |
+| S-05       | edit-own-expense-rules      | Enforce edit/delete rules for an author's own expenses       | no                    | [#10](https://github.com/adamgwozdz00/SplitDom/issues/10) · Needs S-04                                                                                           |
+| S-06       | generate-transfer-details   | Generate copyable transfer details for a debt                | no                    | [#11](https://github.com/adamgwozdz00/SplitDom/issues/11) · Needs S-04                                                                                           |
+| S-07       | mark-transfer-sent          | Let the debtor mark a transfer as sent                       | no                    | [#12](https://github.com/adamgwozdz00/SplitDom/issues/12) · Needs S-04                                                                                           |
+| S-08       | confirm-debt-paid           | Let the creditor confirm a debt as paid                      | no                    | [#13](https://github.com/adamgwozdz00/SplitDom/issues/13) · Needs S-04                                                                                           |
+| S-09       | host-closes-period          | Let the host close a finished period and open the next one   | no                    | [#14](https://github.com/adamgwozdz00/SplitDom/issues/14) · Needs S-05 and S-08                                                                                  |
+| S-10       | member-profile-display-name | Let a member set a display name shown instead of their email | no                    | [#27](https://github.com/adamgwozdz00/SplitDom/issues/27) · Needs S-04                                                                                           |
 
 ## Open Roadmap Questions
 
