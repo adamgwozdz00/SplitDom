@@ -8,6 +8,8 @@ const MESSAGES: Record<BillingPeriodErrorCode, string> = {
   billing_period_closed: "This billing period is closed, so expenses can no longer be changed",
   expense_not_found: "Expense not found",
   not_expense_author: "Only the member who paid an expense can change it",
+  no_debt_to_mark: "You don't owe this member anything right now, so there is nothing to mark as sent",
+  transfer_not_found: "This transfer is not marked as sent",
   period_changed: "Someone else just changed this billing period, try again",
   group_not_found: "Group not found",
   not_authenticated: "Sign in to continue",

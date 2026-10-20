@@ -170,6 +170,7 @@ describe("BillingPeriod.restore", () => {
         ],
       },
     ],
+    transfers: [],
   };
 
   it("round-trips a snapshot", () => {
@@ -387,5 +388,182 @@ describe("BillingPeriod.canEdit", () => {
     expect(open.canEdit(open.expenses[0], HOST)).toBe(true);
     expect(open.canEdit(open.expenses[0], MEMBER)).toBe(false);
     expect(closed.canEdit(closed.expenses[0], HOST)).toBe(false);
+  });
+});
+
+describe("BillingPeriod transfers", () => {
+  // MEMBER owes HOST 200 zł after HOST pays 400 zł.
+  function withDebt(): BillingPeriod {
+    const period = octoberPeriod();
+    add(period, { id: "e-1", payerId: HOST, grosze: 40000 });
+    return period;
+  }
+
+  function mark(
+    period: BillingPeriod,
+    input: { id?: string; debtorId?: string; creditorId?: string; grosze?: number; now?: Date } = {},
+  ) {
+    return period.markTransferSent({
+      id: input.id ?? "t-1",
+      debtorId: input.debtorId ?? MEMBER,
+      creditorId: input.creditorId ?? HOST,
+      amount: Money.ofGrosze(input.grosze ?? 20000),
+      now: input.now ?? MID_OCTOBER,
+    });
+  }
+
+  function restoredWithMark(): BillingPeriod {
+    const period = withDebt();
+    mark(period);
+    const stored = BillingPeriod.restore(period.toSnapshot(), [HOST, MEMBER]);
+    return stored;
+  }
+
+  describe("markTransferSent", () => {
+    it("records the posted amount, not the current debt", () => {
+      const period = withDebt();
+
+      const result = mark(period, { grosze: 15000 });
+
+      expect(result).toMatchObject({ data: { debtorId: MEMBER, creditorId: HOST } });
+      expect(period.sentTransferOf(MEMBER, HOST)?.amount.grosze).toBe(15000);
+      expect(period.markedTransfers().map((transfer) => transfer.id)).toEqual(["t-1"]);
+    });
+
+    it("does not change the balances or the debts", () => {
+      const period = withDebt();
+      const before = period.balances();
+
+      mark(period);
+
+      expect(period.balances()).toEqual(before);
+    });
+
+    it("refuses a closed period", () => {
+      const period = BillingPeriod.restore({ ...withDebt().toSnapshot(), closedAt: "2026-11-01T08:00:00.000Z" }, [
+        HOST,
+        MEMBER,
+      ]);
+
+      expect(mark(period)).toMatchObject({ error: { code: "billing_period_closed" } });
+    });
+
+    it("refuses a debtor who is not a participant", () => {
+      expect(mark(withDebt(), { debtorId: "stranger" })).toMatchObject({ error: { code: "group_not_found" } });
+    });
+
+    it("refuses the creditor marking for their debtor", () => {
+      expect(mark(withDebt(), { debtorId: HOST, creditorId: MEMBER })).toMatchObject({
+        error: { code: "no_debt_to_mark" },
+      });
+    });
+
+    it("refuses a settled pair and marking oneself", () => {
+      expect(mark(octoberPeriod())).toMatchObject({ error: { code: "no_debt_to_mark" } });
+      expect(mark(withDebt(), { debtorId: MEMBER, creditorId: MEMBER })).toMatchObject({
+        error: { code: "no_debt_to_mark" },
+      });
+    });
+
+    it("replaces the pair's mark with a different amount, keeping its id", () => {
+      const period = restoredWithMark();
+
+      const result = mark(period, { id: "t-2", grosze: 25000, now: new Date("2026-10-16T12:00:00.000Z") });
+
+      expect(result).toMatchObject({ data: { id: "t-1" } });
+      expect(period.sentTransferOf(MEMBER, HOST)?.amount.grosze).toBe(25000);
+      expect(period.markedTransfers().map((transfer) => transfer.id)).toEqual(["t-1"]);
+    });
+
+    it("leaves a repeated mark with the same amount untouched", () => {
+      const period = restoredWithMark();
+
+      mark(period, { id: "t-2", now: new Date("2026-10-17T12:00:00.000Z") });
+
+      expect(period.markedTransfers()).toEqual([]);
+      expect(period.sentTransferOf(MEMBER, HOST)?.toSnapshot().sentAt).toBe(MID_OCTOBER.toISOString());
+    });
+  });
+
+  describe("undoTransferSent", () => {
+    it("removes a loaded mark and lists it as unmarked", () => {
+      const period = restoredWithMark();
+
+      const result = period.undoTransferSent({ debtorId: MEMBER, creditorId: HOST });
+
+      expect(result).toEqual({ data: undefined });
+      expect(period.sentTransferOf(MEMBER, HOST)).toBeNull();
+      expect(period.unmarkedTransferIds()).toEqual(["t-1"]);
+    });
+
+    it("drops a mark added since load without any pending write", () => {
+      const period = withDebt();
+      mark(period);
+
+      period.undoTransferSent({ debtorId: MEMBER, creditorId: HOST });
+
+      expect(period.markedTransfers()).toEqual([]);
+      expect(period.unmarkedTransferIds()).toEqual([]);
+    });
+
+    it("reports a missing mark", () => {
+      expect(withDebt().undoTransferSent({ debtorId: MEMBER, creditorId: HOST })).toMatchObject({
+        error: { code: "transfer_not_found" },
+      });
+    });
+
+    it("refuses a closed period", () => {
+      const period = BillingPeriod.restore(
+        { ...restoredWithMark().toSnapshot(), closedAt: "2026-11-01T08:00:00.000Z" },
+        [HOST, MEMBER],
+      );
+
+      expect(period.undoTransferSent({ debtorId: MEMBER, creditorId: HOST })).toMatchObject({
+        error: { code: "billing_period_closed" },
+      });
+    });
+  });
+
+  describe("sentTransfersInvolving", () => {
+    it("derives the state of a mark from the current debts", () => {
+      const period = restoredWithMark();
+      expect(period.sentTransfersInvolving(MEMBER)).toMatchObject([{ state: "current" }]);
+
+      add(period, { id: "e-2", payerId: HOST, grosze: 10000 });
+      expect(period.sentTransfersInvolving(MEMBER)).toMatchObject([{ state: "outdated" }]);
+
+      // The member pays back more than they owe: the debt turns around.
+      add(period, { id: "e-3", payerId: MEMBER, grosze: 100000 });
+      expect(period.sentTransfersInvolving(MEMBER)).toMatchObject([{ state: "no_debt", debt: null }]);
+    });
+
+    it("returns the mark to both the debtor and the creditor, and to nobody else", () => {
+      const period = BillingPeriod.restore(restoredWithMark().toSnapshot(), [HOST, MEMBER, "third"]);
+
+      expect(period.sentTransfersInvolving(MEMBER)).toHaveLength(1);
+      expect(period.sentTransfersInvolving(HOST)).toHaveLength(1);
+      expect(period.sentTransfersInvolving("third")).toEqual([]);
+    });
+
+    it("keeps a mark when its expense is edited or deleted", () => {
+      const period = restoredWithMark();
+
+      edit(period, { grosze: 60000 });
+      expect(period.sentTransfersInvolving(MEMBER)).toMatchObject([{ state: "outdated" }]);
+
+      period.removeExpense({ expenseId: "e-1", userId: HOST });
+      expect(period.sentTransfersInvolving(MEMBER)).toMatchObject([{ state: "no_debt" }]);
+      expect(period.unmarkedTransferIds()).toEqual([]);
+    });
+  });
+
+  it("round-trips transfers through the snapshot", () => {
+    const period = withDebt();
+    mark(period);
+
+    const restored = BillingPeriod.restore(period.toSnapshot(), [HOST, MEMBER]);
+
+    expect(restored.toSnapshot().transfers).toEqual(period.toSnapshot().transfers);
+    expect(restored.markedTransfers()).toEqual([]);
   });
 });

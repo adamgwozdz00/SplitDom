@@ -56,6 +56,7 @@ describe("BillingPeriodService.openFor", () => {
       closedAt: null,
       version: 0,
       expenses: [],
+      transfers: [],
     });
   });
 
@@ -510,5 +511,110 @@ describe("BillingPeriodService.getEditableExpense", () => {
     const result = await serviceWith(repository, { ids: [] }).getEditableExpense({ group, userId, expenseId });
 
     expect("error" in result && result.error.code).toBe(expected);
+  });
+});
+
+describe("BillingPeriodService transfers", () => {
+  // B owes the host 200 zł after the host paid 400 zł.
+  function repositoryWithDebt(): FakeBillingPeriodRepository {
+    return new FakeBillingPeriodRepository([anOctoberPeriod({ expenses: [{ id: "e-1", grosze: 40000 }] })]);
+  }
+
+  const mark = { group: aGroup(), debtorId: B, creditorId: HOST_ID, amount: "200,00" };
+
+  it("stores the mark with the posted amount and a bumped version", async () => {
+    const repository = repositoryWithDebt();
+
+    const result = await serviceWith(repository, { ids: ["transfer-1"] }).markTransferSent(mark);
+
+    expect(result).toEqual({ data: undefined });
+    expect(repository.stored(GROUP_ID)).toMatchObject({
+      version: 1,
+      transfers: [{ id: "transfer-1", debtorId: B, creditorId: HOST_ID, amount: 20000, sentAt: NOW.toISOString() }],
+    });
+  });
+
+  it("rejects an unparseable amount without touching the repository", async () => {
+    const repository = repositoryWithDebt();
+
+    const result = await serviceWith(repository, { ids: ["transfer-1"] }).markTransferSent({ ...mark, amount: "abc" });
+
+    expect(result).toMatchObject({ error: { code: "invalid_amount" } });
+    expect(repository.saveCalls).toEqual([]);
+  });
+
+  it("refuses the creditor marking for their debtor", async () => {
+    const repository = repositoryWithDebt();
+
+    const result = await serviceWith(repository, { ids: ["transfer-1"] }).markTransferSent({
+      ...mark,
+      debtorId: HOST_ID,
+      creditorId: B,
+    });
+
+    expect(result).toMatchObject({ error: { code: "no_debt_to_mark" } });
+    expect(repository.stored(GROUP_ID)?.transfers).toEqual([]);
+  });
+
+  it("records the posted amount on the retry after a concurrent expense, so the mark reads as outdated", async () => {
+    const repository = repositoryWithDebt();
+    repository.saveConflicts = 1;
+    repository.onConflict = () => {
+      // Another member's expense lands first: the debt grows to 250 zł.
+      repository.put(
+        anOctoberPeriod({
+          expenses: [
+            { id: "e-1", grosze: 40000 },
+            { id: "e-2", grosze: 10000 },
+          ],
+          version: 1,
+        }),
+      );
+    };
+
+    const result = await serviceWith(repository, { ids: ["transfer-1"] }).markTransferSent(mark);
+
+    expect(result).toEqual({ data: undefined });
+    expect(repository.saveCalls).toHaveLength(2);
+    expect(repository.stored(GROUP_ID)?.transfers).toMatchObject([{ amount: 20000 }]);
+    const reloaded = await repository.findCurrentOfGroup(aGroup());
+    if (!("data" in reloaded) || !reloaded.data) {
+      throw new Error("period not stored");
+    }
+    expect(reloaded.data.sentTransfersInvolving(B)).toMatchObject([{ state: "outdated" }]);
+  });
+
+  it("answers period_changed after two lost races", async () => {
+    const repository = repositoryWithDebt();
+    repository.saveConflicts = 2;
+
+    const result = await serviceWith(repository, { ids: ["transfer-1"] }).markTransferSent(mark);
+
+    expect(result).toMatchObject({ error: { code: "period_changed" } });
+  });
+
+  it("undoes a stored mark and retries a lost race", async () => {
+    const repository = repositoryWithDebt();
+    await serviceWith(repository, { ids: ["transfer-1"] }).markTransferSent(mark);
+    repository.saveConflicts = 1;
+
+    const result = await serviceWith(repository).undoTransferSent({
+      group: aGroup(),
+      debtorId: B,
+      creditorId: HOST_ID,
+    });
+
+    expect(result).toEqual({ data: undefined });
+    expect(repository.stored(GROUP_ID)?.transfers).toEqual([]);
+  });
+
+  it("reports an undo without a mark", async () => {
+    const result = await serviceWith(repositoryWithDebt()).undoTransferSent({
+      group: aGroup(),
+      debtorId: B,
+      creditorId: HOST_ID,
+    });
+
+    expect(result).toMatchObject({ error: { code: "transfer_not_found" } });
   });
 });
