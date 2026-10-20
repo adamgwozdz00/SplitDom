@@ -1,9 +1,10 @@
 ---
 change_id: generate-transfer-details
 title: Generate copyable transfer details for a debt (S-06)
-status: implemented
+status: archived
 created: 2026-10-19
-updated: 2026-10-19
+updated: 2026-10-20
+archived_at: 2026-10-20T06:39:52Z
 ---
 
 ## Notes
