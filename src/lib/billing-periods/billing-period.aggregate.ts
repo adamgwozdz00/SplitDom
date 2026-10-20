@@ -5,6 +5,9 @@ import type { Money } from "@/lib/billing-periods/money.value";
 import { PeriodBalances } from "@/lib/billing-periods/period-balances.value";
 import { PurchaseDate } from "@/lib/billing-periods/purchase-date.value";
 import type { PurchaseDateWindow } from "@/lib/billing-periods/purchase-date.value";
+import { Transfer } from "@/lib/billing-periods/transfer.entity";
+import type { TransferState } from "@/lib/billing-periods/transfer.entity";
+import type { PairDebt } from "@/lib/billing-periods/period-balances.value";
 import { EqualSplitPolicy } from "@/lib/billing-periods/split-policy";
 import { billingPeriodError } from "@/lib/billing-periods/billing-period-error.messages";
 import type { BillingPeriodSnapshot, Result } from "@/lib/billing-periods/types";
@@ -20,6 +23,7 @@ interface BillingPeriodState {
   version: number;
   participants: readonly string[];
   expenses: readonly Expense[];
+  transfers: readonly Transfer[];
 }
 
 /**
@@ -39,6 +43,10 @@ export class BillingPeriod {
   private readonly added: Expense[] = [];
   private readonly changed = new Set<string>();
   private readonly removed: string[] = [];
+  private readonly storedTransfers: Transfer[];
+  private readonly addedTransfers: Transfer[] = [];
+  private readonly changedTransfers = new Set<string>();
+  private readonly unmarked: string[] = [];
 
   private constructor(state: BillingPeriodState) {
     if (state.closedAt !== null && state.closedAt.getTime() < state.openedAt.getTime()) {
@@ -52,6 +60,7 @@ export class BillingPeriod {
     this.version = state.version;
     this.participants = Object.freeze([...state.participants]);
     this.stored = [...state.expenses];
+    this.storedTransfers = [...state.transfers];
   }
 
   static open(input: { id: string; groupId: string; participants: readonly string[]; now: Date }): BillingPeriod {
@@ -64,6 +73,7 @@ export class BillingPeriod {
       version: 0,
       participants: input.participants,
       expenses: [],
+      transfers: [],
     });
   }
 
@@ -78,6 +88,7 @@ export class BillingPeriod {
       version: snapshot.version,
       participants,
       expenses: snapshot.expenses.map((expense) => Expense.restore(expense)),
+      transfers: snapshot.transfers.map((transfer) => Transfer.restore(transfer)),
     });
   }
 
@@ -225,6 +236,113 @@ export class BillingPeriod {
     return [...this.added];
   }
 
+  get transfers(): readonly Transfer[] {
+    return [...this.storedTransfers, ...this.addedTransfers];
+  }
+
+  /** The mark `debtorId` made for their transfer to `creditorId`, or null. */
+  sentTransferOf(debtorId: string, creditorId: string): Transfer | null {
+    return (
+      this.transfers.find((transfer) => transfer.debtorId === debtorId && transfer.creditorId === creditorId) ?? null
+    );
+  }
+
+  /**
+   * Marks `debtorId`'s transfer to `creditorId` as sent, recording the `amount` they sent (the one the debtor
+   * saw, not necessarily the debt now). Refuses, in this order, a closed period, a debtor who is not a
+   * participant and a pair without a debt from the debtor to the creditor. A pair has one mark: marking again
+   * with another amount replaces it (keeping its id), with the same amount changes nothing.
+   */
+  markTransferSent(input: {
+    id: string;
+    debtorId: string;
+    creditorId: string;
+    amount: Money;
+    now: Date;
+  }): Result<Transfer> {
+    if (!this.isOpen()) {
+      return billingPeriodError("billing_period_closed", { periodId: this.id });
+    }
+    if (!this.participants.includes(input.debtorId)) {
+      return billingPeriodError("group_not_found", { groupId: this.groupId });
+    }
+    const owes = this.balances().debts.some(
+      (debt) => debt.debtorId === input.debtorId && debt.creditorId === input.creditorId,
+    );
+    if (!owes) {
+      return billingPeriodError("no_debt_to_mark", { periodId: this.id });
+    }
+
+    const existing = this.sentTransferOf(input.debtorId, input.creditorId);
+    if (!existing) {
+      const created = new Transfer({
+        id: input.id,
+        debtorId: input.debtorId,
+        creditorId: input.creditorId,
+        amount: input.amount,
+        sentAt: input.now,
+      });
+      this.addedTransfers.push(created);
+      return { data: created };
+    }
+    if (existing.amount.equals(input.amount)) {
+      return { data: existing };
+    }
+    const replaced = existing.replace({ amount: input.amount, sentAt: input.now });
+    const addedAt = this.addedTransfers.findIndex((candidate) => candidate.id === existing.id);
+    if (addedAt >= 0) {
+      this.addedTransfers[addedAt] = replaced;
+    } else {
+      this.storedTransfers[this.storedTransfers.findIndex((candidate) => candidate.id === existing.id)] = replaced;
+      this.changedTransfers.add(replaced.id);
+    }
+    return { data: replaced };
+  }
+
+  /** Removes `debtorId`'s mark for `creditorId`. Refuses a closed period and a pair without a mark. */
+  undoTransferSent(input: { debtorId: string; creditorId: string }): Result<void> {
+    if (!this.isOpen()) {
+      return billingPeriodError("billing_period_closed", { periodId: this.id });
+    }
+    const transfer = this.sentTransferOf(input.debtorId, input.creditorId);
+    if (!transfer) {
+      return billingPeriodError("transfer_not_found", { periodId: this.id });
+    }
+    const addedAt = this.addedTransfers.findIndex((candidate) => candidate.id === transfer.id);
+    if (addedAt >= 0) {
+      this.addedTransfers.splice(addedAt, 1);
+    } else {
+      this.storedTransfers.splice(
+        this.storedTransfers.findIndex((candidate) => candidate.id === transfer.id),
+        1,
+      );
+      this.changedTransfers.delete(transfer.id);
+      this.unmarked.push(transfer.id);
+    }
+    return { data: undefined };
+  }
+
+  /** The marks where `userId` is the debtor or the creditor, with their state against the current debts. */
+  sentTransfersInvolving(userId: string): { transfer: Transfer; state: TransferState; debt: PairDebt | null }[] {
+    const debts = this.balances().debts;
+    return this.transfers
+      .filter((transfer) => transfer.debtorId === userId || transfer.creditorId === userId)
+      .map((transfer) => ({ transfer, ...transfer.stateAgainst(debts) }));
+  }
+
+  /** The marks added or replaced since load, which the repository still has to store. */
+  markedTransfers(): readonly Transfer[] {
+    return [
+      ...this.storedTransfers.filter((transfer) => this.changedTransfers.has(transfer.id)),
+      ...this.addedTransfers,
+    ];
+  }
+
+  /** The ids of the loaded marks undone since, which the repository still has to delete. */
+  unmarkedTransferIds(): readonly string[] {
+    return [...this.unmarked];
+  }
+
   /** By purchase date, then by creation time, newest first. */
   expensesNewestFirst(): readonly Expense[] {
     return [...this.expenses].sort(
@@ -245,6 +363,7 @@ export class BillingPeriod {
       closedAt: this.closedAt === null ? null : this.closedAt.toISOString(),
       version: this.version,
       expenses: this.expenses.map((expense) => expense.toSnapshot()),
+      transfers: this.transfers.map((transfer) => transfer.toSnapshot()),
     };
   }
 }

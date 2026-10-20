@@ -133,6 +133,38 @@ export class BillingPeriodService {
     );
   }
 
+  /**
+   * Marks `debtorId`'s transfer to `creditorId` as sent, recording `amount`, the one the debtor saw. The id is
+   * generated once, and a save that lost a race is retried like `addExpense` with the same amount.
+   */
+  async markTransferSent(input: {
+    group: Group;
+    debtorId: string;
+    creditorId: string;
+    amount: string;
+  }): Promise<Result<void>> {
+    const amount = Money.parse(input.amount);
+    if ("error" in amount) {
+      return amount;
+    }
+    const command = {
+      id: this.newId(),
+      debtorId: input.debtorId,
+      creditorId: input.creditorId,
+      amount: amount.data,
+      now: this.clock(),
+    };
+    const marked = await this.change(input.group, (period) => period.markTransferSent(command));
+    return "error" in marked ? marked : { data: undefined };
+  }
+
+  /** Removes `debtorId`'s mark for `creditorId`, retried like `addExpense` on a lost race. */
+  async undoTransferSent(input: { group: Group; debtorId: string; creditorId: string }): Promise<Result<void>> {
+    return this.change(input.group, (period) =>
+      period.undoTransferSent({ debtorId: input.debtorId, creditorId: input.creditorId }),
+    );
+  }
+
   /** The open period and one of its expenses, when `userId` may change it (for the edit page). */
   async getEditableExpense(input: {
     group: Group;

@@ -50,7 +50,7 @@ People who share household costs — partners or roommates — settle shared exp
 | F-03 | group-membership-aggregate  | (foundation) `Group` is the membership aggregate; `Invite` is an entity inside it     | S-03          | FR-002, FR-003         | done        |
 | S-05 | edit-own-expense-rules      | expense author can edit or delete their own expense only while it is still editable   | F-02          | FR-005                 | done |
 | S-06 | generate-transfer-details   | debtor can copy transfer details (account number, amount, title) for a debt           | S-04          | FR-007                 | done        |
-| S-07 | mark-transfer-sent          | debtor can mark a transfer as sent, as a reminder for themselves                      | F-02          | FR-008                 | proposed    |
+| S-07 | mark-transfer-sent          | debtor can mark a transfer as sent, as a reminder for themselves                      | F-02          | FR-008                 | in-progress |
 | S-08 | confirm-debt-paid           | creditor can confirm a debt as paid, which closes it                                  | F-02          | FR-009                 | proposed    |
 | S-09 | host-closes-period          | host can close a finished period, which freezes it and opens the next one             | S-05, S-08    | US-02, FR-015          | proposed    |
 | S-10 | member-profile-display-name | member can set a display name that the group shows instead of their email             | S-04          | — (supports US-01)     | proposed    |
@@ -103,7 +103,7 @@ Foundations below assume these are present and do NOT re-scaffold them.
 - **Parallel with:** S-01, S-06, S-10
 - **Blockers:** —
 - **Unknowns:**
-  - Do transfers and paid-debt confirmations (FR-008/009) live inside `BillingPeriod`? Leaning yes, since they block edits and closing. — Owner: user. Block: no (F-02 only leaves room for them).
+  - ~~Do transfers and paid-debt confirmations (FR-008/009) live inside `BillingPeriod`? Leaning yes, since they block edits and closing. — Owner: user. Block: no (F-02 only leaves room for them).~~ Resolved 2026-10-20 (S-07 planning): yes, a `Transfer` entity inside `BillingPeriod`, saved in the same version-guarded call as expenses; S-08 adds the confirmation to it (`context/changes/mark-transfer-sent/plan.md`).
   - FR-005 locks an expense once "its debt" is paid, but debts are netted per pair of members across many expenses. Does a paid debt lock every expense of that pair in the period, or freeze the balance and let later edits create a compensating debt? — Owner: user. Block: S-05, S-08.
   - ~~Concurrent writes: two members adding an expense at once both change the same aggregate, so `billing_periods` needs a version column (optimistic locking) or an equivalent guard.~~ Resolved (F-02 planning): a `version` column on `billing_periods`, bumped by a conditional update in `save_billing_period`; the service reloads and retries once, then returns `period_changed` (`context/changes/billing-period-aggregate/plan.md`).
   - ~~Does the open period move out of the `Group` aggregate into its own `billing_periods` repository?~~ Resolved (F-02 planning): yes, `Group` keeps membership and the host, and the period lives in the `BillingPeriod` aggregate with its own repository; creating a group is two writes, repaired by `openFor`.
@@ -217,7 +217,7 @@ Foundations below assume these are present and do NOT re-scaffold them.
 - **Blockers:** —
 - **Unknowns:** —
 - **Risk:** Small, independent status change; sequenced after S-04 only because it needs a debt to exist.
-- **Status:** proposed
+- **Status:** in-progress
 
 ### S-08: Confirm a debt as paid
 

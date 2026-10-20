@@ -153,6 +153,8 @@ function toSnapshot(value: Json): BillingPeriodSnapshot {
     closedAt: period.closed_at === null ? null : asInstant(period.closed_at, "period.closed_at"),
     version: asInteger(period.version, "period.version"),
     expenses: expenses.map(toExpenseSnapshot),
+    // Replaced by the stored marks once the transfers migration is in place.
+    transfers: [],
   };
 }
 

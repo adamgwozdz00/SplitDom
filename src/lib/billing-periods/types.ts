@@ -9,6 +9,8 @@ export type BillingPeriodErrorCode =
   | "billing_period_closed"
   | "expense_not_found"
   | "not_expense_author"
+  | "no_debt_to_mark"
+  | "transfer_not_found"
   | "period_changed"
   | "group_not_found"
   | "not_authenticated"
@@ -35,6 +37,15 @@ export interface ExpenseSnapshot {
   shares: { userId: string; amount: number }[];
 }
 
+/** Persistence shape of a debtor's "sent" mark. `amount` is integer grosze, `sentAt` a UTC ISO string. */
+export interface TransferSnapshot {
+  id: string;
+  debtorId: string;
+  creditorId: string;
+  amount: number;
+  sentAt: string;
+}
+
 /** Persistence shape of the BillingPeriod aggregate. `month` is `YYYY-MM-01`; timestamps are UTC ISO strings. */
 export interface BillingPeriodSnapshot {
   id: string;
@@ -44,6 +55,7 @@ export interface BillingPeriodSnapshot {
   closedAt: string | null;
   version: number;
   expenses: ExpenseSnapshot[];
+  transfers: TransferSnapshot[];
 }
 
 /** Loads and persists BillingPeriod aggregates on behalf of the signed-in user. */
