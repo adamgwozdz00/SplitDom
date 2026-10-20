@@ -3,7 +3,7 @@ project: SplitDom
 version: 1
 status: draft
 created: 2026-09-26
-updated: 2026-10-19
+updated: 2026-10-20
 prd_version: 1
 main_goal: speed
 top_blocker: time
@@ -49,7 +49,7 @@ People who share household costs — partners or roommates — settle shared exp
 | F-02 | billing-period-aggregate    | (foundation) `BillingPeriod` is the aggregate root that adds expenses and splits them | S-04          | FR-004, FR-005, FR-015 | done        |
 | F-03 | group-membership-aggregate  | (foundation) `Group` is the membership aggregate; `Invite` is an entity inside it     | S-03          | FR-002, FR-003         | done        |
 | S-05 | edit-own-expense-rules      | expense author can edit or delete their own expense only while it is still editable   | F-02          | FR-005                 | done |
-| S-06 | generate-transfer-details   | debtor can copy transfer details (account number, amount, title) for a debt           | S-04          | FR-007                 | in-progress |
+| S-06 | generate-transfer-details   | debtor can copy transfer details (account number, amount, title) for a debt           | S-04          | FR-007                 | done        |
 | S-07 | mark-transfer-sent          | debtor can mark a transfer as sent, as a reminder for themselves                      | F-02          | FR-008                 | proposed    |
 | S-08 | confirm-debt-paid           | creditor can confirm a debt as paid, which closes it                                  | F-02          | FR-009                 | proposed    |
 | S-09 | host-closes-period          | host can close a finished period, which freezes it and opens the next one             | S-05, S-08    | US-02, FR-015          | proposed    |
@@ -205,7 +205,7 @@ Foundations below assume these are present and do NOT re-scaffold them.
 - **Unknowns:**
   - ~~Where and when does a member provide their bank account number?~~ Resolved 2026-10-19 (S-06 planning): on a `/profile` page, in a per-user `MemberProfile` aggregate holding the account number only; S-10 adds the display name to the same table (`context/changes/generate-transfer-details/plan.md`).
 - **Risk:** Introduces the most sensitive data in the app (account numbers), so it must follow the F-01 isolation model (and stays behind the app-key gate); low logic risk otherwise. Design note (2026-10-06): the account number belongs to the person, not to a group, so it fits a separate per-user aggregate (`MemberProfile`, shared with S-10) that only its owner edits and that validates the account number (NRB/IBAN), rather than the `Group` or `BillingPeriod` aggregates.
-- **Status:** in-progress
+- **Status:** done
 
 ### S-07: Mark a transfer as sent
 
@@ -313,3 +313,4 @@ Mirrored on GitHub: milestone [M-1](https://github.com/adamgwozdz00/SplitDom/mil
 - **F-03: (foundation) `Group` becomes the aggregate root of a household's membership: `Group.invite(by, now)` lets only a member create an invite, and `Group.join(token, userId, now)` uses up an active invite and adds the user as a member in one write of one aggregate. `Invite` becomes an entity inside `Group` (only active invites are loaded). Invariants owned by `Group`: the host is a member and never changes, an invite is used at most once, a user is a member at most once, nobody removes members (PRD). The documented exception in CLAUDE.md (`redeem_group_invite` writing `group_members` outside the `Group` repository) disappears: the rule "an active invite grants membership" moves back to TypeScript, and the conditional UPDATE in SQL stays only as a backstop. `memberLabel` moves from the domain to presentation; the open period leaves `Group` with F-02. Behaviour visible to users does not change. Built test-first (TDD).** — Archived 2026-10-07 → `context/archive/2026-10-07-group-membership-aggregate/`. Lesson: —.
 - **S-04: group member can add an expense in the open period, split equally between all members, and immediately see each member's debt or credit (e.g. 400 zł rent → the other member owes 200 zł).** — Archived 2026-10-19 → `context/archive/2026-10-05-add-expense-see-balances/`. Lesson: —.
 - **S-05: expense author can edit or delete their own expense while its period is open and its debt is not yet confirmed as paid; nobody else can modify it.** — Archived 2026-10-19 → `context/archive/2026-10-19-edit-own-expense-rules/`. Lesson: —.
+- **S-06: debtor can see and copy plain-text transfer details for a debt — creditor's account number, amount, and transfer title — to paste into any online banking.** — Archived 2026-10-20 → `context/archive/2026-10-19-generate-transfer-details/`. Lesson: —.
