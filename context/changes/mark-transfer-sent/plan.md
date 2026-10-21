@@ -562,35 +562,35 @@ The period load gains one subquery over `payments`, a handful of rows per month,
 
 #### Automated
 
-- [x] 3.1 Unit tests pass, including the v1 failure scenario ending in "A owes B 150,00 zł": `npm test`
-- [x] 3.2 Migration applies on a fresh database: `npm run db:reset`
+- [x] 3.1 Unit tests pass, including the v1 failure scenario ending in "A owes B 150,00 zł": `npm test` — b61e72b
+- [x] 3.2 Migration applies on a fresh database: `npm run db:reset` — b61e72b
 - [x] 3.3 Generated types are up to date: `npm run db:types` leaves no diff
-- [x] 3.4 Type checking passes: `npx astro check`
-- [x] 3.5 Linting passes: `npm run lint`
-- [x] 3.6 Existing smoke flows still pass (add, edit and delete expense, transfer details): `npm run smoke`
+- [x] 3.4 Type checking passes: `npx astro check` — b61e72b
+- [x] 3.5 Linting passes: `npm run lint` — b61e72b
+- [x] 3.6 Existing smoke flows still pass (add, edit and delete expense, transfer details): `npm run smoke` — b61e72b
 
 #### Manual
 
-- [x] 3.7 In Supabase Studio, `payments` shows RLS enabled with no policies, and `anon`/`authenticated` have no table grants
-- [x] 3.8 Test names read as the ledger rules (pending vs posted, cap, idempotent send, sender-only withdraw)
+- [x] 3.7 In Supabase Studio, `payments` shows RLS enabled with no policies, and `anon`/`authenticated` have no table grants — b61e72b
+- [x] 3.8 Test names read as the ledger rules (pending vs posted, cap, idempotent send, sender-only withdraw) — b61e72b
 
 ### Phase 4: Endpoints, payment list and panels, smoke
 
 #### Automated
 
-- [ ] 4.1 Unit tests pass: `npm test`
-- [ ] 4.2 Type checking passes: `npx astro check`
-- [ ] 4.3 Linting passes: `npm run lint`
-- [ ] 4.4 Production build succeeds: `npm run build`
-- [ ] 4.5 Smoke test passes, including the payment steps: `npm run smoke`
+- [x] 4.1 Unit tests pass: `npm test`
+- [x] 4.2 Type checking passes: `npx astro check`
+- [x] 4.3 Linting passes: `npm run lint`
+- [x] 4.4 Production build succeeds: `npm run build`
+- [x] 4.5 Smoke test passes, including the payment steps: `npm run smoke`
 
 #### Manual
 
-- [ ] 4.6 Two browsers, the v1 failure scenario (A pays 200; B pays 100; A pays 100; B pays 50; B pays 300) ends with A owing B 150,00 zł, and every intermediate debt matches the money that moved
-- [ ] 4.7 Entering more than the debt is refused with a clear message; a partial amount leaves the rest as the debt
-- [ ] 4.8 A third member sees the payments and the same balances
-- [ ] 4.9 The sender withdraws an unconfirmed payment and the balances return to the expense-only numbers
-- [ ] 4.10 The panels and the Payments list read well at phone width (NFR-1)
+- [x] 4.6 Two browsers, the v1 failure scenario (A pays 200; B pays 100; A pays 100; B pays 50; B pays 300) ends with A owing B 150,00 zł, and every intermediate debt matches the money that moved
+- [x] 4.7 Entering more than the debt is refused with a clear message; a partial amount leaves the rest as the debt
+- [x] 4.8 A third member sees the payments and the same balances
+- [x] 4.9 The sender withdraws an unconfirmed payment and the balances return to the expense-only numbers
+- [x] 4.10 The panels and the Payments list read well at phone width (NFR-1)
 
 ### Phase 5: Docs, PRD and roadmap
 

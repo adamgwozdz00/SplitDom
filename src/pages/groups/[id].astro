@@ -3,6 +3,7 @@ import Layout from "@/layouts/Layout.astro";
 import GroupCard from "@/components/groups/GroupCard.astro";
 import BalancesPanel from "@/components/expenses/BalancesPanel.astro";
 import TransferPanel from "@/components/expenses/TransferPanel.astro";
+import PaymentList from "@/components/expenses/PaymentList.astro";
 import ExpenseForm from "@/components/expenses/ExpenseForm.astro";
 import ExpenseList from "@/components/expenses/ExpenseList.astro";
 import InvitePanel from "@/components/invites/InvitePanel.astro";
@@ -46,6 +47,9 @@ const inviteError = group && errorParam ? groupErrorMessage(errorParam) : null;
 const expenseErrorParam = Astro.url.searchParams.get("expenseError");
 const expenseError = group && expenseErrorParam ? billingPeriodErrorMessage(expenseErrorParam) : null;
 
+const paymentErrorParam = Astro.url.searchParams.get("paymentError");
+const paymentError = group && paymentErrorParam ? billingPeriodErrorMessage(paymentErrorParam) : null;
+
 // A failure to load expenses only replaces the expenses section; the rest of the page still renders.
 const summary = group && supabase ? await createBillingPeriodService(supabase).summarizeOpen(group) : null;
 const open = summary && "data" in summary ? summary.data : null;
@@ -76,13 +80,25 @@ if (creditorIds.length > 0) {
               <>
                 <ExpenseForm group={group} period={open.period} error={expenseError} />
                 <div class="mt-6 space-y-6">
-                  <BalancesPanel group={group} balances={open.balances} viewerId={user.id} />
+                  <BalancesPanel
+                    group={group}
+                    balances={open.balances}
+                    viewerId={user.id}
+                    hasUnconfirmedPayments={open.payments.some((payment) => !payment.isConfirmed())}
+                  />
                   <TransferPanel
                     group={group}
                     balances={open.balances}
                     viewerId={user.id}
                     monthLabel={open.period.month.label()}
                     accountNumbers={accountNumbers}
+                    error={paymentError}
+                  />
+                  <PaymentList
+                    group={group}
+                    payments={open.payments}
+                    viewerId={user.id}
+                    periodOpen={open.period.isOpen()}
                   />
                   <ExpenseList
                     group={group}
