@@ -1,82 +1,84 @@
-# Mark a Transfer as Sent (S-07) — Plan Brief
+# Mark a Transfer as Sent (S-07) — Plan Brief, v2: Payment Ledger
 
 > Full plan: `context/changes/mark-transfer-sent/plan.md`
+> Research: `context/changes/mark-transfer-sent/external-research.md`
+> Previous version: `plan-brief-v1.md` (superseded)
 
 ## What & Why
 
-A debtor marks the transfer for one of their debts as sent (FR-008). It is a reminder, not a settlement: the debt stays open until the creditor confirms it (S-08). This slice also creates the record that S-08 confirms and S-09 checks before closing a period.
+A debtor records a bank transfer to a creditor (FR-008). v1 treated it as a "sent" mark per pair that never touched the balances. Manual testing broke that model. The debt kept showing money already paid, and after a later expense reversed the pair, the app said "settled" when the creditor actually owed the debtor 150 zł. v2 makes each transfer a **payment**: an entry in the period's ledger that counts in the balances, as money ledgers and Splitwise or Tricount settlements do.
 
 ## Starting Point
 
-Debts are not stored. `PeriodBalances` derives one netted debt per pair of members from the period's expenses, so a debt can change whenever an expense is added, edited or deleted. The debtor already sees each own debt with copyable transfer details in `TransferPanel` (S-06). All period writes go through the `BillingPeriod` aggregate and one version-guarded save.
+Debts are derived from expenses in `PeriodBalances`. On the branch, v1's Phases 1–2 (a `Transfer` entity unique per pair, and its migration and repository) are committed but not deployed, so the migration can still be rewritten. v1's Phase 3 UI is uncommitted and gets stashed.
 
 ## Desired End State
 
-Under each own debt, the debtor sees "Mark as sent". After marking, they see one of:
+Every member sees **pending** balances and debts, which count every payment not withdrawn and are labelled when a payment awaits confirmation.
 
-- the mark (amount and date) with "Undo";
-- "you marked 400,00 zł — the debt is now 450,00 zł", with a button to re-mark the new amount;
-- "you no longer owe them", when the debt is gone or reversed.
-
-The creditor sees a read-only "Marked as sent to you" list with the same states. Other members see nothing about the pair's mark.
+- **The debtor** pays from the transfer details. A "Mark as sent" form is prefilled with the current debt; a partial amount is allowed, and more than the debt is refused.
+- **The ledger** shows every payment of the period in a Payments list. The sender can withdraw a payment while it is unconfirmed.
+- **The v1 scenario** now ends with "A owes B 150,00 zł".
+- **Posted balances** (confirmed payments only) are ready for S-08 and S-09.
 
 ## Key Decisions Made
 
-| Decision           | Choice                                                         | Why (1 sentence)                                                                                          |
-| ------------------ | -------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------- |
-| Aggregate boundary | `Transfer` entity inside `BillingPeriod`, same versioned save   | S-08's paid-debt lock and S-09's closing check need one consistency boundary with the expenses.           |
-| Debt changes later | The mark stores the amount; shown as outdated, can be re-marked | An honest reminder: the debtor still sees what they sent, and S-08 gets a concrete amount to confirm.     |
-| Amount source      | The amount the page showed (posted by the form)                | A retry after a concurrent expense must not record an amount the debtor never saw.                        |
-| Undo               | Yes, while the period is open                                  | Fixes a misclick; S-08 will block undo once the creditor confirms.                                        |
-| Visibility         | The debtor and the creditor of the pair                        | Prepares S-08, where the creditor confirms; a page rule, since the data is loaded for all members like expenses. |
-| Mark without debt  | Stays visible as "you no longer owe them"                      | Money really left the account; hiding or deleting the mark would lose that fact.                          |
-| Re-mark            | Replaces the pair's mark (one per pair per period)             | Keeps the model small; no history of marks.                                                               |
-| Testing            | Vitest (test-first) + smoke, no E2E                            | Same pattern as S-05/S-06; the smoke test already has two members and direct RPC calls.                   |
+| Decision          | Choice                                                                  | Why (1 sentence)                                                                                    | Source   |
+| ----------------- | ----------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------- | -------- |
+| Model             | A payment is a ledger entry counted in balances                         | The archetype everywhere (Fowler, Stripe, Square, Splitwise); a pair state outside balances drifts. | Research |
+| Pending vs posted | Page shows pending (incl. unconfirmed); rules use posted                | One true number for people; confirmation keeps the final word for S-08 and S-09 (variant (c)).      | Plan     |
+| Scope vs S-08     | Full model and sender actions now; creditor confirm/reject in S-08      | S-07 is shippable on its own, and S-08 shrinks to two commands.                                     | Plan     |
+| Amount            | Prefilled with the current debt; partial OK; more than the debt refused | Prevents overpaying, and a stale page is harmless.                                                  | Plan     |
+| Double submit     | A `paymentId` rendered into the form makes sending idempotent           | A retry after a conflict and a double tap are the same case.                                        | Plan     |
+| Visibility        | Every member sees payments, like expenses                               | Payments change balances everyone sees; reverses v1's "pair only".                                  | Plan     |
+| History           | A Payments list with "Withdraw" for the sender's unconfirmed payments   | One place for transparency and undo, also after a debt reverses.                                    | Plan     |
+| Corrections       | Withdraw and record anew; no editing; confirmed is permanent            | A ledger corrects by entries, not edits.                                                            | Research |
+| Migration         | Rewrite the unpushed `transfers` migration in place as `payments`       | Never ran in production; avoids a create-then-drop pair.                                            | Plan     |
+| Testing           | Vitest test-first (v1 scenario as a test) + smoke; no E2E               | Same pattern as S-05/S-06; the failure becomes a regression test.                                   | Plan     |
 
 ## Scope
 
 **In scope:**
 
-- The `Transfer` entity and the mark/undo commands with their state derivation.
-- The `transfers` table, a load that includes it, and `save_billing_period_with_transfers` with a debtor backstop.
-- Two form-POST endpoints, the debtor's panel states and the creditor's "Marked as sent to you" list.
-- New smoke steps and doc updates.
+- The `Payment` entity and the two balances.
+- Sending (with its cap and idempotency) and withdrawing.
+- The `payments` table and `save_billing_period_with_payments`.
+- Endpoints, the transfer panel form, the Payments list and the balances note.
+- Smoke steps, plus PRD FR-008/FR-009, roadmap and CLAUDE.md updates.
+- GitHub issues #12/#13, after the user's approval.
 
-**Out of scope:**
-
-- Confirming a debt as paid, the paid-debt lock and blocking undo after confirmation (S-08).
-- Partial payments: a mark never reduces the debt or the balances.
-- Closed periods and leftover debts after closing (S-09).
-- Notifications, a history of marks, display names (S-10), Playwright E2E, the contract migration.
+**Out of scope:** the creditor's confirm and reject actions and the FR-005 lock (S-08), closing (S-09), recording overpayments, editing payments, notifications, FR-006, E2E, and the contract migration.
 
 ## Architecture / Approach
 
-`BillingPeriod` gains `transfers` and two commands:
+`PeriodBalances.of` gains `payments`. A payment from B to A adds to B's balance, subtracts from A's, and enters the pair matrix as "A owes B", so the existing netting stays as it is. `BillingPeriod` holds payments next to expenses:
 
-- `markTransferSent` requires a current debt from the caller to the creditor, then records the posted amount. It replaces the pair's earlier mark and keeps its id.
-- `undoTransferSent` removes the pair's mark.
+- `sendPayment` (idempotent by id, capped by the pending debt) and `withdrawPayment` (sender only, unconfirmed only);
+- `pendingBalances()` and `postedBalances()`.
 
-A mark's state ("current", "outdated" or "no debt") is derived against `balances().debts`, like the debts themselves. `BillingPeriodService` runs both commands through the existing change-and-retry path. The repository loads transfers from `get_current_billing_period`, which gains a jsonb key, and saves through a new version-guarded function that also upserts and deletes transfers. The page splits the viewer's marks into debtor marks for `TransferPanel` and creditor marks for the new `SentToYouPanel`.
+The service runs both commands through the existing change-and-retry path. A new version-guarded SQL function stores the expense changes and the payments together, with sender backstops placed before the version bump.
 
 ## Phases at a Glance
 
-| Phase                                   | What it delivers                                                                  | Key risk                                                                      |
-| --------------------------------------- | --------------------------------------------------------------------------------- | ----------------------------------------------------------------------------- |
-| 1. Transfer marks in the aggregate      | `Transfer`, mark/undo, state derivation, service methods, tests written first      | Getting the retry semantics wrong: the posted amount must survive a conflict.  |
-| 2. Persistence                          | `transfers` table, extended load, `save_billing_period_with_transfers`, mapping    | Breaking the deployed Worker; mitigated by an expand-only migration.          |
-| 3. Endpoints, UI, smoke and docs        | Mark/undo POSTs, debtor and creditor views, two-user smoke steps, docs             | Three UI states on a phone-width page staying readable.                       |
+| Phase                                     | What it delivers                                                      | Key risk                                                        |
+| ----------------------------------------- | --------------------------------------------------------------------- | --------------------------------------------------------------- |
+| 1–2. v1 marks and persistence             | Done (`6afdcfe`, `a649cee`); reworked by Phase 3                      | —                                                               |
+| 3. Payment ledger, domain and persistence | `Payment`, balances with payments, send/withdraw, rewritten migration | Regressing balance correctness; guarded by the v1 scenario test |
+| 4. Endpoints, payment list, panels, smoke | Form with amount, Payments list, balances note, smoke steps           | Readability of the group page at phone width                    |
+| 5. Docs, PRD, roadmap                     | FR-008/FR-009, S-07/S-08/S-09, CLAUDE.md, deploy plan, issues         | Public issue edits need the user's approval                     |
 
-**Prerequisites:** F-02 and S-06 are done. Local Supabase is running for Phases 2 and 3.
-**Estimated effort:** ~2–3 sessions across 3 phases.
+**Prerequisites:** local Supabase and Docker running; the v1 Phase 3 work stashed before Phase 3.
+**Estimated effort:** ~2–3 sessions across Phases 3–5.
 
 ## Open Risks & Assumptions
 
-- A netted debt above 1 000 000,00 zł cannot be marked, because `Money.parse` caps the posted amount. This is unrealistic for a household.
-- A hand-crafted POST can mark any valid amount for a debt the caller really has. The mark is only the debtor's own claim, shown to the pair; S-08 decides what confirming it means.
-- `save_billing_period_changes` becomes another expand/contract leftover that the contract migration before S-09 should drop.
+- A real bank overpayment cannot be recorded (the amount is capped). A correction path is left to S-08 or later.
+- Until S-08, no payment is ever confirmed, so the posted balances equal the expense-only balances. Nothing uses them yet.
+- S-08 must decide whether FR-005's paid-debt lock is still needed, since editing an expense after a payment now just shifts the balance.
+- Rewriting the migration in place is safe only while this branch is unmerged and undeployed.
 
 ## Success Criteria (Summary)
 
-- A debtor marks a debt's transfer as sent and later sees whether the mark still matches the debt; they can undo it.
-- The creditor sees the marks addressed to them. Nobody else sees them, and nobody can mark on another member's behalf.
-- Expense changes never lose a mark. Balances and debts are unchanged by marking.
+- The v1 failure scenario ends with A owing B 150,00 zł, and every intermediate debt matches the money that moved.
+- A debtor cannot pay more than they owe, and a double submit never records twice.
+- Every member sees the same balances and the payments behind them.

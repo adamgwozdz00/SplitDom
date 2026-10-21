@@ -3,7 +3,7 @@ change_id: mark-transfer-sent
 title: Mark a transfer as sent (S-07)
 status: implementing
 created: 2026-10-20
-updated: 2026-10-20
+updated: 2026-10-21
 ---
 
 ## Notes

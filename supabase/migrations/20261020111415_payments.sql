@@ -1,36 +1,38 @@
--- Transfer marks (S-07): the debtor's note that they sent a transfer, with the amount they sent.
+-- Payments (S-07): the ledger entries a member records when they send a bank transfer to another member.
 --
--- The rules (only a debtor with a current debt marks, one mark per pair, the state against the current debt)
--- live in TypeScript, in src/lib/billing-periods. This migration only stores and loads the marks the
--- BillingPeriod aggregate makes, with structural backstops (keys, positive amount, debtor <> creditor, and
--- the caller-scoping check in the save function).
+-- A payment counts in the period's balances next to the expenses (pending until the recipient confirms it,
+-- S-08). The rules (the debt it needs, the cap, the sender-only withdraw, the pending and posted balances)
+-- live in TypeScript, in src/lib/billing-periods. This migration only stores and loads the payments the
+-- BillingPeriod aggregate makes, with structural backstops (keys, positive amount, sender <> recipient, and
+-- the caller-scoping checks in the save function).
 --
 -- Expand before contract: a new table, a new function and one extra key in get_current_billing_period (the
 -- previously deployed Worker ignores it); save_billing_period_changes stays untouched, so that Worker keeps
--- working. The new Worker calls save_billing_period_with_transfers instead.
+-- working. The new Worker calls save_billing_period_with_payments instead.
 
-create table public.transfers (
+create table public.payments (
   id uuid primary key,
   group_id uuid not null,
   period_id uuid not null,
-  debtor_id uuid not null,
-  creditor_id uuid not null,
+  sender_id uuid not null,
+  recipient_id uuid not null,
   amount integer not null check (amount > 0),
   sent_at timestamptz not null,
-  check (debtor_id <> creditor_id),
-  unique (period_id, debtor_id, creditor_id),
+  confirmed_at timestamptz,
+  check (sender_id <> recipient_id),
+  check (confirmed_at is null or confirmed_at >= sent_at),
   foreign key (period_id, group_id) references public.billing_periods (id, group_id) on delete cascade,
-  foreign key (group_id, debtor_id) references public.group_members (group_id, user_id),
-  foreign key (group_id, creditor_id) references public.group_members (group_id, user_id)
+  foreign key (group_id, sender_id) references public.group_members (group_id, user_id),
+  foreign key (group_id, recipient_id) references public.group_members (group_id, user_id)
 );
 
-comment on table public.transfers is
+comment on table public.payments is
   'Persistence only — rules live in src/lib/billing-periods. Read and written through security definer functions.';
 
-alter table public.transfers enable row level security;
-revoke all on table public.transfers from anon, authenticated;
+alter table public.payments enable row level security;
+revoke all on table public.payments from anon, authenticated;
 
--- Same as before, plus the period's transfers (marks) under the key `transfers`.
+-- Same as before, plus the period's payments under the key `payments`.
 create or replace function public.get_current_billing_period(p_group_id uuid)
 returns jsonb
 language plpgsql
@@ -82,19 +84,20 @@ begin
         where e.group_id = p.group_id
           and e.period_id = p.id
       ),
-      'transfers', (
+      'payments', (
         select coalesce(jsonb_agg(
           jsonb_build_object(
-            'id', t.id,
-            'debtor_id', t.debtor_id,
-            'creditor_id', t.creditor_id,
-            'amount', t.amount,
-            'sent_at', t.sent_at
+            'id', y.id,
+            'sender_id', y.sender_id,
+            'recipient_id', y.recipient_id,
+            'amount', y.amount,
+            'sent_at', y.sent_at,
+            'confirmed_at', y.confirmed_at
           )
         ), '[]'::jsonb)
-        from public.transfers t
-        where t.group_id = p.group_id
-          and t.period_id = p.id
+        from public.payments y
+        where y.group_id = p.group_id
+          and y.period_id = p.id
       )
     )
     from public.billing_periods p
@@ -106,19 +109,18 @@ end;
 $$;
 
 -- Saves a loaded period like save_billing_period_changes (added, changed and removed expenses, guarded by the
--- period's version), and also stores the transfer marks: `p_marked` rows (id, debtor_id, creditor_id, amount,
--- sent_at) are inserted or, for a pair that already has a mark, replace its amount and time while keeping its
--- id; `p_unmarked` ids are deleted. Returns false and stores nothing when the version moved on (a concurrent
--- write); that is a persistence concurrency signal, not a business rule.
-create function public.save_billing_period_with_transfers(
+-- period's version), and also stores the payments: the `p_sent` rows (id, sender_id, recipient_id, amount,
+-- sent_at) are inserted and the `p_withdrawn` ids deleted. Returns false and stores nothing when the version
+-- moved on (a concurrent write); that is a persistence concurrency signal, not a business rule.
+create function public.save_billing_period_with_payments(
   p_period_id uuid,
   p_group_id uuid,
   p_expected_version integer,
   p_added jsonb,
   p_changed jsonb,
   p_removed uuid[],
-  p_marked jsonb,
-  p_unmarked uuid[]
+  p_sent jsonb,
+  p_withdrawn uuid[]
 )
 returns boolean
 language plpgsql
@@ -168,29 +170,31 @@ begin
     raise exception 'the calling user can change only their own expenses of the period' using errcode = '42501';
   end if;
 
-  -- The backstops for marks, before the version bump so a stale version cannot hide them: the caller marks
-  -- only transfers they send, and undoes only their own marks of this period.
+  -- The backstops for payments, before the version bump so a stale version cannot hide them: the caller sends
+  -- only payments of their own, which are unconfirmed, and withdraws only their own unconfirmed payments of
+  -- this period.
   if exists (
     select 1
-    from jsonb_to_recordset(p_marked) as t (debtor_id uuid)
-    where t.debtor_id is distinct from auth.uid()
+    from jsonb_to_recordset(p_sent) as y (sender_id uuid)
+    where y.sender_id is distinct from auth.uid()
   ) then
-    raise exception 'debtor_id must be the calling user' using errcode = '42501';
+    raise exception 'sender_id must be the calling user' using errcode = '42501';
   end if;
 
   if exists (
     select 1
-    from unnest(p_unmarked) as target (id)
+    from unnest(p_withdrawn) as target (id)
     where not exists (
       select 1
-      from public.transfers x
+      from public.payments x
       where x.id = target.id
         and x.period_id = p_period_id
         and x.group_id = p_group_id
-        and x.debtor_id = auth.uid()
+        and x.sender_id = auth.uid()
+        and x.confirmed_at is null
     )
   ) then
-    raise exception 'the calling user can undo only their own transfer marks of the period' using errcode = '42501';
+    raise exception 'the calling user can withdraw only their own unconfirmed payments of the period' using errcode = '42501';
   end if;
 
   update public.billing_periods
@@ -243,20 +247,18 @@ begin
     and period_id = p_period_id
     and group_id = p_group_id;
 
-  insert into public.transfers (id, group_id, period_id, debtor_id, creditor_id, amount, sent_at)
-  select t.id, p_group_id, p_period_id, t.debtor_id, t.creditor_id, t.amount, t.sent_at
-  from jsonb_to_recordset(p_marked) as t (
+  insert into public.payments (id, group_id, period_id, sender_id, recipient_id, amount, sent_at)
+  select y.id, p_group_id, p_period_id, y.sender_id, y.recipient_id, y.amount, y.sent_at
+  from jsonb_to_recordset(p_sent) as y (
     id uuid,
-    debtor_id uuid,
-    creditor_id uuid,
+    sender_id uuid,
+    recipient_id uuid,
     amount integer,
     sent_at timestamptz
-  )
-  on conflict (period_id, debtor_id, creditor_id)
-  do update set amount = excluded.amount, sent_at = excluded.sent_at;
+  );
 
-  delete from public.transfers
-  where id = any (p_unmarked)
+  delete from public.payments
+  where id = any (p_withdrawn)
     and period_id = p_period_id
     and group_id = p_group_id;
 
@@ -264,8 +266,8 @@ begin
 end;
 $$;
 
-comment on function public.save_billing_period_with_transfers(uuid, uuid, integer, jsonb, jsonb, uuid[], jsonb, uuid[]) is
-  'Persistence only — business rules live in src/lib/billing-periods. Saves the added, changed and removed expenses and the marked and unmarked transfers of a period of a group of the calling user if its version is unchanged.';
+comment on function public.save_billing_period_with_payments(uuid, uuid, integer, jsonb, jsonb, uuid[], jsonb, uuid[]) is
+  'Persistence only — business rules live in src/lib/billing-periods. Saves the added, changed and removed expenses and the sent and withdrawn payments of a period of a group of the calling user if its version is unchanged.';
 
-revoke execute on function public.save_billing_period_with_transfers(uuid, uuid, integer, jsonb, jsonb, uuid[], jsonb, uuid[]) from public, anon;
-grant execute on function public.save_billing_period_with_transfers(uuid, uuid, integer, jsonb, jsonb, uuid[], jsonb, uuid[]) to authenticated;
+revoke execute on function public.save_billing_period_with_payments(uuid, uuid, integer, jsonb, jsonb, uuid[], jsonb, uuid[]) from public, anon;
+grant execute on function public.save_billing_period_with_payments(uuid, uuid, integer, jsonb, jsonb, uuid[], jsonb, uuid[]) to authenticated;

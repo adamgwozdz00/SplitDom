@@ -1,4 +1,5 @@
 <!-- PLAN-REVIEW-REPORT -->
+
 # Plan Review: Mark a Transfer as Sent (S-07)
 
 - **Plan**: context/changes/mark-transfer-sent/plan.md
@@ -9,15 +10,16 @@
 
 ## Verdicts
 
-| Dimension | Verdict |
-|-----------|---------|
-| End-State Alignment | PASS |
-| Lean Execution | PASS |
-| Architectural Fitness | PASS |
-| Blind Spots | WARNING |
-| Plan Completeness | FAIL |
+| Dimension             | Verdict |
+| --------------------- | ------- |
+| End-State Alignment   | PASS    |
+| Lean Execution        | PASS    |
+| Architectural Fitness | PASS    |
+| Blind Spots           | WARNING |
+| Plan Completeness     | FAIL    |
 
 ## Grounding
+
 11/11 paths ✓, 6/6 symbols ✓ (formInput, equals, change, newExpenses, removedExpenseIds, summarizeOpen), brief↔plan ~ (the 1 000 000,00 zł cap was only in the brief).
 
 ## Findings
