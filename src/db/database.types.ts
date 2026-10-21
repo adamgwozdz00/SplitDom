@@ -247,51 +247,54 @@ export type Database = {
         }
         Relationships: []
       }
-      transfers: {
+      payments: {
         Row: {
           amount: number
-          creditor_id: string
-          debtor_id: string
+          confirmed_at: string | null
           group_id: string
           id: string
           period_id: string
+          recipient_id: string
+          sender_id: string
           sent_at: string
         }
         Insert: {
           amount: number
-          creditor_id: string
-          debtor_id: string
+          confirmed_at?: string | null
           group_id: string
           id: string
           period_id: string
+          recipient_id: string
+          sender_id: string
           sent_at: string
         }
         Update: {
           amount?: number
-          creditor_id?: string
-          debtor_id?: string
+          confirmed_at?: string | null
           group_id?: string
           id?: string
           period_id?: string
+          recipient_id?: string
+          sender_id?: string
           sent_at?: string
         }
         Relationships: [
           {
-            foreignKeyName: "transfers_group_id_creditor_id_fkey"
-            columns: ["group_id", "creditor_id"]
+            foreignKeyName: "payments_group_id_recipient_id_fkey"
+            columns: ["group_id", "recipient_id"]
             isOneToOne: false
             referencedRelation: "group_members"
             referencedColumns: ["group_id", "user_id"]
           },
           {
-            foreignKeyName: "transfers_group_id_debtor_id_fkey"
-            columns: ["group_id", "debtor_id"]
+            foreignKeyName: "payments_group_id_sender_id_fkey"
+            columns: ["group_id", "sender_id"]
             isOneToOne: false
             referencedRelation: "group_members"
             referencedColumns: ["group_id", "user_id"]
           },
           {
-            foreignKeyName: "transfers_period_id_group_id_fkey"
+            foreignKeyName: "payments_period_id_group_id_fkey"
             columns: ["period_id", "group_id"]
             isOneToOne: false
             referencedRelation: "billing_periods"
@@ -407,16 +410,16 @@ export type Database = {
         }
         Returns: boolean
       }
-      save_billing_period_with_transfers: {
+      save_billing_period_with_payments: {
         Args: {
           p_added: Json
           p_changed: Json
           p_expected_version: number
           p_group_id: string
-          p_marked: Json
           p_period_id: string
           p_removed: string[]
-          p_unmarked: string[]
+          p_sent: Json
+          p_withdrawn: string[]
         }
         Returns: boolean
       }

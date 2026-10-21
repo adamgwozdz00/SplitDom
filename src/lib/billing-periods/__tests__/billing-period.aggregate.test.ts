@@ -79,7 +79,7 @@ describe("BillingPeriod.addExpense", () => {
     add(period, { id: "e-1", payerId: HOST, grosze: 40000 });
     add(period, { id: "e-2", payerId: MEMBER, grosze: 10000 });
 
-    const balances = period.balances();
+    const balances = period.pendingBalances();
 
     expect(balances.members.map((member) => [member.userId, member.balance.grosze])).toEqual([
       [HOST, 15000],
@@ -170,7 +170,7 @@ describe("BillingPeriod.restore", () => {
         ],
       },
     ],
-    transfers: [],
+    payments: [],
   };
 
   it("round-trips a snapshot", () => {
@@ -271,7 +271,7 @@ describe("BillingPeriod.editExpense", () => {
       [HOST, 5001],
       [MEMBER, 5000],
     ]);
-    expect(period.balances().members.find((member) => member.userId === "late")?.balance.grosze).toBe(0);
+    expect(period.pendingBalances().members.find((member) => member.userId === "late")?.balance.grosze).toBe(0);
   });
 
   it("reports a stored expense as changed, not new, and reflects it in the balances", () => {
@@ -284,7 +284,7 @@ describe("BillingPeriod.editExpense", () => {
     expect(period.changedExpenses().map((expense) => expense.id)).toEqual(["e-1"]);
     expect(period.newExpenses()).toEqual([]);
     expect(period.removedExpenseIds()).toEqual([]);
-    expect(period.balances().members.map((member) => [member.userId, member.balance.grosze])).toEqual([
+    expect(period.pendingBalances().members.map((member) => [member.userId, member.balance.grosze])).toEqual([
       [HOST, 5000],
       [MEMBER, -5000],
     ]);
@@ -349,7 +349,7 @@ describe("BillingPeriod.removeExpense", () => {
     expect(code(result)).toBe("ok");
     expect(period.expenses).toEqual([]);
     expect(period.removedExpenseIds()).toEqual(["e-1"]);
-    expect(period.balances().debts).toEqual([]);
+    expect(period.pendingBalances().debts).toEqual([]);
   });
 
   it("forgets an expense added since the period was loaded instead of reporting it removed", () => {
@@ -391,179 +391,215 @@ describe("BillingPeriod.canEdit", () => {
   });
 });
 
-describe("BillingPeriod transfers", () => {
-  // MEMBER owes HOST 200 zł after HOST pays 400 zł.
+describe("BillingPeriod payments", () => {
+  const SENT_AT = new Date("2026-10-16T12:00:00.000Z");
+
+  // HOST paid 400 zł between HOST and MEMBER, so MEMBER owes HOST 200 zł.
   function withDebt(): BillingPeriod {
     const period = octoberPeriod();
     add(period, { id: "e-1", payerId: HOST, grosze: 40000 });
     return period;
   }
 
-  function mark(
+  function send(
     period: BillingPeriod,
-    input: { id?: string; debtorId?: string; creditorId?: string; grosze?: number; now?: Date } = {},
+    input: { id?: string; senderId?: string; recipientId?: string; grosze?: number; now?: Date } = {},
   ) {
-    return period.markTransferSent({
-      id: input.id ?? "t-1",
-      debtorId: input.debtorId ?? MEMBER,
-      creditorId: input.creditorId ?? HOST,
+    return period.sendPayment({
+      id: input.id ?? "p-1",
+      senderId: input.senderId ?? MEMBER,
+      recipientId: input.recipientId ?? HOST,
       amount: Money.ofGrosze(input.grosze ?? 20000),
-      now: input.now ?? MID_OCTOBER,
+      now: input.now ?? SENT_AT,
     });
   }
 
-  function restoredWithMark(): BillingPeriod {
+  // The period as it was stored after MEMBER sent `p-1`, so the payment counts as loaded.
+  function storedWithPayment(confirmedAt: string | null = null): BillingPeriod {
     const period = withDebt();
-    mark(period);
-    const stored = BillingPeriod.restore(period.toSnapshot(), [HOST, MEMBER]);
-    return stored;
+    send(period);
+    const snapshot = period.toSnapshot();
+    return BillingPeriod.restore(
+      { ...snapshot, payments: snapshot.payments.map((payment) => ({ ...payment, confirmedAt })) },
+      [HOST, MEMBER],
+    );
   }
 
-  describe("markTransferSent", () => {
-    it("records the posted amount, not the current debt", () => {
+  const debtsOf = (period: BillingPeriod) =>
+    period.pendingBalances().debts.map((debt) => [debt.debtorId, debt.creditorId, debt.amount.grosze]);
+
+  describe("sendPayment", () => {
+    it("settles the pair when the whole debt is paid, and keeps the payment in the ledger", () => {
       const period = withDebt();
 
-      const result = mark(period, { grosze: 15000 });
+      const result = send(period);
 
-      expect(result).toMatchObject({ data: { debtorId: MEMBER, creditorId: HOST } });
-      expect(period.sentTransferOf(MEMBER, HOST)?.amount.grosze).toBe(15000);
-      expect(period.markedTransfers().map((transfer) => transfer.id)).toEqual(["t-1"]);
+      expect(result).toMatchObject({ data: { id: "p-1", senderId: MEMBER, recipientId: HOST } });
+      expect(debtsOf(period)).toEqual([]);
+      expect(period.sentPayments().map((payment) => payment.id)).toEqual(["p-1"]);
     });
 
-    it("does not change the balances or the debts", () => {
+    it("leaves the rest as the debt after a partial payment, and allows several payments per pair", () => {
       const period = withDebt();
-      const before = period.balances();
 
-      mark(period);
+      send(period, { id: "p-1", grosze: 5000 });
+      send(period, { id: "p-2", grosze: 5000 });
 
-      expect(period.balances()).toEqual(before);
+      expect(debtsOf(period)).toEqual([[MEMBER, HOST, 10000]]);
+      expect(period.payments).toHaveLength(2);
+    });
+
+    it("refuses more than the pending debt, counting payments already sent", () => {
+      const period = withDebt();
+      send(period, { id: "p-1", grosze: 15000 });
+
+      expect(send(period, { id: "p-2", grosze: 5001 })).toMatchObject({ error: { code: "payment_exceeds_debt" } });
+      expect(send(period, { id: "p-3", grosze: 5000 })).toMatchObject({ data: { id: "p-3" } });
+    });
+
+    it("returns the same payment for the same id and records it once", () => {
+      const period = withDebt();
+      send(period);
+
+      const again = send(period, { now: new Date("2026-10-17T12:00:00.000Z") });
+
+      expect(again).toMatchObject({ data: { id: "p-1" } });
+      expect(period.payments).toHaveLength(1);
+      expect(period.sentPayments()).toHaveLength(1);
+    });
+
+    it("does not treat an id of someone else's payment as a repeat", () => {
+      const period = BillingPeriod.restore(storedWithPayment().toSnapshot(), [HOST, MEMBER]);
+      add(period, { id: "e-2", payerId: MEMBER, grosze: 80000 });
+
+      expect(send(period, { senderId: HOST, recipientId: MEMBER, grosze: 100 })).toMatchObject({
+        error: { code: "unexpected" },
+      });
     });
 
     it("refuses a closed period", () => {
-      const period = BillingPeriod.restore({ ...withDebt().toSnapshot(), closedAt: "2026-11-01T08:00:00.000Z" }, [
+      const closed = BillingPeriod.restore({ ...withDebt().toSnapshot(), closedAt: "2026-11-01T08:00:00.000Z" }, [
         HOST,
         MEMBER,
       ]);
 
-      expect(mark(period)).toMatchObject({ error: { code: "billing_period_closed" } });
+      expect(send(closed)).toMatchObject({ error: { code: "billing_period_closed" } });
     });
 
-    it("refuses a debtor who is not a participant", () => {
-      expect(mark(withDebt(), { debtorId: "stranger" })).toMatchObject({ error: { code: "group_not_found" } });
+    it("refuses a sender who is not a participant", () => {
+      expect(send(withDebt(), { senderId: "stranger" })).toMatchObject({ error: { code: "group_not_found" } });
     });
 
-    it("refuses the creditor marking for their debtor", () => {
-      expect(mark(withDebt(), { debtorId: HOST, creditorId: MEMBER })).toMatchObject({
-        error: { code: "no_debt_to_mark" },
+    it("refuses a payment without a debt: the creditor paying the debtor, a settled pair, paying oneself", () => {
+      expect(send(withDebt(), { senderId: HOST, recipientId: MEMBER })).toMatchObject({
+        error: { code: "no_debt_to_pay" },
       });
-    });
-
-    it("refuses a settled pair and marking oneself", () => {
-      expect(mark(octoberPeriod())).toMatchObject({ error: { code: "no_debt_to_mark" } });
-      expect(mark(withDebt(), { debtorId: MEMBER, creditorId: MEMBER })).toMatchObject({
-        error: { code: "no_debt_to_mark" },
+      expect(send(octoberPeriod())).toMatchObject({ error: { code: "no_debt_to_pay" } });
+      expect(send(withDebt(), { senderId: MEMBER, recipientId: MEMBER })).toMatchObject({
+        error: { code: "no_debt_to_pay" },
       });
-    });
-
-    it("replaces the pair's mark with a different amount, keeping its id", () => {
-      const period = restoredWithMark();
-
-      const result = mark(period, { id: "t-2", grosze: 25000, now: new Date("2026-10-16T12:00:00.000Z") });
-
-      expect(result).toMatchObject({ data: { id: "t-1" } });
-      expect(period.sentTransferOf(MEMBER, HOST)?.amount.grosze).toBe(25000);
-      expect(period.markedTransfers().map((transfer) => transfer.id)).toEqual(["t-1"]);
-    });
-
-    it("leaves a repeated mark with the same amount untouched", () => {
-      const period = restoredWithMark();
-
-      mark(period, { id: "t-2", now: new Date("2026-10-17T12:00:00.000Z") });
-
-      expect(period.markedTransfers()).toEqual([]);
-      expect(period.sentTransferOf(MEMBER, HOST)?.toSnapshot().sentAt).toBe(MID_OCTOBER.toISOString());
+      expect(send(withDebt(), { recipientId: "stranger" })).toMatchObject({ error: { code: "no_debt_to_pay" } });
     });
   });
 
-  describe("undoTransferSent", () => {
-    it("removes a loaded mark and lists it as unmarked", () => {
-      const period = restoredWithMark();
+  describe("pending and posted balances", () => {
+    it("counts a sent payment in the pending balances only until it is confirmed", () => {
+      const sent = storedWithPayment();
+      expect(debtsOf(sent)).toEqual([]);
+      expect(sent.postedBalances().debts.map((debt) => debt.amount.grosze)).toEqual([20000]);
 
-      const result = period.undoTransferSent({ debtorId: MEMBER, creditorId: HOST });
-
-      expect(result).toEqual({ data: undefined });
-      expect(period.sentTransferOf(MEMBER, HOST)).toBeNull();
-      expect(period.unmarkedTransferIds()).toEqual(["t-1"]);
+      const confirmed = storedWithPayment("2026-10-17T08:00:00.000Z");
+      expect(confirmed.postedBalances().debts).toEqual([]);
+      expect(debtsOf(confirmed)).toEqual([]);
     });
 
-    it("drops a mark added since load without any pending write", () => {
-      const period = withDebt();
-      mark(period);
-
-      period.undoTransferSent({ debtorId: MEMBER, creditorId: HOST });
-
-      expect(period.markedTransfers()).toEqual([]);
-      expect(period.unmarkedTransferIds()).toEqual([]);
-    });
-
-    it("reports a missing mark", () => {
-      expect(withDebt().undoTransferSent({ debtorId: MEMBER, creditorId: HOST })).toMatchObject({
-        error: { code: "transfer_not_found" },
-      });
-    });
-
-    it("refuses a closed period", () => {
-      const period = BillingPeriod.restore(
-        { ...restoredWithMark().toSnapshot(), closedAt: "2026-11-01T08:00:00.000Z" },
-        [HOST, MEMBER],
-      );
-
-      expect(period.undoTransferSent({ debtorId: MEMBER, creditorId: HOST })).toMatchObject({
-        error: { code: "billing_period_closed" },
-      });
-    });
-  });
-
-  describe("sentTransfersInvolving", () => {
-    it("derives the state of a mark from the current debts", () => {
-      const period = restoredWithMark();
-      expect(period.sentTransfersInvolving(MEMBER)).toMatchObject([{ state: "current" }]);
-
-      add(period, { id: "e-2", payerId: HOST, grosze: 10000 });
-      expect(period.sentTransfersInvolving(MEMBER)).toMatchObject([{ state: "outdated" }]);
-
-      // The member pays back more than they owe: the debt turns around.
-      add(period, { id: "e-3", payerId: MEMBER, grosze: 100000 });
-      expect(period.sentTransfersInvolving(MEMBER)).toMatchObject([{ state: "no_debt", debt: null }]);
-    });
-
-    it("returns the mark to both the debtor and the creditor, and to nobody else", () => {
-      const period = BillingPeriod.restore(restoredWithMark().toSnapshot(), [HOST, MEMBER, "third"]);
-
-      expect(period.sentTransfersInvolving(MEMBER)).toHaveLength(1);
-      expect(period.sentTransfersInvolving(HOST)).toHaveLength(1);
-      expect(period.sentTransfersInvolving("third")).toEqual([]);
-    });
-
-    it("keeps a mark when its expense is edited or deleted", () => {
-      const period = restoredWithMark();
+    it("keeps the payments when an expense is edited or deleted, and only the balances change", () => {
+      const period = storedWithPayment();
 
       edit(period, { grosze: 60000 });
-      expect(period.sentTransfersInvolving(MEMBER)).toMatchObject([{ state: "outdated" }]);
+      expect(debtsOf(period)).toEqual([[MEMBER, HOST, 10000]]);
 
       period.removeExpense({ expenseId: "e-1", userId: HOST });
-      expect(period.sentTransfersInvolving(MEMBER)).toMatchObject([{ state: "no_debt" }]);
-      expect(period.unmarkedTransferIds()).toEqual([]);
+      expect(debtsOf(period)).toEqual([[HOST, MEMBER, 20000]]);
+      expect(period.payments).toHaveLength(1);
+      expect(period.withdrawnPaymentIds()).toEqual([]);
+    });
+
+    it("shows the true debt through a whole scenario where the debt later turns around", () => {
+      const period = octoberPeriod();
+      // A (HOST) pays 200 zł: B owes 100 zł. B sends it.
+      add(period, { id: "e-1", payerId: HOST, grosze: 20000 });
+      send(period, { id: "p-1", grosze: 10000 });
+      expect(debtsOf(period)).toEqual([]);
+
+      // A pays another 100 zł: B owes 50 zł, not 150 zł. B sends it.
+      add(period, { id: "e-2", payerId: HOST, grosze: 10000 });
+      expect(debtsOf(period)).toEqual([[MEMBER, HOST, 5000]]);
+      send(period, { id: "p-2", grosze: 5000 });
+      expect(debtsOf(period)).toEqual([]);
+
+      // B pays 300 zł: A owes B 150 zł, which a mark outside the balances used to lose.
+      add(period, { id: "e-3", payerId: MEMBER, grosze: 30000 });
+      expect(debtsOf(period)).toEqual([[HOST, MEMBER, 15000]]);
+      expect(period.pendingBalances().members.map((member) => member.balance.grosze)).toEqual([-15000, 15000]);
+      // Nothing is confirmed, so the posted balances know the expenses only: B's 150 zł and A's 150 zł cancel.
+      expect(period.postedBalances().debts).toEqual([]);
     });
   });
 
-  it("round-trips transfers through the snapshot", () => {
+  describe("withdrawPayment", () => {
+    it("removes the sender's unconfirmed payment and lists it for deletion", () => {
+      const period = storedWithPayment();
+
+      const result = period.withdrawPayment({ paymentId: "p-1", userId: MEMBER });
+
+      expect(result).toEqual({ data: undefined });
+      expect(period.payments).toEqual([]);
+      expect(period.withdrawnPaymentIds()).toEqual(["p-1"]);
+      expect(debtsOf(period)).toEqual([[MEMBER, HOST, 20000]]);
+    });
+
+    it("drops a payment sent since load without any pending write", () => {
+      const period = withDebt();
+      send(period);
+
+      period.withdrawPayment({ paymentId: "p-1", userId: MEMBER });
+
+      expect(period.sentPayments()).toEqual([]);
+      expect(period.withdrawnPaymentIds()).toEqual([]);
+    });
+
+    it("refuses, in order, a closed period, an unknown payment, someone else's payment and a confirmed one", () => {
+      const closed = BillingPeriod.restore(
+        { ...storedWithPayment().toSnapshot(), closedAt: "2026-11-01T08:00:00.000Z" },
+        [HOST, MEMBER],
+      );
+      expect(closed.withdrawPayment({ paymentId: "p-1", userId: MEMBER })).toMatchObject({
+        error: { code: "billing_period_closed" },
+      });
+
+      const period = storedWithPayment();
+      expect(period.withdrawPayment({ paymentId: "nope", userId: MEMBER })).toMatchObject({
+        error: { code: "payment_not_found" },
+      });
+      expect(period.withdrawPayment({ paymentId: "p-1", userId: HOST })).toMatchObject({
+        error: { code: "not_payment_sender" },
+      });
+      expect(
+        storedWithPayment("2026-10-17T08:00:00.000Z").withdrawPayment({ paymentId: "p-1", userId: MEMBER }),
+      ).toMatchObject({ error: { code: "payment_confirmed" } });
+    });
+  });
+
+  it("lists payments newest first and round-trips them through the snapshot", () => {
     const period = withDebt();
-    mark(period);
+    send(period, { id: "p-1", grosze: 5000, now: new Date("2026-10-15T12:00:00.000Z") });
+    send(period, { id: "p-2", grosze: 5000, now: new Date("2026-10-16T12:00:00.000Z") });
+
+    expect(period.paymentsNewestFirst().map((payment) => payment.id)).toEqual(["p-2", "p-1"]);
 
     const restored = BillingPeriod.restore(period.toSnapshot(), [HOST, MEMBER]);
-
-    expect(restored.toSnapshot().transfers).toEqual(period.toSnapshot().transfers);
-    expect(restored.markedTransfers()).toEqual([]);
+    expect(restored.toSnapshot().payments).toEqual(period.toSnapshot().payments);
+    expect(restored.sentPayments()).toEqual([]);
   });
 });

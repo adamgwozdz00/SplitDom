@@ -4,14 +4,14 @@ import { BillingMonth } from "@/lib/billing-periods/billing-month.value";
 import { BillingPeriod } from "@/lib/billing-periods/billing-period.aggregate";
 import { billingPeriodError } from "@/lib/billing-periods/billing-period-error.messages";
 import { BillingPeriodService } from "@/lib/billing-periods/billing-period.service";
-import type { Transfer } from "@/lib/billing-periods/transfer.entity";
+import type { Payment } from "@/lib/billing-periods/payment.entity";
 import type {
   BillingPeriodError,
   BillingPeriodRepository,
   BillingPeriodSnapshot,
   ExpenseSnapshot,
   Result,
-  TransferSnapshot,
+  PaymentSnapshot,
 } from "@/lib/billing-periods/types";
 import type { Group } from "@/lib/groups";
 
@@ -48,15 +48,15 @@ export function createSupabaseBillingPeriodRepository(client: SupabaseClient<Dat
     },
 
     async save(period) {
-      const { data, error } = await client.rpc("save_billing_period_with_transfers", {
+      const { data, error } = await client.rpc("save_billing_period_with_payments", {
         p_period_id: period.id,
         p_group_id: period.groupId,
         p_expected_version: period.version,
         p_added: period.newExpenses().map((expense) => toRow(expense.toSnapshot())),
         p_changed: period.changedExpenses().map((expense) => toRow(expense.toSnapshot())),
         p_removed: [...period.removedExpenseIds()],
-        p_marked: period.markedTransfers().map(toTransferRow),
-        p_unmarked: [...period.unmarkedTransferIds()],
+        p_sent: period.sentPayments().map(toPaymentRow),
+        p_withdrawn: [...period.withdrawnPaymentIds()],
       });
       if (error) {
         return fromDbError(error);
@@ -105,7 +105,7 @@ function fromDbError(error: PostgrestError): BillingPeriodError {
   switch (error.code) {
     case "28000":
       return billingPeriodError("not_authenticated");
-    // Also raised by save_billing_period_with_transfers when an expense or a transfer mark is not the caller's; the aggregate checks the author first,
+    // Also raised by save_billing_period_with_payments when an expense or a payment is not the caller's; the aggregate checks the author first,
     // so in practice this is a caller who is not a member of the group.
     case "42501":
       return billingPeriodError("group_not_found");
@@ -129,7 +129,7 @@ function restore(value: Json, group: Group): Result<BillingPeriod> {
   }
 }
 
-/** Maps an expense to the snake_case shape `save_billing_period_with_transfers` stores. */
+/** Maps an expense to the snake_case shape `save_billing_period_with_payments` stores. */
 function toRow(expense: ExpenseSnapshot): Json {
   return {
     id: expense.id,
@@ -149,9 +149,9 @@ function toSnapshot(value: Json): BillingPeriodSnapshot {
   if (!Array.isArray(expenses)) {
     throw new TypeError("period.expenses: expected an array");
   }
-  const transfers = period.transfers;
-  if (!Array.isArray(transfers)) {
-    throw new TypeError("period.transfers: expected an array");
+  const payments = period.payments;
+  if (!Array.isArray(payments)) {
+    throw new TypeError("period.payments: expected an array");
   }
   return {
     id: asString(period.id, "period.id"),
@@ -161,7 +161,7 @@ function toSnapshot(value: Json): BillingPeriodSnapshot {
     closedAt: period.closed_at === null ? null : asInstant(period.closed_at, "period.closed_at"),
     version: asInteger(period.version, "period.version"),
     expenses: expenses.map(toExpenseSnapshot),
-    transfers: transfers.map(toTransferSnapshot),
+    payments: payments.map(toPaymentSnapshot),
   };
 }
 
@@ -188,26 +188,27 @@ function toExpenseSnapshot(value: Json): ExpenseSnapshot {
   };
 }
 
-/** Maps a transfer mark to the snake_case shape `save_billing_period_with_transfers` stores. */
-function toTransferRow(transfer: Transfer): Json {
-  const snapshot = transfer.toSnapshot();
+/** Maps a payment to the snake_case shape `save_billing_period_with_payments` stores. */
+function toPaymentRow(payment: Payment): Json {
+  const snapshot = payment.toSnapshot();
   return {
     id: snapshot.id,
-    debtor_id: snapshot.debtorId,
-    creditor_id: snapshot.creditorId,
+    sender_id: snapshot.senderId,
+    recipient_id: snapshot.recipientId,
     amount: snapshot.amount,
     sent_at: snapshot.sentAt,
   };
 }
 
-function toTransferSnapshot(value: Json): TransferSnapshot {
-  const row = asObject(value, "transfer");
+function toPaymentSnapshot(value: Json): PaymentSnapshot {
+  const row = asObject(value, "payment");
   return {
-    id: asString(row.id, "transfer.id"),
-    debtorId: asString(row.debtor_id, "transfer.debtor_id"),
-    creditorId: asString(row.creditor_id, "transfer.creditor_id"),
-    amount: asInteger(row.amount, "transfer.amount"),
-    sentAt: asInstant(row.sent_at, "transfer.sent_at"),
+    id: asString(row.id, "payment.id"),
+    senderId: asString(row.sender_id, "payment.sender_id"),
+    recipientId: asString(row.recipient_id, "payment.recipient_id"),
+    amount: asInteger(row.amount, "payment.amount"),
+    sentAt: asInstant(row.sent_at, "payment.sent_at"),
+    confirmedAt: row.confirmed_at === null ? null : asInstant(row.confirmed_at, "payment.confirmed_at"),
   };
 }
 

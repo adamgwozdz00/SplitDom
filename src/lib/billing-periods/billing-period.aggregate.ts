@@ -5,9 +5,7 @@ import type { Money } from "@/lib/billing-periods/money.value";
 import { PeriodBalances } from "@/lib/billing-periods/period-balances.value";
 import { PurchaseDate } from "@/lib/billing-periods/purchase-date.value";
 import type { PurchaseDateWindow } from "@/lib/billing-periods/purchase-date.value";
-import { Transfer } from "@/lib/billing-periods/transfer.entity";
-import type { TransferState } from "@/lib/billing-periods/transfer.entity";
-import type { PairDebt } from "@/lib/billing-periods/period-balances.value";
+import { Payment } from "@/lib/billing-periods/payment.entity";
 import { EqualSplitPolicy } from "@/lib/billing-periods/split-policy";
 import { billingPeriodError } from "@/lib/billing-periods/billing-period-error.messages";
 import type { BillingPeriodSnapshot, Result } from "@/lib/billing-periods/types";
@@ -23,7 +21,7 @@ interface BillingPeriodState {
   version: number;
   participants: readonly string[];
   expenses: readonly Expense[];
-  transfers: readonly Transfer[];
+  payments: readonly Payment[];
 }
 
 /**
@@ -43,10 +41,9 @@ export class BillingPeriod {
   private readonly added: Expense[] = [];
   private readonly changed = new Set<string>();
   private readonly removed: string[] = [];
-  private readonly storedTransfers: Transfer[];
-  private readonly addedTransfers: Transfer[] = [];
-  private readonly changedTransfers = new Set<string>();
-  private readonly unmarked: string[] = [];
+  private readonly storedPayments: Payment[];
+  private readonly addedPayments: Payment[] = [];
+  private readonly withdrawn: string[] = [];
 
   private constructor(state: BillingPeriodState) {
     if (state.closedAt !== null && state.closedAt.getTime() < state.openedAt.getTime()) {
@@ -60,7 +57,7 @@ export class BillingPeriod {
     this.version = state.version;
     this.participants = Object.freeze([...state.participants]);
     this.stored = [...state.expenses];
-    this.storedTransfers = [...state.transfers];
+    this.storedPayments = [...state.payments];
   }
 
   static open(input: { id: string; groupId: string; participants: readonly string[]; now: Date }): BillingPeriod {
@@ -73,7 +70,7 @@ export class BillingPeriod {
       version: 0,
       participants: input.participants,
       expenses: [],
-      transfers: [],
+      payments: [],
     });
   }
 
@@ -88,7 +85,7 @@ export class BillingPeriod {
       version: snapshot.version,
       participants,
       expenses: snapshot.expenses.map((expense) => Expense.restore(expense)),
-      transfers: snapshot.transfers.map((transfer) => Transfer.restore(transfer)),
+      payments: snapshot.payments.map((payment) => Payment.restore(payment)),
     });
   }
 
@@ -236,111 +233,94 @@ export class BillingPeriod {
     return [...this.added];
   }
 
-  get transfers(): readonly Transfer[] {
-    return [...this.storedTransfers, ...this.addedTransfers];
-  }
-
-  /** The mark `debtorId` made for their transfer to `creditorId`, or null. */
-  sentTransferOf(debtorId: string, creditorId: string): Transfer | null {
-    return (
-      this.transfers.find((transfer) => transfer.debtorId === debtorId && transfer.creditorId === creditorId) ?? null
-    );
+  get payments(): readonly Payment[] {
+    return [...this.storedPayments, ...this.addedPayments];
   }
 
   /**
-   * Marks `debtorId`'s transfer to `creditorId` as sent, recording the `amount` they sent (the one the debtor
-   * saw, not necessarily the debt now). Refuses, in this order, a closed period, a debtor who is not a
-   * participant and a pair without a debt from the debtor to the creditor. A pair has one mark: marking again
-   * with another amount replaces it (keeping its id), with the same amount changes nothing.
+   * Records that `senderId` sent `amount` to `recipientId`: an entry in the period's ledger that counts in the
+   * balances at once. Sending the same `id` again returns the payment already recorded (a repeated submit or a
+   * retry), unless someone else sent it. Otherwise refuses, in this order, a closed period, a sender who is not
+   * a participant, a pair without a pending debt from the sender to the recipient, and an amount above that debt.
    */
-  markTransferSent(input: {
-    id: string;
-    debtorId: string;
-    creditorId: string;
-    amount: Money;
-    now: Date;
-  }): Result<Transfer> {
+  sendPayment(input: { id: string; senderId: string; recipientId: string; amount: Money; now: Date }): Result<Payment> {
+    const existing = this.payments.find((payment) => payment.id === input.id);
+    if (existing) {
+      return existing.senderId === input.senderId
+        ? { data: existing }
+        : billingPeriodError("unexpected", { periodId: this.id });
+    }
     if (!this.isOpen()) {
       return billingPeriodError("billing_period_closed", { periodId: this.id });
     }
-    if (!this.participants.includes(input.debtorId)) {
+    if (!this.participants.includes(input.senderId)) {
       return billingPeriodError("group_not_found", { groupId: this.groupId });
     }
-    const owes = this.balances().debts.some(
-      (debt) => debt.debtorId === input.debtorId && debt.creditorId === input.creditorId,
+    const debt = this.pendingBalances().debts.find(
+      (candidate) => candidate.debtorId === input.senderId && candidate.creditorId === input.recipientId,
     );
-    if (!owes) {
-      return billingPeriodError("no_debt_to_mark", { periodId: this.id });
+    if (!debt) {
+      return billingPeriodError("no_debt_to_pay", { periodId: this.id });
     }
-
-    const existing = this.sentTransferOf(input.debtorId, input.creditorId);
-    if (!existing) {
-      const created = new Transfer({
-        id: input.id,
-        debtorId: input.debtorId,
-        creditorId: input.creditorId,
-        amount: input.amount,
-        sentAt: input.now,
-      });
-      this.addedTransfers.push(created);
-      return { data: created };
+    if (input.amount.grosze > debt.amount.grosze) {
+      return billingPeriodError("payment_exceeds_debt", { periodId: this.id });
     }
-    if (existing.amount.equals(input.amount)) {
-      return { data: existing };
-    }
-    const replaced = existing.replace({ amount: input.amount, sentAt: input.now });
-    const addedAt = this.addedTransfers.findIndex((candidate) => candidate.id === existing.id);
-    if (addedAt >= 0) {
-      this.addedTransfers[addedAt] = replaced;
-    } else {
-      this.storedTransfers[this.storedTransfers.findIndex((candidate) => candidate.id === existing.id)] = replaced;
-      this.changedTransfers.add(replaced.id);
-    }
-    return { data: replaced };
+    const payment = new Payment({
+      id: input.id,
+      senderId: input.senderId,
+      recipientId: input.recipientId,
+      amount: input.amount,
+      sentAt: input.now,
+      confirmedAt: null,
+    });
+    this.addedPayments.push(payment);
+    return { data: payment };
   }
 
-  /** Removes `debtorId`'s mark for `creditorId`. Refuses a closed period and a pair without a mark. */
-  undoTransferSent(input: { debtorId: string; creditorId: string }): Result<void> {
+  /**
+   * Withdraws `userId`'s own payment. Refuses, in this order, a closed period, an unknown payment, a payment
+   * someone else sent and a payment the recipient has confirmed.
+   */
+  withdrawPayment(input: { paymentId: string; userId: string }): Result<void> {
     if (!this.isOpen()) {
       return billingPeriodError("billing_period_closed", { periodId: this.id });
     }
-    const transfer = this.sentTransferOf(input.debtorId, input.creditorId);
-    if (!transfer) {
-      return billingPeriodError("transfer_not_found", { periodId: this.id });
+    const payment = this.payments.find((candidate) => candidate.id === input.paymentId);
+    if (!payment) {
+      return billingPeriodError("payment_not_found", { periodId: this.id, paymentId: input.paymentId });
     }
-    const addedAt = this.addedTransfers.findIndex((candidate) => candidate.id === transfer.id);
+    if (payment.senderId !== input.userId) {
+      return billingPeriodError("not_payment_sender", { periodId: this.id, paymentId: payment.id });
+    }
+    if (payment.isConfirmed()) {
+      return billingPeriodError("payment_confirmed", { periodId: this.id, paymentId: payment.id });
+    }
+    const addedAt = this.addedPayments.findIndex((candidate) => candidate.id === payment.id);
     if (addedAt >= 0) {
-      this.addedTransfers.splice(addedAt, 1);
+      this.addedPayments.splice(addedAt, 1);
     } else {
-      this.storedTransfers.splice(
-        this.storedTransfers.findIndex((candidate) => candidate.id === transfer.id),
+      this.storedPayments.splice(
+        this.storedPayments.findIndex((candidate) => candidate.id === payment.id),
         1,
       );
-      this.changedTransfers.delete(transfer.id);
-      this.unmarked.push(transfer.id);
+      this.withdrawn.push(payment.id);
     }
     return { data: undefined };
   }
 
-  /** The marks where `userId` is the debtor or the creditor, with their state against the current debts. */
-  sentTransfersInvolving(userId: string): { transfer: Transfer; state: TransferState; debt: PairDebt | null }[] {
-    const debts = this.balances().debts;
-    return this.transfers
-      .filter((transfer) => transfer.debtorId === userId || transfer.creditorId === userId)
-      .map((transfer) => ({ transfer, ...transfer.stateAgainst(debts) }));
+  /** The payments sent since the period was loaded, which the repository still has to store. */
+  sentPayments(): readonly Payment[] {
+    return [...this.addedPayments];
   }
 
-  /** The marks added or replaced since load, which the repository still has to store. */
-  markedTransfers(): readonly Transfer[] {
-    return [
-      ...this.storedTransfers.filter((transfer) => this.changedTransfers.has(transfer.id)),
-      ...this.addedTransfers,
-    ];
+  /** The ids of the loaded payments withdrawn since, which the repository still has to delete. */
+  withdrawnPaymentIds(): readonly string[] {
+    return [...this.withdrawn];
   }
 
-  /** The ids of the loaded marks undone since, which the repository still has to delete. */
-  unmarkedTransferIds(): readonly string[] {
-    return [...this.unmarked];
+  /** By time sent, newest first (then by id, so the order is stable). */
+  paymentsNewestFirst(): readonly Payment[] {
+    return [...this.payments].sort((a, b) => b.sentAt.getTime() - a.sentAt.getTime() || a.id.localeCompare(b.id));
   }
 
   /** By purchase date, then by creation time, newest first. */
@@ -350,8 +330,18 @@ export class BillingPeriod {
     );
   }
 
-  balances(): PeriodBalances {
-    return PeriodBalances.of({ memberIds: this.participants, expenses: this.expenses });
+  /** Expenses plus every payment not withdrawn: what the members owe if every payment sent did arrive. */
+  pendingBalances(): PeriodBalances {
+    return PeriodBalances.of({ memberIds: this.participants, expenses: this.expenses, payments: this.payments });
+  }
+
+  /** Expenses plus confirmed payments only: what is settled for certain. */
+  postedBalances(): PeriodBalances {
+    return PeriodBalances.of({
+      memberIds: this.participants,
+      expenses: this.expenses,
+      payments: this.payments.filter((payment) => payment.isConfirmed()),
+    });
   }
 
   toSnapshot(): BillingPeriodSnapshot {
@@ -363,7 +353,7 @@ export class BillingPeriod {
       closedAt: this.closedAt === null ? null : this.closedAt.toISOString(),
       version: this.version,
       expenses: this.expenses.map((expense) => expense.toSnapshot()),
-      transfers: this.transfers.map((transfer) => transfer.toSnapshot()),
+      payments: this.payments.map((payment) => payment.toSnapshot()),
     };
   }
 }
