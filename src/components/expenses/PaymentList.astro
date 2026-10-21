@@ -1,0 +1,60 @@
+---
+import type { Payment } from "@/lib/billing-periods";
+import type { Group } from "@/lib/groups";
+import { memberLabel } from "@/components/expenses/member-label";
+
+interface Props {
+  group: Group;
+  /** The period's payments, newest first. */
+  payments: readonly Payment[];
+  viewerId: string;
+  periodOpen: boolean;
+}
+
+const { group, payments, viewerId, periodOpen } = Astro.props;
+
+const rows = payments.map((payment) => ({
+  id: payment.id,
+  sender: memberLabel(group.members, payment.senderId, viewerId),
+  recipient: memberLabel(group.members, payment.recipientId, viewerId),
+  amountLabel: payment.amount.label(),
+  sentOn: payment.sentOnLabel(),
+  confirmed: payment.isConfirmed(),
+  // Only the sender withdraws, and only while the recipient has not confirmed and the period is open.
+  withdrawAction:
+    periodOpen && !payment.isConfirmed() && payment.senderId === viewerId
+      ? `/api/groups/${encodeURIComponent(group.id)}/payments/${encodeURIComponent(payment.id)}/withdraw`
+      : null,
+}));
+---
+
+<div data-payment-list>
+  <h3 class="mb-2 text-sm font-semibold text-blue-100/80">Payments</h3>
+  {rows.length === 0 ? (
+    <p class="text-sm text-blue-100/70">No payments yet</p>
+  ) : (
+    <ul class="space-y-2">
+      {rows.map((row) => (
+        <li class="text-sm" data-payment>
+          <div class="flex items-baseline justify-between gap-3">
+            <span class="min-w-0 break-words text-white">
+              {row.sender} → {row.recipient}
+            </span>
+            <span class="shrink-0 font-semibold text-white">{row.amountLabel}</span>
+          </div>
+          <div class="text-blue-100/70">
+            {row.sentOn} · {row.confirmed ? "confirmed" : "awaiting confirmation"}
+            {row.withdrawAction && (
+              <form method="POST" action={row.withdrawAction} class="ml-1 inline">
+                {" · "}
+                <button type="submit" class="text-purple-300 hover:underline">
+                  Withdraw
+                </button>
+              </form>
+            )}
+          </div>
+        </li>
+      ))}
+    </ul>
+  )}
+</div>
