@@ -394,28 +394,28 @@ The migration is expand-only. The new table and the new function are additions, 
 
 #### Automated
 
-- [x] 1.1 Unit tests pass, including the new transfer cases: `npm test`
-- [x] 1.2 Type checking passes: `npx astro check`
-- [x] 1.3 Linting passes: `npm run lint`
+- [x] 1.1 Unit tests pass, including the new transfer cases: `npm test` — 6afdcfe
+- [x] 1.2 Type checking passes: `npx astro check` — 6afdcfe
+- [x] 1.3 Linting passes: `npm run lint` — 6afdcfe
 
 #### Manual
 
-- [x] 1.4 Test names read as the rules (current, outdated and no-debt states; a creditor cannot mark; a retry records the posted amount)
+- [x] 1.4 Test names read as the rules (current, outdated and no-debt states; a creditor cannot mark; a retry records the posted amount) — 6afdcfe
 
 ### Phase 2: Persistence of transfer marks
 
 #### Automated
 
-- [ ] 2.1 Migration applies on a fresh database: `npm run db:reset`
-- [ ] 2.2 Generated types are up to date and committed: `npm run db:types` leaves no diff after commit
-- [ ] 2.3 Unit tests still pass: `npm test`
-- [ ] 2.4 Type checking passes: `npx astro check`
-- [ ] 2.5 Linting passes: `npm run lint`
-- [ ] 2.6 Existing smoke flows still pass (add, edit and delete expense, transfer details): `npm run smoke`
+- [x] 2.1 Migration applies on a fresh database: `npm run db:reset`
+- [x] 2.2 Generated types are up to date and committed: `npm run db:types` leaves no diff after commit
+- [x] 2.3 Unit tests still pass: `npm test`
+- [x] 2.4 Type checking passes: `npx astro check`
+- [x] 2.5 Linting passes: `npm run lint`
+- [x] 2.6 Existing smoke flows still pass (add, edit and delete expense, transfer details): `npm run smoke`
 
 #### Manual
 
-- [ ] 2.7 In Supabase Studio, `transfers` shows RLS enabled with no policies, and `anon`/`authenticated` have no table grants
+- [x] 2.7 In Supabase Studio, `transfers` shows RLS enabled with no policies, and `anon`/`authenticated` have no table grants
 
 ### Phase 3: Endpoints, UI, smoke and docs
 

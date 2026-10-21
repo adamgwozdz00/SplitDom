@@ -247,6 +247,58 @@ export type Database = {
         }
         Relationships: []
       }
+      transfers: {
+        Row: {
+          amount: number
+          creditor_id: string
+          debtor_id: string
+          group_id: string
+          id: string
+          period_id: string
+          sent_at: string
+        }
+        Insert: {
+          amount: number
+          creditor_id: string
+          debtor_id: string
+          group_id: string
+          id: string
+          period_id: string
+          sent_at: string
+        }
+        Update: {
+          amount?: number
+          creditor_id?: string
+          debtor_id?: string
+          group_id?: string
+          id?: string
+          period_id?: string
+          sent_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "transfers_group_id_creditor_id_fkey"
+            columns: ["group_id", "creditor_id"]
+            isOneToOne: false
+            referencedRelation: "group_members"
+            referencedColumns: ["group_id", "user_id"]
+          },
+          {
+            foreignKeyName: "transfers_group_id_debtor_id_fkey"
+            columns: ["group_id", "debtor_id"]
+            isOneToOne: false
+            referencedRelation: "group_members"
+            referencedColumns: ["group_id", "user_id"]
+          },
+          {
+            foreignKeyName: "transfers_period_id_group_id_fkey"
+            columns: ["period_id", "group_id"]
+            isOneToOne: false
+            referencedRelation: "billing_periods"
+            referencedColumns: ["id", "group_id"]
+          },
+        ]
+      }
     }
     Views: {
       [_ in never]: never
@@ -352,6 +404,19 @@ export type Database = {
           p_group_id: string
           p_period_id: string
           p_removed: string[]
+        }
+        Returns: boolean
+      }
+      save_billing_period_with_transfers: {
+        Args: {
+          p_added: Json
+          p_changed: Json
+          p_expected_version: number
+          p_group_id: string
+          p_marked: Json
+          p_period_id: string
+          p_removed: string[]
+          p_unmarked: string[]
         }
         Returns: boolean
       }
