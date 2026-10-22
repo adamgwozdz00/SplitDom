@@ -255,6 +255,7 @@ export type Database = {
           id: string
           period_id: string
           recipient_id: string
+          rejected_at: string | null
           sender_id: string
           sent_at: string
         }
@@ -265,6 +266,7 @@ export type Database = {
           id: string
           period_id: string
           recipient_id: string
+          rejected_at?: string | null
           sender_id: string
           sent_at: string
         }
@@ -275,6 +277,7 @@ export type Database = {
           id?: string
           period_id?: string
           recipient_id?: string
+          rejected_at?: string | null
           sender_id?: string
           sent_at?: string
         }
@@ -407,6 +410,21 @@ export type Database = {
           p_group_id: string
           p_period_id: string
           p_removed: string[]
+        }
+        Returns: boolean
+      }
+      save_billing_period_with_confirmations: {
+        Args: {
+          p_added: Json
+          p_changed: Json
+          p_confirmed: Json
+          p_expected_version: number
+          p_group_id: string
+          p_period_id: string
+          p_rejected: Json
+          p_removed: string[]
+          p_sent: Json
+          p_withdrawn: string[]
         }
         Returns: boolean
       }

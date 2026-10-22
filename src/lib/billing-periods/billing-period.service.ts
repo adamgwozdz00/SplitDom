@@ -173,6 +173,26 @@ export class BillingPeriodService {
     );
   }
 
+  /**
+   * The recipient `userId` confirms a payment sent to them, retried like `addExpense` on a lost race. The retry
+   * judges the payment as it is then: withdrawn meanwhile gives `payment_not_found`, decided meanwhile gives a
+   * success (the same decision) or `payment_not_pending`.
+   */
+  async confirmPayment(input: { group: Group; userId: string; paymentId: string }): Promise<Result<void>> {
+    const now = this.clock();
+    return this.change(input.group, (period) =>
+      period.confirmPayment({ paymentId: input.paymentId, userId: input.userId, now }),
+    );
+  }
+
+  /** The recipient `userId` rejects a payment sent to them; retried and judged like `confirmPayment`. */
+  async rejectPayment(input: { group: Group; userId: string; paymentId: string }): Promise<Result<void>> {
+    const now = this.clock();
+    return this.change(input.group, (period) =>
+      period.rejectPayment({ paymentId: input.paymentId, userId: input.userId, now }),
+    );
+  }
+
   /** The open period and one of its expenses, when `userId` may change it (for the edit page). */
   async getEditableExpense(input: {
     group: Group;

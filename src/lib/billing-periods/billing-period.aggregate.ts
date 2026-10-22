@@ -44,6 +44,8 @@ export class BillingPeriod {
   private readonly storedPayments: Payment[];
   private readonly addedPayments: Payment[] = [];
   private readonly withdrawn: string[] = [];
+  private readonly confirmed: string[] = [];
+  private readonly rejected: string[] = [];
 
   private constructor(state: BillingPeriodState) {
     if (state.closedAt !== null && state.closedAt.getTime() < state.openedAt.getTime()) {
@@ -137,14 +139,28 @@ export class BillingPeriod {
     return { data: expense };
   }
 
-  /** Whether `userId` may change `expense`: the period is open and they paid it. */
+  /**
+   * Whether a confirmed payment has settled `expense` (FR-005): a confirmed payment exists between its payer and
+   * one of its sharers, in either direction. Pending and rejected payments never lock.
+   */
+  isLocked(expense: Expense): boolean {
+    const sharers = new Set(expense.sharerIds());
+    return this.payments.some(
+      (payment) =>
+        payment.isConfirmed() &&
+        ((payment.senderId === expense.payerId && sharers.has(payment.recipientId)) ||
+          (payment.recipientId === expense.payerId && sharers.has(payment.senderId))),
+    );
+  }
+
+  /** Whether `userId` may change `expense`: the period is open, they paid it and no confirmed payment locks it. */
   canEdit(expense: Expense, userId: string): boolean {
-    return this.isOpen() && expense.payerId === userId;
+    return this.isOpen() && expense.payerId === userId && !this.isLocked(expense);
   }
 
   /**
-   * The expense `userId` may change. Refuses, in this order, a closed period, an unknown expense and an
-   * expense someone else paid.
+   * The expense `userId` may change. Refuses, in this order, a closed period, an unknown expense, an
+   * expense someone else paid and an expense locked by a confirmed payment.
    */
   editableExpense(expenseId: string, userId: string): Result<Expense> {
     if (!this.isOpen()) {
@@ -154,8 +170,11 @@ export class BillingPeriod {
     if (!expense) {
       return billingPeriodError("expense_not_found", { periodId: this.id, expenseId });
     }
-    if (!this.canEdit(expense, userId)) {
+    if (expense.payerId !== userId) {
       return billingPeriodError("not_expense_author", { periodId: this.id, expenseId });
+    }
+    if (this.isLocked(expense)) {
+      return billingPeriodError("expense_locked", { periodId: this.id, expenseId });
     }
     return { data: expense };
   }
@@ -272,6 +291,7 @@ export class BillingPeriod {
       amount: input.amount,
       sentAt: input.now,
       confirmedAt: null,
+      rejectedAt: null,
     });
     this.addedPayments.push(payment);
     return { data: payment };
@@ -279,7 +299,7 @@ export class BillingPeriod {
 
   /**
    * Withdraws `userId`'s own payment. Refuses, in this order, a closed period, an unknown payment, a payment
-   * someone else sent and a payment the recipient has confirmed.
+   * someone else sent, a payment the recipient has confirmed and one the recipient has rejected.
    */
   withdrawPayment(input: { paymentId: string; userId: string }): Result<void> {
     if (!this.isOpen()) {
@@ -295,6 +315,9 @@ export class BillingPeriod {
     if (payment.isConfirmed()) {
       return billingPeriodError("payment_confirmed", { periodId: this.id, paymentId: payment.id });
     }
+    if (payment.isRejected()) {
+      return billingPeriodError("payment_not_pending", { periodId: this.id, paymentId: payment.id });
+    }
     const addedAt = this.addedPayments.findIndex((candidate) => candidate.id === payment.id);
     if (addedAt >= 0) {
       this.addedPayments.splice(addedAt, 1);
@@ -308,6 +331,55 @@ export class BillingPeriod {
     return { data: undefined };
   }
 
+  /**
+   * The recipient `userId` confirms a payment: it becomes posted, the pending balances do not change. Refuses, in
+   * this order, a closed period, an unknown payment and a user who is not the recipient. Confirming a confirmed
+   * payment succeeds without a change; confirming a rejected one gives `payment_not_pending`.
+   */
+  confirmPayment(input: { paymentId: string; userId: string; now: Date }): Result<void> {
+    return this.decidePayment(input, "confirmed");
+  }
+
+  /**
+   * The recipient `userId` rejects a payment: it stays in the ledger as rejected and counts in neither balance.
+   * Same refusals as `confirmPayment`, mirrored: rejecting a rejected payment succeeds without a change, rejecting
+   * a confirmed one gives `payment_not_pending`.
+   */
+  rejectPayment(input: { paymentId: string; userId: string; now: Date }): Result<void> {
+    return this.decidePayment(input, "rejected");
+  }
+
+  private decidePayment(
+    input: { paymentId: string; userId: string; now: Date },
+    decision: "confirmed" | "rejected",
+  ): Result<void> {
+    if (!this.isOpen()) {
+      return billingPeriodError("billing_period_closed", { periodId: this.id });
+    }
+    const payment = this.payments.find((candidate) => candidate.id === input.paymentId);
+    if (!payment) {
+      return billingPeriodError("payment_not_found", { periodId: this.id, paymentId: input.paymentId });
+    }
+    if (payment.recipientId !== input.userId) {
+      return billingPeriodError("not_payment_recipient", { periodId: this.id, paymentId: payment.id });
+    }
+    if (payment.status() === decision) {
+      return { data: undefined };
+    }
+    if (!payment.isPending()) {
+      return billingPeriodError("payment_not_pending", { periodId: this.id, paymentId: payment.id });
+    }
+    const decided = decision === "confirmed" ? payment.confirm(input.now) : payment.reject(input.now);
+    const addedAt = this.addedPayments.findIndex((candidate) => candidate.id === payment.id);
+    if (addedAt >= 0) {
+      this.addedPayments[addedAt] = decided;
+    } else {
+      this.storedPayments[this.storedPayments.findIndex((candidate) => candidate.id === payment.id)] = decided;
+    }
+    (decision === "confirmed" ? this.confirmed : this.rejected).push(payment.id);
+    return { data: undefined };
+  }
+
   /** The payments sent since the period was loaded, which the repository still has to store. */
   sentPayments(): readonly Payment[] {
     return [...this.addedPayments];
@@ -316,6 +388,16 @@ export class BillingPeriod {
   /** The ids of the loaded payments withdrawn since, which the repository still has to delete. */
   withdrawnPaymentIds(): readonly string[] {
     return [...this.withdrawn];
+  }
+
+  /** The loaded payments confirmed since, which the repository still has to store as confirmed. */
+  confirmedPayments(): readonly Payment[] {
+    return this.storedPayments.filter((payment) => this.confirmed.includes(payment.id));
+  }
+
+  /** The loaded payments rejected since, which the repository still has to store as rejected. */
+  rejectedPayments(): readonly Payment[] {
+    return this.storedPayments.filter((payment) => this.rejected.includes(payment.id));
   }
 
   /** By time sent, newest first (then by id, so the order is stable). */
@@ -330,9 +412,13 @@ export class BillingPeriod {
     );
   }
 
-  /** Expenses plus every payment not withdrawn: what the members owe if every payment sent did arrive. */
+  /** Expenses plus every payment not withdrawn or rejected: what the members owe if every payment sent did arrive. */
   pendingBalances(): PeriodBalances {
-    return PeriodBalances.of({ memberIds: this.participants, expenses: this.expenses, payments: this.payments });
+    return PeriodBalances.of({
+      memberIds: this.participants,
+      expenses: this.expenses,
+      payments: this.payments.filter((payment) => !payment.isRejected()),
+    });
   }
 
   /** Expenses plus confirmed payments only: what is settled for certain. */

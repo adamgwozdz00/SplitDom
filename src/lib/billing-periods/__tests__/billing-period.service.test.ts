@@ -532,7 +532,15 @@ describe("BillingPeriodService payments", () => {
     expect(repository.stored(GROUP_ID)).toMatchObject({
       version: 1,
       payments: [
-        { id: PAYMENT, senderId: B, recipientId: HOST_ID, amount: 20000, sentAt: NOW.toISOString(), confirmedAt: null },
+        {
+          id: PAYMENT,
+          senderId: B,
+          recipientId: HOST_ID,
+          amount: 20000,
+          sentAt: NOW.toISOString(),
+          confirmedAt: null,
+          rejectedAt: null,
+        },
       ],
     });
   });
@@ -644,5 +652,123 @@ describe("BillingPeriodService payments", () => {
     expect(summary.data.balances.debts.map((debt) => debt.amount.grosze)).toEqual([15000]);
     expect(summary.data.postedBalances.debts.map((debt) => debt.amount.grosze)).toEqual([20000]);
     expect(summary.data.payments.map((payment) => payment.id)).toEqual([PAYMENT]);
+  });
+});
+
+describe("BillingPeriodService confirmPayment and rejectPayment", () => {
+  const PAYMENT = "11111111-1111-4111-8111-aaaaaaaaaaaa";
+  const LATER = new Date("2026-10-16T10:00:00.000Z");
+  const decision = { group: aGroup(), userId: HOST_ID, paymentId: PAYMENT };
+
+  // B owes the host 200 zł and has sent 100 zł of it.
+  async function repositoryWithPayment(): Promise<FakeBillingPeriodRepository> {
+    const repository = new FakeBillingPeriodRepository([anOctoberPeriod({ expenses: [{ id: "e-1", grosze: 40000 }] })]);
+    await serviceWith(repository).sendPayment({
+      group: aGroup(),
+      senderId: B,
+      recipientId: HOST_ID,
+      paymentId: PAYMENT,
+      amount: "100,00",
+    });
+    return repository;
+  }
+
+  it("stores the recipient's confirmation with the clock's time and bumps the version", async () => {
+    const repository = await repositoryWithPayment();
+
+    const result = await serviceWith(repository, { now: LATER }).confirmPayment(decision);
+
+    expect(result).toEqual({ data: undefined });
+    expect(repository.stored(GROUP_ID)).toMatchObject({
+      version: 2,
+      payments: [{ id: PAYMENT, confirmedAt: LATER.toISOString(), rejectedAt: null }],
+    });
+  });
+
+  it("stores the recipient's rejection and keeps the payment in the ledger", async () => {
+    const repository = await repositoryWithPayment();
+
+    const result = await serviceWith(repository, { now: LATER }).rejectPayment(decision);
+
+    expect(result).toEqual({ data: undefined });
+    expect(repository.stored(GROUP_ID)).toMatchObject({
+      version: 2,
+      payments: [{ id: PAYMENT, confirmedAt: null, rejectedAt: LATER.toISOString() }],
+    });
+  });
+
+  it("refuses a user who is not the recipient and saves nothing", async () => {
+    const repository = await repositoryWithPayment();
+    const saves = repository.saveCalls.length;
+
+    expect(await serviceWith(repository).confirmPayment({ ...decision, userId: B })).toMatchObject({
+      error: { code: "not_payment_recipient" },
+    });
+    expect(await serviceWith(repository).rejectPayment({ ...decision, userId: B })).toMatchObject({
+      error: { code: "not_payment_recipient" },
+    });
+    expect(repository.saveCalls).toHaveLength(saves);
+  });
+
+  it("refuses the opposite decision after a decision", async () => {
+    const repository = await repositoryWithPayment();
+    await serviceWith(repository).confirmPayment(decision);
+
+    expect(await serviceWith(repository).rejectPayment(decision)).toMatchObject({
+      error: { code: "payment_not_pending" },
+    });
+  });
+
+  it("retries a lost race on the reloaded period", async () => {
+    const repository = await repositoryWithPayment();
+    repository.saveConflicts = 1;
+
+    const result = await serviceWith(repository, { now: LATER }).confirmPayment(decision);
+
+    expect(result).toEqual({ data: undefined });
+    expect(repository.saveCalls.length).toBeGreaterThanOrEqual(3);
+    expect(repository.stored(GROUP_ID)?.payments[0]).toMatchObject({ confirmedAt: LATER.toISOString() });
+  });
+
+  it("answers payment_not_found on the retry when the sender withdrew the payment meanwhile", async () => {
+    const repository = await repositoryWithPayment();
+    repository.saveConflicts = 1;
+    repository.onConflict = () => {
+      repository.put(anOctoberPeriod({ expenses: [{ id: "e-1", grosze: 40000 }], version: 2 }));
+    };
+
+    expect(await serviceWith(repository).rejectPayment(decision)).toMatchObject({
+      error: { code: "payment_not_found" },
+    });
+  });
+
+  it("succeeds on the retry when the same decision landed meanwhile", async () => {
+    const repository = await repositoryWithPayment();
+    const stored = repository.stored(GROUP_ID);
+    if (!stored) {
+      throw new Error("no stored period");
+    }
+    repository.saveConflicts = 1;
+    repository.onConflict = () => {
+      repository.put({
+        ...stored,
+        version: stored.version + 1,
+        payments: stored.payments.map((payment) => ({ ...payment, confirmedAt: LATER.toISOString() })),
+      });
+    };
+
+    expect(await serviceWith(repository).confirmPayment(decision)).toEqual({ data: undefined });
+    expect(await serviceWith(repository).rejectPayment(decision)).toMatchObject({
+      error: { code: "payment_not_pending" },
+    });
+  });
+
+  it("answers period_changed after two lost races", async () => {
+    const repository = await repositoryWithPayment();
+    repository.saveConflicts = 2;
+
+    expect(await serviceWith(repository).confirmPayment(decision)).toMatchObject({
+      error: { code: "period_changed" },
+    });
   });
 });

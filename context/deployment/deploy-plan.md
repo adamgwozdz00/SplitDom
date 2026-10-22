@@ -151,7 +151,7 @@ A duplicate submit of the add-expense form is blocked only by disabling the butt
 
 ## Editing and deleting expenses (added 2026-10-19, change `edit-own-expense-rules`, S-05)
 
-The migration `edit_delete_expenses` adds one `security definer` function, `save_billing_period_changes`, which stores added, changed and removed expenses of a period if its `version` is unchanged. It only adds an object, so it is compatible with the previously deployed Worker (which keeps calling `save_billing_period`) and needs no Supabase or Cloudflare configuration change. `save_billing_period` stays until the contract migration. The paid-debt part of FR-005 (no edits once a debt is paid) arrives with S-08.
+The migration `edit_delete_expenses` adds one `security definer` function, `save_billing_period_changes`, which stores added, changed and removed expenses of a period if its `version` is unchanged. It only adds an object, so it is compatible with the previously deployed Worker (which keeps calling `save_billing_period`) and needs no Supabase or Cloudflare configuration change. `save_billing_period` stays until the contract migration.
 
 ## Account numbers and transfer details (added 2026-10-19, change `generate-transfer-details`, S-06)
 
@@ -159,7 +159,13 @@ The migration `member_profiles` adds the table `member_profiles` (one row per us
 
 ## Payments (added 2026-10-21, change `mark-transfer-sent`, S-07)
 
-The migration `payments` adds the table `payments` (one row per transfer a member reports sending: the pair, the amount in grosze, when it was sent and, once S-08 exists, when it was confirmed) and one `security definer` function, `save_billing_period_with_payments`, which stores the expenses and the payments of a period in one call guarded by its `version`. It also replaces `get_current_billing_period` with a version that returns the period's payments under a new `payments` key. It only adds objects and a key, so it is compatible with the previously deployed Worker (which keeps calling `save_billing_period_changes` and ignores the new key) and needs no Supabase or Cloudflare configuration change. The table has row-level security with no policies and no grants for `anon`/`authenticated`. A period's payments are returned to every member of the group, like its expenses, and the group page shows them to all of them. `save_billing_period_changes` stays until the contract migration.
+The migration `payments` adds the table `payments` (one row per transfer a member reports sending: the pair, the amount in grosze, when it was sent and, once the recipient decides, when it was confirmed) and one `security definer` function, `save_billing_period_with_payments`, which stores the expenses and the payments of a period in one call guarded by its `version`. It also replaces `get_current_billing_period` with a version that returns the period's payments under a new `payments` key. It only adds objects and a key, so it is compatible with the previously deployed Worker (which keeps calling `save_billing_period_changes` and ignores the new key) and needs no Supabase or Cloudflare configuration change. The table has row-level security with no policies and no grants for `anon`/`authenticated`. A period's payments are returned to every member of the group, like its expenses, and the group page shows them to all of them. `save_billing_period_changes` stays until the contract migration.
+
+## Payment confirmations (added 2026-10-22, change `confirm-debt-paid`, S-08)
+
+The migration `payment_confirmations` adds a nullable column `rejected_at` to `payments` (with two checks every existing row satisfies: a payment is never both confirmed and rejected, and a rejection is not earlier than the send), replaces `get_current_billing_period` with a version that also returns `rejected_at` for each payment, and adds one `security definer` function, `save_billing_period_with_confirmations`, which stores everything `save_billing_period_with_payments` does plus the recipient's confirmations and rejections, guarded by the period's `version`. It is expand-only: the previously deployed Worker keeps calling `save_billing_period_with_payments` and ignores the new key, and no Supabase or Cloudflare configuration change is needed. `save_billing_period_with_payments` stays until the contract migration.
+
+Rollback caveat: the previously deployed Worker does not know `rejected_at`, so after a `wrangler rollback` it counts rejected payments as pending (and shows them as awaiting confirmation) until the next deploy. No data is lost, and the current Worker reads the rows correctly again. The paid-debt lock of FR-005 (a confirmed payment locks the expenses of its pair) is judged in the application, so it needs no database change.
 
 ## Out of scope
 
