@@ -3,7 +3,7 @@ project: SplitDom
 version: 1
 status: draft
 created: 2026-09-26
-updated: 2026-10-20
+updated: 2026-10-22
 prd_version: 1
 main_goal: speed
 top_blocker: time
@@ -50,7 +50,7 @@ People who share household costs — partners or roommates — settle shared exp
 | F-03 | group-membership-aggregate  | (foundation) `Group` is the membership aggregate; `Invite` is an entity inside it     | S-03          | FR-002, FR-003         | done        |
 | S-05 | edit-own-expense-rules      | expense author can edit or delete their own expense only while it is still editable   | F-02          | FR-005                 | done        |
 | S-06 | generate-transfer-details   | debtor can copy transfer details (account number, amount, title) for a debt           | S-04          | FR-007                 | done        |
-| S-07 | mark-transfer-sent          | debtor can record a transfer as a payment that counts in the balances (pending)       | F-02          | FR-008                 | in-progress |
+| S-07 | mark-transfer-sent          | debtor can record a transfer as a payment that counts in the balances (pending)       | F-02          | FR-008                 | done       |
 | S-08 | confirm-debt-paid           | creditor can confirm or reject a payment, which makes it final (posted)               | F-02          | FR-009                 | proposed    |
 | S-09 | host-closes-period          | host can close a finished period, which freezes it and opens the next one             | S-05, S-08    | US-02, FR-015          | proposed    |
 | S-10 | member-profile-display-name | member can set a display name that the group shows instead of their email             | S-04          | — (supports US-01)     | proposed    |
@@ -217,7 +217,7 @@ Foundations below assume these are present and do NOT re-scaffold them.
 - **Blockers:** —
 - **Unknowns:** —
 - **Risk:** Replanned 2026-10-21: a per-pair "sent" mark kept outside the balances drifted from the real debt (a debt that later reversed lost the money already sent), so payments became ledger entries counted in the balances (`context/changes/mark-transfer-sent/external-research.md`, `plan.md`). The risk is balance correctness, guarded by a unit test of that scenario.
-- **Status:** in-progress
+- **Status:** done
 
 ### S-08: Confirm a debt as paid
 
@@ -316,3 +316,4 @@ Mirrored on GitHub: milestone [M-1](https://github.com/adamgwozdz00/SplitDom/mil
 - **S-04: group member can add an expense in the open period, split equally between all members, and immediately see each member's debt or credit (e.g. 400 zł rent → the other member owes 200 zł).** — Archived 2026-10-19 → `context/archive/2026-10-05-add-expense-see-balances/`. Lesson: —.
 - **S-05: expense author can edit or delete their own expense while its period is open and its debt is not yet confirmed as paid; nobody else can modify it.** — Archived 2026-10-19 → `context/archive/2026-10-19-edit-own-expense-rules/`. Lesson: —.
 - **S-06: debtor can see and copy plain-text transfer details for a debt — creditor's account number, amount, and transfer title — to paste into any online banking.** — Archived 2026-10-20 → `context/archive/2026-10-19-generate-transfer-details/`. Lesson: —.
+- **S-07: debtor can record a transfer they sent as a payment: an entry in the period's ledger that counts in the balances at once (pending until the creditor confirms it, S-08), is capped by the current debt, is visible to the group and can be withdrawn while unconfirmed. The page shows pending balances; confirmed payments make up the posted balances that rules use.** — Archived 2026-10-22 → `context/archive/2026-10-20-mark-transfer-sent/`. Lesson: —.
