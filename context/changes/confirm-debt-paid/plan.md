@@ -480,10 +480,10 @@ The new migration only adds a nullable column, two checks that every existing ro
 
 #### Automated
 
-- [x] 3.1 Formatting passes on the edited documents: `npx prettier --check CLAUDE.md context/foundation/roadmap.md context/deployment/deploy-plan.md`
-- [x] 3.2 Linting passes: `npm run lint`
+- [x] 3.1 Formatting passes on the edited documents: `npx prettier --check CLAUDE.md context/foundation/roadmap.md context/deployment/deploy-plan.md` — ff76fd7
+- [x] 3.2 Linting passes: `npm run lint` — ff76fd7
 
 #### Manual
 
-- [x] 3.3 The PRD's FR-005/FR-009 and the roadmap's S-05/S-08/S-09/F-02 read consistently with the decisions
-- [x] 3.4 The user approves the edit to GitHub issue #13 before it is applied
+- [x] 3.3 The PRD's FR-005/FR-009 and the roadmap's S-05/S-08/S-09/F-02 read consistently with the decisions — ff76fd7
+- [x] 3.4 The user approves the edit to GitHub issue #13 before it is applied — ff76fd7
