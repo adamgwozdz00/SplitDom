@@ -463,27 +463,27 @@ The new migration only adds a nullable column, two checks that every existing ro
 
 #### Automated
 
-- [x] 2.1 Unit tests pass: `npm test`
-- [x] 2.2 Type checking passes: `npx astro check`
-- [x] 2.3 Linting passes: `npm run lint`
-- [x] 2.4 Production build succeeds: `npm run build`
-- [x] 2.5 Smoke test passes, including the confirm and reject steps: `npm run smoke`
+- [x] 2.1 Unit tests pass: `npm test` — a0917a8
+- [x] 2.2 Type checking passes: `npx astro check` — a0917a8
+- [x] 2.3 Linting passes: `npm run lint` — a0917a8
+- [x] 2.4 Production build succeeds: `npm run build` — a0917a8
+- [x] 2.5 Smoke test passes, including the confirm and reject steps: `npm run smoke` — a0917a8
 
 #### Manual
 
-- [x] 2.6 Two browsers: the debtor sends two payments; the creditor sees the count note, confirms one and rejects the other; the debtor sees "confirmed" without Withdraw, "rejected", and their debt grown back by the rejected amount
-- [x] 2.7 After a confirmed payment, the author of an expense of that pair can no longer edit or delete it (no Edit link; opening the edit page or posting is refused with a clear message), while an expense of another pair stays editable
-- [x] 2.8 A third member sees the same statuses and no Confirm or Reject buttons
-- [x] 2.9 The Payments list with the actions and the note reads well at phone width (NFR-1)
+- [x] 2.6 Two browsers: the debtor sends two payments; the creditor sees the count note, confirms one and rejects the other; the debtor sees "confirmed" without Withdraw, "rejected", and their debt grown back by the rejected amount — a0917a8
+- [x] 2.7 After a confirmed payment, the author of an expense of that pair can no longer edit or delete it (no Edit link; opening the edit page or posting is refused with a clear message), while an expense of another pair stays editable — a0917a8
+- [x] 2.8 A third member sees the same statuses and no Confirm or Reject buttons — a0917a8
+- [x] 2.9 The Payments list with the actions and the note reads well at phone width (NFR-1) — a0917a8
 
 ### Phase 3: Docs, PRD, roadmap and GitHub
 
 #### Automated
 
-- [ ] 3.1 Formatting passes on the edited documents: `npx prettier --check CLAUDE.md context/foundation/roadmap.md context/deployment/deploy-plan.md`
-- [ ] 3.2 Linting passes: `npm run lint`
+- [x] 3.1 Formatting passes on the edited documents: `npx prettier --check CLAUDE.md context/foundation/roadmap.md context/deployment/deploy-plan.md`
+- [x] 3.2 Linting passes: `npm run lint`
 
 #### Manual
 
-- [ ] 3.3 The PRD's FR-005/FR-009 and the roadmap's S-05/S-08/S-09/F-02 read consistently with the decisions
-- [ ] 3.4 The user approves the edit to GitHub issue #13 before it is applied
+- [x] 3.3 The PRD's FR-005/FR-009 and the roadmap's S-05/S-08/S-09/F-02 read consistently with the decisions
+- [x] 3.4 The user approves the edit to GitHub issue #13 before it is applied
