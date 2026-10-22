@@ -13,6 +13,8 @@ const MESSAGES: Record<BillingPeriodErrorCode, string> = {
   payment_not_found: "Payment not found",
   not_payment_sender: "Only the member who sent a payment can withdraw it",
   payment_confirmed: "A confirmed payment can no longer be withdrawn",
+  not_payment_recipient: "Only the member a payment was sent to can confirm or reject it",
+  payment_not_pending: "This payment has already been confirmed or rejected",
   period_changed: "Someone else just changed this billing period, try again",
   group_not_found: "Group not found",
   not_authenticated: "Sign in to continue",

@@ -90,11 +90,19 @@ export class FakeBillingPeriodRepository implements BillingPeriodRepository {
     const removed = new Set(period.removedExpenseIds());
     const changed = new Map(period.changedExpenses().map((expense) => [expense.id, expense.toSnapshot()]));
     const withdrawn = new Set(period.withdrawnPaymentIds());
+    const confirmed = new Map(period.confirmedPayments().map((payment) => [payment.id, payment.toSnapshot()]));
+    const rejected = new Map(period.rejectedPayments().map((payment) => [payment.id, payment.toSnapshot()]));
     this.put({
       ...stored,
       version: stored.version + 1,
       payments: [
-        ...stored.payments.filter((payment) => !withdrawn.has(payment.id)),
+        ...stored.payments
+          .filter((payment) => !withdrawn.has(payment.id))
+          .map((payment) => ({
+            ...payment,
+            confirmedAt: confirmed.get(payment.id)?.confirmedAt ?? payment.confirmedAt,
+            rejectedAt: rejected.get(payment.id)?.rejectedAt ?? payment.rejectedAt,
+          })),
         ...period.sentPayments().map((payment) => payment.toSnapshot()),
       ],
       expenses: [
