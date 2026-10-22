@@ -536,71 +536,71 @@ The period load gains one subquery over `payments`, a handful of rows per month,
 
 #### Automated
 
-- [x] 1.1 Unit tests pass, including the new transfer cases: `npm test` — 6afdcfe
-- [x] 1.2 Type checking passes: `npx astro check` — 6afdcfe
-- [x] 1.3 Linting passes: `npm run lint` — 6afdcfe
+- [x] 1.1 Unit tests pass, including the new transfer cases: `npm test` — 613c2ec
+- [x] 1.2 Type checking passes: `npx astro check` — 613c2ec
+- [x] 1.3 Linting passes: `npm run lint` — 613c2ec
 
 #### Manual
 
-- [x] 1.4 Test names read as the rules (current, outdated and no-debt states; a creditor cannot mark; a retry records the posted amount) — 6afdcfe
+- [x] 1.4 Test names read as the rules (current, outdated and no-debt states; a creditor cannot mark; a retry records the posted amount) — 613c2ec
 
 ### Phase 2: Persistence of transfer marks
 
 #### Automated
 
-- [x] 2.1 Migration applies on a fresh database: `npm run db:reset` — a649cee
-- [x] 2.2 Generated types are up to date and committed: `npm run db:types` leaves no diff after commit — a649cee
-- [x] 2.3 Unit tests still pass: `npm test` — a649cee
-- [x] 2.4 Type checking passes: `npx astro check` — a649cee
-- [x] 2.5 Linting passes: `npm run lint` — a649cee
-- [x] 2.6 Existing smoke flows still pass (add, edit and delete expense, transfer details): `npm run smoke` — a649cee
+- [x] 2.1 Migration applies on a fresh database: `npm run db:reset` — 613c2ec
+- [x] 2.2 Generated types are up to date and committed: `npm run db:types` leaves no diff after commit — 613c2ec
+- [x] 2.3 Unit tests still pass: `npm test` — 613c2ec
+- [x] 2.4 Type checking passes: `npx astro check` — 613c2ec
+- [x] 2.5 Linting passes: `npm run lint` — 613c2ec
+- [x] 2.6 Existing smoke flows still pass (add, edit and delete expense, transfer details): `npm run smoke` — 613c2ec
 
 #### Manual
 
-- [x] 2.7 In Supabase Studio, `transfers` shows RLS enabled with no policies, and `anon`/`authenticated` have no table grants — a649cee
+- [x] 2.7 In Supabase Studio, `transfers` shows RLS enabled with no policies, and `anon`/`authenticated` have no table grants — 613c2ec
 
 ### Phase 3: Payment ledger, domain and persistence (test-first)
 
 #### Automated
 
-- [x] 3.1 Unit tests pass, including the v1 failure scenario ending in "A owes B 150,00 zł": `npm test` — b61e72b
-- [x] 3.2 Migration applies on a fresh database: `npm run db:reset` — b61e72b
+- [x] 3.1 Unit tests pass, including the v1 failure scenario ending in "A owes B 150,00 zł": `npm test` — 613c2ec
+- [x] 3.2 Migration applies on a fresh database: `npm run db:reset` — 613c2ec
 - [x] 3.3 Generated types are up to date: `npm run db:types` leaves no diff
-- [x] 3.4 Type checking passes: `npx astro check` — b61e72b
-- [x] 3.5 Linting passes: `npm run lint` — b61e72b
-- [x] 3.6 Existing smoke flows still pass (add, edit and delete expense, transfer details): `npm run smoke` — b61e72b
+- [x] 3.4 Type checking passes: `npx astro check` — 613c2ec
+- [x] 3.5 Linting passes: `npm run lint` — 613c2ec
+- [x] 3.6 Existing smoke flows still pass (add, edit and delete expense, transfer details): `npm run smoke` — 613c2ec
 
 #### Manual
 
-- [x] 3.7 In Supabase Studio, `payments` shows RLS enabled with no policies, and `anon`/`authenticated` have no table grants — b61e72b
-- [x] 3.8 Test names read as the ledger rules (pending vs posted, cap, idempotent send, sender-only withdraw) — b61e72b
+- [x] 3.7 In Supabase Studio, `payments` shows RLS enabled with no policies, and `anon`/`authenticated` have no table grants — 613c2ec
+- [x] 3.8 Test names read as the ledger rules (pending vs posted, cap, idempotent send, sender-only withdraw) — 613c2ec
 
 ### Phase 4: Endpoints, payment list and panels, smoke
 
 #### Automated
 
-- [x] 4.1 Unit tests pass: `npm test` — 3760cbd — 3760cbd
-- [x] 4.2 Type checking passes: `npx astro check` — 3760cbd — 3760cbd
-- [x] 4.3 Linting passes: `npm run lint` — 3760cbd — 3760cbd
-- [x] 4.4 Production build succeeds: `npm run build` — 3760cbd — 3760cbd
-- [x] 4.5 Smoke test passes, including the payment steps: `npm run smoke` — 3760cbd — 3760cbd
+- [x] 4.1 Unit tests pass: `npm test` — 3760cbd — 613c2ec
+- [x] 4.2 Type checking passes: `npx astro check` — 3760cbd — 613c2ec
+- [x] 4.3 Linting passes: `npm run lint` — 3760cbd — 613c2ec
+- [x] 4.4 Production build succeeds: `npm run build` — 3760cbd — 613c2ec
+- [x] 4.5 Smoke test passes, including the payment steps: `npm run smoke` — 3760cbd — 613c2ec
 
 #### Manual
 
-- [x] 4.6 Two browsers, the v1 failure scenario (A pays 200; B pays 100; A pays 100; B pays 50; B pays 300) ends with A owing B 150,00 zł, and every intermediate debt matches the money that moved — 3760cbd
-- [x] 4.7 Entering more than the debt is refused with a clear message; a partial amount leaves the rest as the debt — 3760cbd — 3760cbd
-- [x] 4.8 A third member sees the payments and the same balances — 3760cbd — 3760cbd
-- [x] 4.9 The sender withdraws an unconfirmed payment and the balances return to the expense-only numbers — 3760cbd — 3760cbd
-- [x] 4.10 The panels and the Payments list read well at phone width (NFR-1) — 3760cbd — 3760cbd
+- [x] 4.6 Two browsers, the v1 failure scenario (A pays 200; B pays 100; A pays 100; B pays 50; B pays 300) ends with A owing B 150,00 zł, and every intermediate debt matches the money that moved — 613c2ec
+- [x] 4.7 Entering more than the debt is refused with a clear message; a partial amount leaves the rest as the debt — 3760cbd — 613c2ec
+- [x] 4.8 A third member sees the payments and the same balances — 3760cbd — 613c2ec
+- [x] 4.9 The sender withdraws an unconfirmed payment and the balances return to the expense-only numbers — 3760cbd — 613c2ec
+- [x] 4.10 The panels and the Payments list read well at phone width (NFR-1) — 3760cbd — 613c2ec
 
 ### Phase 5: Docs, PRD and roadmap
 
 #### Automated
 
-- [x] 5.1 Formatting passes on the edited documents: `npx prettier --check CLAUDE.md context/foundation context/deployment` — 1aab52a
-- [x] 5.2 Linting passes: `npm run lint` — 1aab52a
+- [x] 5.1 Formatting passes on the edited documents: `npx prettier --check CLAUDE.md context/foundation context/deployment` — 613c2ec
+- [x] 5.2 Linting passes: `npm run lint` — 613c2ec
 
 #### Manual
 
-- [x] 5.3 The PRD's FR-008/FR-009 and the roadmap's S-07/S-08/S-09 read consistently with the ledger model — 1aab52a
-- [x] 5.4 The user approves the edits to GitHub issues #12 and #13 before they are applied — 1aab52a
+- [x] 5.3 The PRD's FR-008/FR-009 and the roadmap's S-07/S-08/S-09 read consistently with the ledger model — 613c2ec
+- [x] 5.4 The user approves the edits to GitHub issues #12 and #13 before they are applied — 613c2ec

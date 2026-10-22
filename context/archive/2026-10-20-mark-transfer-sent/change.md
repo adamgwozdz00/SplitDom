@@ -1,9 +1,10 @@
 ---
 change_id: mark-transfer-sent
 title: Mark a transfer as sent (S-07)
-status: impl_reviewed
+status: archived
 created: 2026-10-20
 updated: 2026-10-22
+archived_at: 2026-10-22T08:42:52Z
 ---
 
 ## Notes
