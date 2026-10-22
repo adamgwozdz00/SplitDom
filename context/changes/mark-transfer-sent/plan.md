@@ -597,10 +597,10 @@ The period load gains one subquery over `payments`, a handful of rows per month,
 
 #### Automated
 
-- [x] 5.1 Formatting passes on the edited documents: `npx prettier --check CLAUDE.md context/foundation context/deployment`
-- [x] 5.2 Linting passes: `npm run lint`
+- [x] 5.1 Formatting passes on the edited documents: `npx prettier --check CLAUDE.md context/foundation context/deployment` — 1aab52a
+- [x] 5.2 Linting passes: `npm run lint` — 1aab52a
 
 #### Manual
 
-- [x] 5.3 The PRD's FR-008/FR-009 and the roadmap's S-07/S-08/S-09 read consistently with the ledger model
-- [x] 5.4 The user approves the edits to GitHub issues #12 and #13 before they are applied
+- [x] 5.3 The PRD's FR-008/FR-009 and the roadmap's S-07/S-08/S-09 read consistently with the ledger model — 1aab52a
+- [x] 5.4 The user approves the edits to GitHub issues #12 and #13 before they are applied — 1aab52a
