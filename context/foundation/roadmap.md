@@ -48,10 +48,10 @@ People who share household costs — partners or roommates — settle shared exp
 | S-04 | add-expense-see-balances    | member can add an expense split equally and immediately see every member's balance    | S-03          | US-01, FR-004, FR-005  | done        |
 | F-02 | billing-period-aggregate    | (foundation) `BillingPeriod` is the aggregate root that adds expenses and splits them | S-04          | FR-004, FR-005, FR-015 | done        |
 | F-03 | group-membership-aggregate  | (foundation) `Group` is the membership aggregate; `Invite` is an entity inside it     | S-03          | FR-002, FR-003         | done        |
-| S-05 | edit-own-expense-rules      | expense author can edit or delete their own expense only while it is still editable   | F-02          | FR-005                 | done |
+| S-05 | edit-own-expense-rules      | expense author can edit or delete their own expense only while it is still editable   | F-02          | FR-005                 | done        |
 | S-06 | generate-transfer-details   | debtor can copy transfer details (account number, amount, title) for a debt           | S-04          | FR-007                 | done        |
-| S-07 | mark-transfer-sent          | debtor can mark a transfer as sent, as a reminder for themselves                      | F-02          | FR-008                 | in-progress |
-| S-08 | confirm-debt-paid           | creditor can confirm a debt as paid, which closes it                                  | F-02          | FR-009                 | proposed    |
+| S-07 | mark-transfer-sent          | debtor can record a transfer as a payment that counts in the balances (pending)       | F-02          | FR-008                 | in-progress |
+| S-08 | confirm-debt-paid           | creditor can confirm or reject a payment, which makes it final (posted)               | F-02          | FR-009                 | proposed    |
 | S-09 | host-closes-period          | host can close a finished period, which freezes it and opens the next one             | S-05, S-08    | US-02, FR-015          | proposed    |
 | S-10 | member-profile-display-name | member can set a display name that the group shows instead of their email             | S-04          | — (supports US-01)     | proposed    |
 
@@ -103,7 +103,7 @@ Foundations below assume these are present and do NOT re-scaffold them.
 - **Parallel with:** S-01, S-06, S-10
 - **Blockers:** —
 - **Unknowns:**
-  - ~~Do transfers and paid-debt confirmations (FR-008/009) live inside `BillingPeriod`? Leaning yes, since they block edits and closing. — Owner: user. Block: no (F-02 only leaves room for them).~~ Resolved 2026-10-20 (S-07 planning): yes, a `Transfer` entity inside `BillingPeriod`, saved in the same version-guarded call as expenses; S-08 adds the confirmation to it (`context/changes/mark-transfer-sent/plan.md`).
+  - ~~Do transfers and paid-debt confirmations (FR-008/009) live inside `BillingPeriod`? Leaning yes, since they block edits and closing. — Owner: user. Block: no (F-02 only leaves room for them).~~ Resolved 2026-10-21 (S-07 replanning): yes, as `Payment` entries of the period's ledger, saved in the same version-guarded call as expenses and counted in its balances; S-08 adds the confirmation to them (`context/changes/mark-transfer-sent/plan.md`).
   - FR-005 locks an expense once "its debt" is paid, but debts are netted per pair of members across many expenses. Does a paid debt lock every expense of that pair in the period, or freeze the balance and let later edits create a compensating debt? — Owner: user. Block: S-05, S-08.
   - ~~Concurrent writes: two members adding an expense at once both change the same aggregate, so `billing_periods` needs a version column (optimistic locking) or an equivalent guard.~~ Resolved (F-02 planning): a `version` column on `billing_periods`, bumped by a conditional update in `save_billing_period`; the service reloads and retries once, then returns `period_changed` (`context/changes/billing-period-aggregate/plan.md`).
   - ~~Does the open period move out of the `Group` aggregate into its own `billing_periods` repository?~~ Resolved (F-02 planning): yes, `Group` keeps membership and the host, and the period lives in the `BillingPeriod` aggregate with its own repository; creating a group is two writes, repaired by `openFor`.
@@ -209,25 +209,26 @@ Foundations below assume these are present and do NOT re-scaffold them.
 
 ### S-07: Mark a transfer as sent
 
-- **Outcome:** debtor can mark a transfer as sent, as a reminder for themselves; the debt stays open until the creditor confirms it.
+- **Outcome:** debtor can record a transfer they sent as a payment: an entry in the period's ledger that counts in the balances at once (pending until the creditor confirms it, S-08), is capped by the current debt, is visible to the group and can be withdrawn while unconfirmed. The page shows pending balances; confirmed payments make up the posted balances that rules use.
 - **Change ID:** mark-transfer-sent
 - **PRD refs:** FR-008
 - **Prerequisites:** F-02
 - **Parallel with:** S-01, S-05, S-06, S-08, S-09, S-10
 - **Blockers:** —
 - **Unknowns:** —
-- **Risk:** Small, independent status change; sequenced after S-04 only because it needs a debt to exist.
+- **Risk:** Replanned 2026-10-21: a per-pair "sent" mark kept outside the balances drifted from the real debt (a debt that later reversed lost the money already sent), so payments became ledger entries counted in the balances (`context/changes/mark-transfer-sent/external-research.md`, `plan.md`). The risk is balance correctness, guarded by a unit test of that scenario.
 - **Status:** in-progress
 
 ### S-08: Confirm a debt as paid
 
-- **Outcome:** creditor can confirm that a debt has been paid, which closes it and locks the related expense against edits.
+- **Outcome:** creditor can confirm or reject a payment sent to them (S-07 builds the payment ledger and the sender's actions). Confirming makes the payment final and counts it in the posted balances; rejecting removes it.
 - **Change ID:** confirm-debt-paid
 - **PRD refs:** FR-009
 - **Prerequisites:** F-02
 - **Parallel with:** S-01, S-05, S-06, S-07, S-10
 - **Blockers:** —
-- **Unknowns:** —
+- **Unknowns:**
+  - Is FR-005's paid-debt lock of an expense still needed? Payments now live in the ledger, so editing an expense after a payment only shifts the balance and keeps the payment. Decide in S-08 planning whether to drop the lock or keep it for confirmed payments. — Owner: user.
 - **Risk:** The only action that finally settles money in the app; S-09's closing precondition depends on it, so it sits on the path to milestone completion.
 - **Status:** proposed
 
@@ -244,6 +245,7 @@ Foundations below assume these are present and do NOT re-scaffold them.
   - ~~How does `add_expense` stay safe against a period closed between loading the group and storing the expense?~~ Resolved by F-02: `save_billing_period` only stores expenses if the period's `version` is unchanged, so a close that bumped `version` makes the stale add fail, and its retry reloads the closed period, which the aggregate refuses. S-09's close must bump `version`. (S-04 implementation review, 2026-10-06)
   - S-09 prerequisite (F-02 implementation review, 2026-10-07): the old `add_expense` does not bump `version`, so the contract migration that drops `create_group`, `add_expense`, `list_period_expenses` and `open_period` must land before S-09 ships.
   - Can the new open period's month start after today in Europe/Warsaw? If so, `PurchaseDate.window` gives min > max and rejects every purchase date, so either the next period opens only once its month has started or the window rule changes. (S-04 implementation review, 2026-10-06)
+- **Risk note (2026-10-21):** "the host's own debts are paid" is judged on the posted balances (expenses plus confirmed payments), not on the pending ones.
 - **Risk:** The most rule-heavy slice (host-only, month ended, host's debts paid, exactly one new open period); placed last because it consumes the edit-lock and paid-debt rules from S-05 and S-08.
 - **Status:** proposed
 
@@ -276,8 +278,8 @@ Mirrored on GitHub: milestone [M-1](https://github.com/adamgwozdz00/SplitDom/mil
 | F-03       | group-membership-aggregate  | Refactor: Group as the membership aggregate (Invite inside)  | yes                   | [#34](https://github.com/adamgwozdz00/SplitDom/issues/34) · Needs S-03 (done); run `/10x-plan group-membership-aggregate`                                        |
 | S-05       | edit-own-expense-rules      | Enforce edit/delete rules for an author's own expenses       | no                    | [#10](https://github.com/adamgwozdz00/SplitDom/issues/10) · Needs S-04                                                                                           |
 | S-06       | generate-transfer-details   | Generate copyable transfer details for a debt                | no                    | [#11](https://github.com/adamgwozdz00/SplitDom/issues/11) · Needs S-04                                                                                           |
-| S-07       | mark-transfer-sent          | Let the debtor mark a transfer as sent                       | no                    | [#12](https://github.com/adamgwozdz00/SplitDom/issues/12) · Needs S-04                                                                                           |
-| S-08       | confirm-debt-paid           | Let the creditor confirm a debt as paid                      | no                    | [#13](https://github.com/adamgwozdz00/SplitDom/issues/13) · Needs S-04                                                                                           |
+| S-07       | mark-transfer-sent          | Let the debtor record a payment that counts in the balances  | no                    | [#12](https://github.com/adamgwozdz00/SplitDom/issues/12) · Needs S-04                                                                                           |
+| S-08       | confirm-debt-paid           | Let the creditor confirm or reject a payment                 | no                    | [#13](https://github.com/adamgwozdz00/SplitDom/issues/13) · Needs S-04                                                                                           |
 | S-09       | host-closes-period          | Let the host close a finished period and open the next one   | no                    | [#14](https://github.com/adamgwozdz00/SplitDom/issues/14) · Needs S-05 and S-08                                                                                  |
 | S-10       | member-profile-display-name | Let a member set a display name shown instead of their email | no                    | [#27](https://github.com/adamgwozdz00/SplitDom/issues/27) · Needs S-04                                                                                           |
 

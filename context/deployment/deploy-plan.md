@@ -157,6 +157,10 @@ The migration `edit_delete_expenses` adds one `security definer` function, `save
 
 The migration `member_profiles` adds the table `member_profiles` (one row per user: the bank account number, a `version`) and three `security definer` functions: `get_my_member_profile`, `save_my_member_profile` and `get_group_member_account_numbers`. It only adds objects, so it is compatible with the previously deployed Worker and needs no Supabase or Cloudflare configuration change. The table has row-level security with no policies and no grants for `anon`/`authenticated`; the numbers are the most sensitive data in the app, so the pages that show one are sent with `Cache-Control: no-store`. The numbers are stored as plain text (no column encryption beyond Supabase's disk encryption). Unlike the group tables, the user foreign key cascades, so deleting a user deletes their profile.
 
+## Payments (added 2026-10-21, change `mark-transfer-sent`, S-07)
+
+The migration `payments` adds the table `payments` (one row per transfer a member reports sending: the pair, the amount in grosze, when it was sent and, once S-08 exists, when it was confirmed) and one `security definer` function, `save_billing_period_with_payments`, which stores the expenses and the payments of a period in one call guarded by its `version`. It also replaces `get_current_billing_period` with a version that returns the period's payments under a new `payments` key. It only adds objects and a key, so it is compatible with the previously deployed Worker (which keeps calling `save_billing_period_changes` and ignores the new key) and needs no Supabase or Cloudflare configuration change. The table has row-level security with no policies and no grants for `anon`/`authenticated`. A period's payments are returned to every member of the group, like its expenses, and the group page shows them to all of them. `save_billing_period_changes` stays until the contract migration.
+
 ## Out of scope
 
 Multi-region HA, Docker, and anything beyond first MVP deploy — per `infrastructure.md`'s own scope boundary.
