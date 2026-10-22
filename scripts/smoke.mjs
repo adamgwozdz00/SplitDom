@@ -236,7 +236,13 @@ async function userIdOf(userEmail) {
 }
 
 // The ids of the payments the debtor sends; a form carries its id, so sending it twice records it once.
-const paymentIds = { part: randomUUID(), tooMuch: randomUUID(), byCreditor: randomUUID() };
+const paymentIds = {
+  part: randomUUID(),
+  tooMuch: randomUUID(),
+  byCreditor: randomUUID(),
+  toConfirm: randomUUID(),
+  toReject: randomUUID(),
+};
 
 // Posts a payment of group A to the user `toEmail` (the sender is whoever is signed in).
 async function postPayment(toEmail, paymentId, amount) {
@@ -248,6 +254,12 @@ async function postPayment(toEmail, paymentId, amount) {
 function withdrawPayment(paymentId) {
   if (groupIds[0] === undefined) return Promise.resolve({ status: 0, location: "(group A was not created)", body: "" });
   return request(`/api/groups/${groupIds[0]}/payments/${paymentId}/withdraw`, { method: "POST" });
+}
+
+// The recipient confirms or rejects a payment of group A (the acting user is whoever is signed in).
+function decidePayment(paymentId, decision) {
+  if (groupIds[0] === undefined) return Promise.resolve({ status: 0, location: "(group A was not created)", body: "" });
+  return request(`/api/groups/${groupIds[0]}/payments/${paymentId}/${decision}`, { method: "POST" });
 }
 
 function checkPaymentError(error) {
@@ -296,6 +308,34 @@ async function creditorSendsInDebtorsNameDirectly() {
         },
       ],
       p_withdrawn: [],
+    },
+  });
+}
+
+// The debtor tries to confirm a payment they sent (they are not its recipient) straight through the Data API.
+async function debtorConfirmsOwnPaymentDirectly() {
+  const debtor = await authSession(email);
+  // The group's real open period, so the refusal comes from the recipient backstop and not from an unknown period.
+  const loaded = await directRpc("get_current_billing_period", {
+    token: debtor.token,
+    headers: { "x-app-key": SUPABASE_APP_KEY },
+    args: { p_group_id: groupIds[0] },
+  });
+  const periodId = JSON.parse(loaded.body).id;
+  return directRpc("save_billing_period_with_confirmations", {
+    token: debtor.token,
+    headers: { "x-app-key": SUPABASE_APP_KEY },
+    args: {
+      p_period_id: periodId,
+      p_group_id: groupIds[0],
+      p_expected_version: 0,
+      p_added: [],
+      p_changed: [],
+      p_removed: [],
+      p_sent: [],
+      p_withdrawn: [],
+      p_confirmed: [{ id: paymentIds.part, confirmed_at: new Date().toISOString() }],
+      p_rejected: [],
     },
   });
 }
@@ -584,6 +624,21 @@ const steps = [
     { status: 200, check: allOf(bodyContains("You owe", "200,00"), checkPaymentRows(1)) },
   ],
   [
+    "the debtor sends a payment the creditor will confirm",
+    () => postPayment(email2, paymentIds.toConfirm, "50,00"),
+    { status: 302, check: checkExpenseLocation(0) },
+  ],
+  [
+    "the debtor sends a payment the creditor will reject",
+    () => postPayment(email2, paymentIds.toReject, "25,00"),
+    { status: 302, check: checkExpenseLocation(0) },
+  ],
+  [
+    "the debt shrinks by all three payments",
+    requestGroupA,
+    { status: 200, check: allOf(bodyContains("You owe", "125,00"), checkPaymentRows(3)) },
+  ],
+  [
     "the debtor's own profile page does not show the creditor's number",
     () => request("/profile"),
     { status: 200, check: bodyLacks(ACCOUNT_LABEL, ACCOUNT_DIGITS) },
@@ -621,9 +676,16 @@ const steps = [
     {
       status: 200,
       check: allOf(
-        bodyContains("Payments", "100,00", "awaiting confirmation"),
+        bodyContains(
+          "Payments",
+          "100,00",
+          "awaiting confirmation",
+          "3 payments await your confirmation",
+          "Confirm",
+          "Reject",
+        ),
         bodyLacks("Withdraw"),
-        checkPaymentRows(1),
+        checkPaymentRows(3),
       ),
     },
   ],
@@ -658,6 +720,54 @@ const steps = [
     { status: 302, check: checkExpenseError(0, "expense_not_found") },
   ],
   [
+    "the creditor adds another expense",
+    () => postExpense(0, { title: "Prąd", amount: "80,00", purchasedOn: todayInWarsaw }),
+    { status: 302, check: checkExpenseLocation(0) },
+  ],
+  ["the author sees an Edit link on it", requestGroupA, { status: 200, check: checkEditLinkShown }],
+  [
+    "the creditor confirms a payment",
+    () => decidePayment(paymentIds.toConfirm, "confirm"),
+    { status: 302, check: checkExpenseLocation(0) },
+  ],
+  [
+    "confirming it again is not an error",
+    () => decidePayment(paymentIds.toConfirm, "confirm"),
+    { status: 302, check: checkExpenseLocation(0) },
+  ],
+  [
+    "the creditor rejects a payment",
+    () => decidePayment(paymentIds.toReject, "reject"),
+    { status: 302, check: checkExpenseLocation(0) },
+  ],
+  [
+    "the page shows both decisions, the debt, the remaining pending payment and the locked expense",
+    requestGroupA,
+    {
+      status: 200,
+      check: allOf(
+        bodyContains("confirmed", "rejected", "You owe", "110,00", "1 payment awaits your confirmation", "locked"),
+        bodyLacks("/edit"),
+        checkPaymentRows(3),
+      ),
+    },
+  ],
+  [
+    "a rejected payment cannot be confirmed",
+    () => decidePayment(paymentIds.toReject, "confirm"),
+    { status: 302, check: checkPaymentError("payment_not_pending") },
+  ],
+  [
+    "a confirmed payment locks the expense: the author cannot edit it",
+    () => requestExpense(0, "/edit", { method: "POST", api: true, form: edited }),
+    { status: 302, check: checkExpenseError(0, "expense_locked") },
+  ],
+  [
+    "a confirmed payment locks the expense: the author cannot delete it",
+    () => requestExpense(0, "/delete", { method: "POST", api: true }),
+    { status: 302, check: checkExpenseError(0, "expense_locked") },
+  ],
+  [
     "second user signs out again",
     () => request("/api/auth/signout", { method: "POST" }),
     { status: 302, location: "/" },
@@ -670,7 +780,27 @@ const steps = [
   [
     "the payment still counts after the debt is gone: the creditor now owes the debtor",
     requestGroupA,
-    { status: 200, check: bodyContains("owes", "You", "100,00", "Withdraw") },
+    { status: 200, check: bodyContains("owes", "You", "110,00", "Withdraw") },
+  ],
+  [
+    "the debtor cannot withdraw a confirmed payment",
+    () => withdrawPayment(paymentIds.toConfirm),
+    { status: 302, check: checkPaymentError("payment_confirmed") },
+  ],
+  [
+    "the debtor cannot withdraw a rejected payment",
+    () => withdrawPayment(paymentIds.toReject),
+    { status: 302, check: checkPaymentError("payment_not_pending") },
+  ],
+  [
+    "the debtor cannot confirm a payment they sent",
+    () => decidePayment(paymentIds.part, "confirm"),
+    { status: 302, check: checkPaymentError("not_payment_recipient") },
+  ],
+  [
+    "the debtor cannot confirm their own payment through the Data API",
+    debtorConfirmsOwnPaymentDirectly,
+    { status: 403, check: bodyContains('"code":"42501"') },
   ],
   [
     "the debtor withdraws the payment",
@@ -678,9 +808,16 @@ const steps = [
     { status: 302, check: checkExpenseLocation(0) },
   ],
   [
-    "the payment and the debt are gone",
+    "the pending payment and the debt are gone; the decided payments stay listed",
     requestGroupA,
-    { status: 200, check: bodyContains("No payments yet", "All settled") },
+    {
+      status: 200,
+      check: allOf(
+        bodyContains("owes", "You", "10,00", "confirmed", "rejected"),
+        bodyLacks("Withdraw", "No payments yet"),
+        checkPaymentRows(2),
+      ),
+    },
   ],
   [
     "withdrawing it again is not an error",

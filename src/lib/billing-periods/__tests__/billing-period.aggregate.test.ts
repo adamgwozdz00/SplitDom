@@ -415,15 +415,21 @@ describe("BillingPeriod payments", () => {
   }
 
   // The period as it was stored after MEMBER sent `p-1`, so the payment counts as loaded.
-  function storedWithPayment(confirmedAt: string | null = null): BillingPeriod {
+  function storedWithPayment(confirmedAt: string | null = null, rejectedAt: string | null = null): BillingPeriod {
     const period = withDebt();
     send(period);
     const snapshot = period.toSnapshot();
     return BillingPeriod.restore(
-      { ...snapshot, payments: snapshot.payments.map((payment) => ({ ...payment, confirmedAt })) },
+      { ...snapshot, payments: snapshot.payments.map((payment) => ({ ...payment, confirmedAt, rejectedAt })) },
       [HOST, MEMBER],
     );
   }
+
+  const DECIDED_AT = new Date("2026-10-17T08:00:00.000Z");
+  const decide = (period: BillingPeriod, kind: "confirm" | "reject", userId = HOST, paymentId = "p-1") =>
+    kind === "confirm"
+      ? period.confirmPayment({ paymentId, userId, now: DECIDED_AT })
+      : period.rejectPayment({ paymentId, userId, now: DECIDED_AT });
 
   const debtsOf = (period: BillingPeriod) =>
     period.pendingBalances().debts.map((debt) => [debt.debtorId, debt.creditorId, debt.amount.grosze]);
@@ -588,6 +594,218 @@ describe("BillingPeriod payments", () => {
       expect(
         storedWithPayment("2026-10-17T08:00:00.000Z").withdrawPayment({ paymentId: "p-1", userId: MEMBER }),
       ).toMatchObject({ error: { code: "payment_confirmed" } });
+    });
+  });
+
+  describe("confirmPayment", () => {
+    it("lets the recipient confirm: posted balances include the payment, pending balances do not change", () => {
+      const period = storedWithPayment();
+      const pendingBefore = debtsOf(period);
+      expect(period.postedBalances().debts.map((debt) => debt.amount.grosze)).toEqual([20000]);
+
+      expect(decide(period, "confirm")).toEqual({ data: undefined });
+
+      expect(period.postedBalances().debts).toEqual([]);
+      expect(debtsOf(period)).toEqual(pendingBefore);
+      expect(period.payments[0].status()).toBe("confirmed");
+      expect(period.payments[0].confirmedAt).toEqual(DECIDED_AT);
+      expect(period.confirmedPayments().map((payment) => payment.id)).toEqual(["p-1"]);
+      expect(period.rejectedPayments()).toEqual([]);
+    });
+
+    it("refuses, in order, a closed period, an unknown payment and a user who is not the recipient", () => {
+      const closed = BillingPeriod.restore(
+        { ...storedWithPayment().toSnapshot(), closedAt: "2026-11-01T08:00:00.000Z" },
+        [HOST, MEMBER],
+      );
+      expect(decide(closed, "confirm")).toMatchObject({ error: { code: "billing_period_closed" } });
+
+      const period = storedWithPayment();
+      expect(decide(period, "confirm", HOST, "nope")).toMatchObject({ error: { code: "payment_not_found" } });
+      expect(decide(period, "confirm", MEMBER)).toMatchObject({ error: { code: "not_payment_recipient" } });
+      expect(decide(period, "confirm", "stranger")).toMatchObject({ error: { code: "not_payment_recipient" } });
+      expect(period.confirmedPayments()).toEqual([]);
+    });
+
+    it("succeeds again without a second pending write when the payment is already confirmed", () => {
+      const period = storedWithPayment();
+      decide(period, "confirm");
+
+      expect(decide(period, "confirm")).toEqual({ data: undefined });
+      expect(period.confirmedPayments()).toHaveLength(1);
+
+      const alreadyStored = storedWithPayment("2026-10-17T08:00:00.000Z");
+      expect(decide(alreadyStored, "confirm")).toEqual({ data: undefined });
+      expect(alreadyStored.confirmedPayments()).toEqual([]);
+    });
+
+    it("refuses to confirm a rejected payment", () => {
+      expect(decide(storedWithPayment(null, "2026-10-17T08:00:00.000Z"), "confirm")).toMatchObject({
+        error: { code: "payment_not_pending" },
+      });
+    });
+
+    it("confirms a payment sent since the period was loaded", () => {
+      const period = withDebt();
+      send(period);
+
+      expect(decide(period, "confirm")).toEqual({ data: undefined });
+      expect(period.payments[0].isConfirmed()).toBe(true);
+      expect(period.postedBalances().debts).toEqual([]);
+    });
+  });
+
+  describe("rejectPayment", () => {
+    it("keeps the payment in the ledger but drops it from both balances, so the debt comes back", () => {
+      const period = storedWithPayment();
+      expect(debtsOf(period)).toEqual([]);
+
+      expect(decide(period, "reject")).toEqual({ data: undefined });
+
+      expect(period.payments).toHaveLength(1);
+      expect(period.payments[0].status()).toBe("rejected");
+      expect(period.payments[0].rejectedAt).toEqual(DECIDED_AT);
+      expect(debtsOf(period)).toEqual([[MEMBER, HOST, 20000]]);
+      expect(period.postedBalances().debts.map((debt) => debt.amount.grosze)).toEqual([20000]);
+      expect(period.rejectedPayments().map((payment) => payment.id)).toEqual(["p-1"]);
+      expect(period.confirmedPayments()).toEqual([]);
+    });
+
+    it("lets the sender pay the full debt again after a rejection", () => {
+      const period = storedWithPayment();
+      decide(period, "reject");
+
+      expect(send(period, { id: "p-2", grosze: 20000 })).toMatchObject({ data: { id: "p-2" } });
+      expect(debtsOf(period)).toEqual([]);
+    });
+
+    it("refuses, in order, a closed period, an unknown payment and a user who is not the recipient", () => {
+      const closed = BillingPeriod.restore(
+        { ...storedWithPayment().toSnapshot(), closedAt: "2026-11-01T08:00:00.000Z" },
+        [HOST, MEMBER],
+      );
+      expect(decide(closed, "reject")).toMatchObject({ error: { code: "billing_period_closed" } });
+
+      const period = storedWithPayment();
+      expect(decide(period, "reject", HOST, "nope")).toMatchObject({ error: { code: "payment_not_found" } });
+      expect(decide(period, "reject", MEMBER)).toMatchObject({ error: { code: "not_payment_recipient" } });
+      expect(decide(period, "reject", "stranger")).toMatchObject({ error: { code: "not_payment_recipient" } });
+      expect(period.rejectedPayments()).toEqual([]);
+    });
+
+    it("succeeds again without a second pending write when the payment is already rejected", () => {
+      const period = storedWithPayment();
+      decide(period, "reject");
+
+      expect(decide(period, "reject")).toEqual({ data: undefined });
+      expect(period.rejectedPayments()).toHaveLength(1);
+
+      const alreadyStored = storedWithPayment(null, "2026-10-17T08:00:00.000Z");
+      expect(decide(alreadyStored, "reject")).toEqual({ data: undefined });
+      expect(alreadyStored.rejectedPayments()).toEqual([]);
+    });
+
+    it("refuses to reject a confirmed payment", () => {
+      expect(decide(storedWithPayment("2026-10-17T08:00:00.000Z"), "reject")).toMatchObject({
+        error: { code: "payment_not_pending" },
+      });
+    });
+  });
+
+  describe("after a decision", () => {
+    it("refuses the sender to withdraw a rejected payment", () => {
+      expect(
+        storedWithPayment(null, "2026-10-17T08:00:00.000Z").withdrawPayment({ paymentId: "p-1", userId: MEMBER }),
+      ).toMatchObject({ error: { code: "payment_not_pending" } });
+    });
+
+    it("locks the expense of the pair of a confirmed payment: no edit, no delete, the payment stays", () => {
+      const period = storedWithPayment();
+      decide(period, "confirm");
+      const expense = period.expenses[0];
+
+      expect(period.isLocked(expense)).toBe(true);
+      expect(period.canEdit(expense, HOST)).toBe(false);
+      expect(code(edit(period, { grosze: 60000 }))).toBe("expense_locked");
+      expect(period.removeExpense({ expenseId: "e-1", userId: HOST })).toMatchObject({
+        error: { code: "expense_locked" },
+      });
+      expect(period.payments[0].isConfirmed()).toBe(true);
+      expect(debtsOf(period)).toEqual([]);
+    });
+    describe("the expense lock", () => {
+      const THIRD = "third";
+      const THREE = [HOST, MEMBER, THIRD];
+
+      // HOST paid e-1 and MEMBER paid e-2, both split between all three; payments are stored as given.
+      function threeWay(payments: { id: string; from: string; to: string; confirmed?: boolean; rejected?: boolean }[]) {
+        const period = octoberPeriod(THREE);
+        add(period, { id: "e-1", payerId: HOST, grosze: 30000 });
+        add(period, { id: "e-2", payerId: MEMBER, grosze: 30000 });
+        const snapshot = period.toSnapshot();
+        return BillingPeriod.restore(
+          {
+            ...snapshot,
+            payments: payments.map((payment) => ({
+              id: payment.id,
+              senderId: payment.from,
+              recipientId: payment.to,
+              amount: 1000,
+              sentAt: "2026-10-16T12:00:00.000Z",
+              confirmedAt: payment.confirmed ? "2026-10-17T08:00:00.000Z" : null,
+              rejectedAt: payment.rejected ? "2026-10-17T08:00:00.000Z" : null,
+            })),
+          },
+          THREE,
+        );
+      }
+      const lockedIds = (period: BillingPeriod) =>
+        period.expenses.filter((expense) => period.isLocked(expense)).map((expense) => expense.id);
+
+      it("locks in the direction sharer to payer", () => {
+        expect(lockedIds(threeWay([{ id: "p", from: MEMBER, to: HOST, confirmed: true }]))).toContain("e-1");
+      });
+
+      it("locks in the direction payer to sharer", () => {
+        expect(lockedIds(threeWay([{ id: "p", from: HOST, to: MEMBER, confirmed: true }]))).toContain("e-1");
+      });
+
+      it("locks both expenses of a pair that paid each other's", () => {
+        expect(lockedIds(threeWay([{ id: "p", from: MEMBER, to: HOST, confirmed: true }]))).toEqual(["e-1", "e-2"]);
+      });
+
+      it("does not lock for a pending or rejected payment", () => {
+        expect(lockedIds(threeWay([{ id: "p", from: MEMBER, to: HOST }]))).toEqual([]);
+        expect(lockedIds(threeWay([{ id: "p", from: MEMBER, to: HOST, rejected: true }]))).toEqual([]);
+      });
+
+      it("does not lock an expense for a confirmed payment of another pair", () => {
+        const period = threeWay([{ id: "p", from: THIRD, to: MEMBER, confirmed: true }]);
+        expect(lockedIds(period)).toEqual(["e-2"]);
+        expect(period.canEdit(period.expenses[0], HOST)).toBe(true);
+        expect(code(edit(period, { grosze: 60000 }))).toBe("ok");
+      });
+
+      it("refuses in order: closed, unknown, not the author, then locked", () => {
+        const period = threeWay([{ id: "p", from: MEMBER, to: HOST, confirmed: true }]);
+        expect(code(edit(period, { expenseId: "nope" }))).toBe("expense_not_found");
+        expect(code(edit(period, { expenseId: "e-1", userId: THIRD }))).toBe("not_expense_author");
+        expect(code(edit(period, { expenseId: "e-1", userId: HOST }))).toBe("expense_locked");
+
+        const snapshot = period.toSnapshot();
+        const closed = BillingPeriod.restore({ ...snapshot, closedAt: "2026-11-02T08:00:00.000Z" }, THREE);
+        expect(code(edit(closed, { expenseId: "e-1", userId: HOST }))).toBe("billing_period_closed");
+      });
+    });
+
+    it("round-trips decisions through the snapshot", () => {
+      const period = storedWithPayment();
+      decide(period, "reject");
+
+      const restored = BillingPeriod.restore(period.toSnapshot(), [HOST, MEMBER]);
+
+      expect(restored.payments[0].status()).toBe("rejected");
+      expect(restored.rejectedPayments()).toEqual([]);
     });
   });
 

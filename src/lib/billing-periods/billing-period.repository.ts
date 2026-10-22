@@ -48,7 +48,7 @@ export function createSupabaseBillingPeriodRepository(client: SupabaseClient<Dat
     },
 
     async save(period) {
-      const { data, error } = await client.rpc("save_billing_period_with_payments", {
+      const { data, error } = await client.rpc("save_billing_period_with_confirmations", {
         p_period_id: period.id,
         p_group_id: period.groupId,
         p_expected_version: period.version,
@@ -57,6 +57,14 @@ export function createSupabaseBillingPeriodRepository(client: SupabaseClient<Dat
         p_removed: [...period.removedExpenseIds()],
         p_sent: period.sentPayments().map(toPaymentRow),
         p_withdrawn: [...period.withdrawnPaymentIds()],
+        p_confirmed: period.confirmedPayments().map((payment) => ({
+          id: payment.id,
+          confirmed_at: payment.confirmedAt?.toISOString() ?? null,
+        })),
+        p_rejected: period.rejectedPayments().map((payment) => ({
+          id: payment.id,
+          rejected_at: payment.rejectedAt?.toISOString() ?? null,
+        })),
       });
       if (error) {
         return fromDbError(error);
@@ -105,8 +113,9 @@ function fromDbError(error: PostgrestError): BillingPeriodError {
   switch (error.code) {
     case "28000":
       return billingPeriodError("not_authenticated");
-    // Also raised by save_billing_period_with_payments when an expense or a payment is not the caller's; the aggregate checks the author first,
-    // so in practice this is a caller who is not a member of the group.
+    // Also raised by save_billing_period_with_confirmations when an expense or a payment is not the caller's (or a
+    // decided payment was not sent to the caller); the aggregate checks the author and the recipient first, so in
+    // practice this is a caller who is not a member of the group.
     case "42501":
       return billingPeriodError("group_not_found");
     default:
@@ -129,7 +138,7 @@ function restore(value: Json, group: Group): Result<BillingPeriod> {
   }
 }
 
-/** Maps an expense to the snake_case shape `save_billing_period_with_payments` stores. */
+/** Maps an expense to the snake_case shape `save_billing_period_with_confirmations` stores. */
 function toRow(expense: ExpenseSnapshot): Json {
   return {
     id: expense.id,
@@ -188,7 +197,7 @@ function toExpenseSnapshot(value: Json): ExpenseSnapshot {
   };
 }
 
-/** Maps a payment to the snake_case shape `save_billing_period_with_payments` stores. */
+/** Maps a payment to the snake_case shape `save_billing_period_with_confirmations` stores. */
 function toPaymentRow(payment: Payment): Json {
   const snapshot = payment.toSnapshot();
   return {
@@ -209,6 +218,7 @@ function toPaymentSnapshot(value: Json): PaymentSnapshot {
     amount: asInteger(row.amount, "payment.amount"),
     sentAt: asInstant(row.sent_at, "payment.sent_at"),
     confirmedAt: row.confirmed_at === null ? null : asInstant(row.confirmed_at, "payment.confirmed_at"),
+    rejectedAt: row.rejected_at === null ? null : asInstant(row.rejected_at, "payment.rejected_at"),
   };
 }
 

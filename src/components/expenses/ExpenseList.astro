@@ -28,6 +28,12 @@ const { group, period, month, expenses, viewerId } = Astro.props;
           </div>
           <div class="text-blue-100/70">
             Paid by {memberLabel(group.members, expense.payerId, viewerId)} · {expense.purchasedOn.label()}
+            {period.isOpen() && expense.payerId === viewerId && period.isLocked(expense) && (
+              <>
+                {" · "}
+                <span data-expense-locked>locked</span>
+              </>
+            )}
             {period.canEdit(expense, viewerId) && (
               <>
                 {" · "}
