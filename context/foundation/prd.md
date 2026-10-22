@@ -90,10 +90,10 @@ Osoba współdzieląca koszty gospodarstwa domowego z innymi — małżonek/part
 ### Rozliczenie i przelewy
 - FR-007: Użytkownik może wygenerować dane do przelewu rozliczającego dług wobec innego członka grupy — tekst do ręcznego skopiowania: numer konta, kwota, tytuł przelewu. Priority: must-have
   > Socrates: Counter-argument considered: "bez integracji z konkretnym bankiem format danych może nie pasować do żadnej bankowości." Resolution: dane mają uniwersalny, tekstowy format (numer konta, kwota, tytuł) do ręcznego wklejenia w dowolnej bankowości elektronicznej.
-- FR-008: Nadawca przelewu może oznaczyć przelew jako wysłany — to przypomnienie dla nadawcy, nie ostateczne potwierdzenie rozliczenia długu. Priority: must-have
-  > Socrates: Counter-argument considered: "brak weryfikacji, że przelew faktycznie wysłano — możliwe nadużycie." Resolution: oznaczenie "wysłano" jest tylko informacyjne dla nadawcy; ostateczne zamknięcie długu następuje dopiero, gdy odbiorca potwierdzi otrzymanie (FR-009).
-- FR-009: Odbiorca przelewu może oznaczyć dług jako spłacony po otrzymaniu przelewu — to ostateczne potwierdzenie zamykające dług. Priority: must-have
-  > Socrates: Counter-argument considered: "odbiorca może zapomnieć/zwlekać z potwierdzeniem, więc dług formalnie zostaje otwarty mimo otrzymanej wpłaty." Resolution: zaakceptowane — dług widnieje jako "oczekujący" aż do potwierdzenia przez odbiorcę; brak dodatkowej logiki na MVP.
+- FR-008: Nadawca przelewu może zapisać go w aplikacji jako wysłaną wpłatę (kwota, data). Wpłata liczy się w saldach od razu jako oczekująca na potwierdzenie, nie może przekraczać bieżącego długu, a nadawca może ją wycofać, dopóki odbiorca jej nie potwierdzi. Priority: must-have
+  > Socrates: Counter-argument considered: "brak weryfikacji, że przelew faktycznie wysłano — możliwe nadużycie." Resolution: wysłana wpłata zmienia salda oczekujące (widoczne dla grupy, z adnotacją "oczekuje na potwierdzenie"), bo saldo ma odzwierciedlać pieniądze, które faktycznie przeszły — samo przypomnienie poza saldami rozjeżdżało się z rzeczywistym długiem. Ostatnie słowo należy do odbiorcy: dopiero jego potwierdzenie (FR-009) czyni wpłatę ostateczną (zaksięgowaną), a odrzucenie ją usuwa.
+- FR-009: Odbiorca przelewu może potwierdzić wpłatę po otrzymaniu przelewu albo ją odrzucić — potwierdzenie czyni wpłatę ostateczną (wlicza ją do sald zaksięgowanych, na których opierają się reguły, np. zamknięcie okresu FR-015). Priority: must-have
+  > Socrates: Counter-argument considered: "odbiorca może zapomnieć/zwlekać z potwierdzeniem, więc dług formalnie zostaje otwarty mimo otrzymanej wpłaty." Resolution: zaakceptowane — wpłata widnieje jako "oczekująca" aż do potwierdzenia przez odbiorcę i w międzyczasie zmniejsza saldo oczekujące; brak dodatkowej logiki na MVP.
 
 ### Funkcje dodatkowe (nice-to-have)
 - FR-010: Użytkownik może wygenerować kod QR do zapłaty w banku. Priority: nice-to-have

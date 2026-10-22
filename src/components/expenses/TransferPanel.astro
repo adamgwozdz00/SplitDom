@@ -12,15 +12,23 @@ interface Props {
   monthLabel: string;
   /** Account numbers of the viewer's creditors; a creditor missing from the map has none (or it could not be loaded). */
   accountNumbers: Map<string, AccountNumber>;
+  /** Already-translated message for a refused payment or withdrawal. */
+  error: string | null;
 }
 
-const { group, balances, viewerId, monthLabel, accountNumbers } = Astro.props;
+const { group, balances, viewerId, monthLabel, accountNumbers, error } = Astro.props;
+
+const paymentAction = `/api/groups/${encodeURIComponent(group.id)}/payments`;
 
 const transfers = balances.debts
   .filter((debt) => debt.debtorId === viewerId)
   .map((debt) => {
     const account = accountNumbers.get(debt.creditorId) ?? null;
     return {
+      creditorId: debt.creditorId,
+      // Identifies this form submission, so sending it twice records the payment once.
+      paymentId: crypto.randomUUID(),
+      amountInput: debt.amount.formInput(),
       creditor: memberLabel(group.members, debt.creditorId, viewerId),
       amountLabel: debt.amount.label(),
       accountLabel: account?.label() ?? null,
@@ -34,9 +42,14 @@ const transfers = balances.debts
   });
 ---
 
-{transfers.length > 0 && (
+{(transfers.length > 0 || error) && (
   <div data-transfer-panel>
     <h3 class="mb-2 text-sm font-semibold text-blue-100/80">Transfer details</h3>
+    {error && (
+      <p role="alert" class="mb-2 rounded-lg border border-red-500/30 bg-red-900/30 px-3 py-2 text-sm text-red-300">
+        {error}
+      </p>
+    )}
     <ul class="space-y-3">
       {transfers.map((transfer) => (
         <li class="rounded-lg border border-white/10 bg-white/5 p-3 text-sm" data-transfer>
@@ -92,6 +105,30 @@ const transfers = balances.debts
             </div>
           </dl>
           <p role="status" data-copy-status class="mt-2 min-h-5 text-sm text-green-300"></p>
+          <form method="POST" action={paymentAction} class="mt-1 space-y-2 border-t border-white/10 pt-2">
+            <input type="hidden" name="recipientId" value={transfer.creditorId} />
+            <input type="hidden" name="paymentId" value={transfer.paymentId} />
+            <label class="block text-xs text-blue-100/60" for={`amount-${transfer.creditorId}`}>
+              Amount you sent
+            </label>
+            <div class="flex gap-2">
+              <input
+                id={`amount-${transfer.creditorId}`}
+                name="amount"
+                type="text"
+                inputmode="decimal"
+                required
+                value={transfer.amountInput}
+                class="min-w-0 flex-1 rounded-lg border border-white/20 bg-white/10 px-3 py-1 text-white"
+              />
+              <button
+                type="submit"
+                class="shrink-0 rounded-lg border border-white/20 bg-white/10 px-3 py-1 text-white transition-colors hover:bg-white/20"
+              >
+                Mark as sent
+              </button>
+            </div>
+          </form>
         </li>
       ))}
     </ul>

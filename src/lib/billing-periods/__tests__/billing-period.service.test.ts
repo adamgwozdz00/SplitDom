@@ -56,6 +56,7 @@ describe("BillingPeriodService.openFor", () => {
       closedAt: null,
       version: 0,
       expenses: [],
+      payments: [],
     });
   });
 
@@ -510,5 +511,138 @@ describe("BillingPeriodService.getEditableExpense", () => {
     const result = await serviceWith(repository, { ids: [] }).getEditableExpense({ group, userId, expenseId });
 
     expect("error" in result && result.error.code).toBe(expected);
+  });
+});
+
+describe("BillingPeriodService payments", () => {
+  const PAYMENT = "11111111-1111-4111-8111-aaaaaaaaaaaa";
+  // B owes the host 200 zł after the host paid 400 zł.
+  function repositoryWithDebt(): FakeBillingPeriodRepository {
+    return new FakeBillingPeriodRepository([anOctoberPeriod({ expenses: [{ id: "e-1", grosze: 40000 }] })]);
+  }
+
+  const send = { group: aGroup(), senderId: B, recipientId: HOST_ID, paymentId: PAYMENT, amount: "200,00" };
+
+  it("stores the payment and bumps the version", async () => {
+    const repository = repositoryWithDebt();
+
+    const result = await serviceWith(repository).sendPayment(send);
+
+    expect(result).toEqual({ data: undefined });
+    expect(repository.stored(GROUP_ID)).toMatchObject({
+      version: 1,
+      payments: [
+        { id: PAYMENT, senderId: B, recipientId: HOST_ID, amount: 20000, sentAt: NOW.toISOString(), confirmedAt: null },
+      ],
+    });
+  });
+
+  it("rejects an invalid amount and a payment id that is not a UUID without touching the repository", async () => {
+    const repository = repositoryWithDebt();
+    const service = serviceWith(repository);
+
+    expect(await service.sendPayment({ ...send, amount: "abc" })).toMatchObject({ error: { code: "invalid_amount" } });
+    expect(await service.sendPayment({ ...send, paymentId: "not-a-uuid" })).toMatchObject({
+      error: { code: "unexpected" },
+    });
+    expect(repository.saveCalls).toEqual([]);
+  });
+
+  it("refuses the creditor paying the debtor, and more than the debt", async () => {
+    const repository = repositoryWithDebt();
+    const service = serviceWith(repository);
+
+    expect(await service.sendPayment({ ...send, senderId: HOST_ID, recipientId: B })).toMatchObject({
+      error: { code: "no_debt_to_pay" },
+    });
+    expect(await service.sendPayment({ ...send, amount: "200,01" })).toMatchObject({
+      error: { code: "payment_exceeds_debt" },
+    });
+    expect(repository.stored(GROUP_ID)?.payments).toEqual([]);
+  });
+
+  it("records a repeated submit with the same id once", async () => {
+    const repository = repositoryWithDebt();
+    const service = serviceWith(repository);
+
+    await service.sendPayment({ ...send, amount: "100,00" });
+    const again = await service.sendPayment({ ...send, amount: "100,00" });
+
+    expect(again).toEqual({ data: undefined });
+    expect(repository.stored(GROUP_ID)?.payments).toHaveLength(1);
+  });
+
+  it("retries a lost race on the reloaded period and records the payment once", async () => {
+    const repository = repositoryWithDebt();
+    repository.saveConflicts = 1;
+    repository.onConflict = () => {
+      // Another expense lands first: the debt grows to 250 zł.
+      repository.put(
+        anOctoberPeriod({
+          expenses: [
+            { id: "e-1", grosze: 40000 },
+            { id: "e-2", grosze: 10000 },
+          ],
+          version: 1,
+        }),
+      );
+    };
+
+    const result = await serviceWith(repository).sendPayment(send);
+
+    expect(result).toEqual({ data: undefined });
+    expect(repository.saveCalls).toHaveLength(2);
+    expect(repository.stored(GROUP_ID)?.payments).toHaveLength(1);
+  });
+
+  it("refuses on the retry when a concurrent change made the payment larger than the debt", async () => {
+    const repository = repositoryWithDebt();
+    repository.saveConflicts = 1;
+    repository.onConflict = () => {
+      // The host's expense is deleted meanwhile: only 100 zł of debt is left.
+      repository.put(anOctoberPeriod({ expenses: [{ id: "e-1", grosze: 20000 }], version: 1 }));
+    };
+
+    const result = await serviceWith(repository).sendPayment(send);
+
+    expect(result).toMatchObject({ error: { code: "payment_exceeds_debt" } });
+    expect(repository.stored(GROUP_ID)?.payments).toEqual([]);
+  });
+
+  it("answers period_changed after two lost races", async () => {
+    const repository = repositoryWithDebt();
+    repository.saveConflicts = 2;
+
+    expect(await serviceWith(repository).sendPayment(send)).toMatchObject({ error: { code: "period_changed" } });
+  });
+
+  it("withdraws a stored payment, retried on a lost race, and reports an unknown one", async () => {
+    const repository = repositoryWithDebt();
+    await serviceWith(repository).sendPayment(send);
+    repository.saveConflicts = 1;
+
+    const result = await serviceWith(repository).withdrawPayment({ group: aGroup(), userId: B, paymentId: PAYMENT });
+
+    expect(result).toEqual({ data: undefined });
+    expect(repository.stored(GROUP_ID)?.payments).toEqual([]);
+    expect(
+      await serviceWith(repository).withdrawPayment({ group: aGroup(), userId: B, paymentId: PAYMENT }),
+    ).toMatchObject({
+      error: { code: "payment_not_found" },
+    });
+  });
+
+  it("summarizes the open period with pending and posted balances and the payments newest first", async () => {
+    const repository = repositoryWithDebt();
+    await serviceWith(repository).sendPayment({ ...send, amount: "50,00" });
+
+    const summary = await serviceWith(repository).summarizeOpen(aGroup());
+
+    if ("error" in summary) {
+      throw new Error(summary.error.code);
+    }
+    expect(summary.data.balances.debts.map((debt) => debt.amount.grosze)).toEqual([15000]);
+    expect(summary.data.postedBalances.debts.map((debt) => debt.amount.grosze)).toEqual([20000]);
+    expect(summary.data.payments.map((payment) => payment.id)).toEqual([PAYMENT]);
   });
 });

@@ -228,6 +228,78 @@ function requestExpense(groupIndex, suffix, options) {
   return request(options?.api ? `/api${path}` : path, options);
 }
 
+// User ids of the smoke users, read once from Supabase Auth: the payment steps post them as form fields.
+const userIds = new Map();
+async function userIdOf(userEmail) {
+  if (!userIds.has(userEmail)) userIds.set(userEmail, (await authSession(userEmail)).userId);
+  return userIds.get(userEmail);
+}
+
+// The ids of the payments the debtor sends; a form carries its id, so sending it twice records it once.
+const paymentIds = { part: randomUUID(), tooMuch: randomUUID(), byCreditor: randomUUID() };
+
+// Posts a payment of group A to the user `toEmail` (the sender is whoever is signed in).
+async function postPayment(toEmail, paymentId, amount) {
+  if (groupIds[0] === undefined) return { status: 0, location: "(group A was not created)", body: "" };
+  const form = { recipientId: await userIdOf(toEmail), paymentId, amount };
+  return request(`/api/groups/${groupIds[0]}/payments`, { method: "POST", form });
+}
+
+function withdrawPayment(paymentId) {
+  if (groupIds[0] === undefined) return Promise.resolve({ status: 0, location: "(group A was not created)", body: "" });
+  return request(`/api/groups/${groupIds[0]}/payments/${paymentId}/withdraw`, { method: "POST" });
+}
+
+function checkPaymentError(error) {
+  return (actual) =>
+    actual.location === `/groups/${groupIds[0]}?paymentError=${error}` ? true : `location is ${actual.location}`;
+}
+
+// The page lists each payment once, however many times its form was sent.
+function checkPaymentRows(count) {
+  return (actual) => {
+    const rows = (actual.body.match(/data-payment(?![-\w])/g) ?? []).length;
+    return rows === count ? true : `${rows} payment rows, expected ${count}`;
+  };
+}
+
+function allOf(...checks) {
+  return (actual, cookies) => {
+    for (const check of checks) {
+      const result = check(actual, cookies);
+      if (result !== true) return result;
+    }
+    return true;
+  };
+}
+
+// The creditor tries to store a payment in the debtor's name straight through the Data API; the function refuses it.
+async function creditorSendsInDebtorsNameDirectly() {
+  const creditor = await authSession(email2);
+  return directRpc("save_billing_period_with_payments", {
+    token: creditor.token,
+    headers: { "x-app-key": SUPABASE_APP_KEY },
+    args: {
+      p_period_id: randomUUID(),
+      p_group_id: groupIds[0],
+      p_expected_version: 0,
+      p_added: [],
+      p_changed: [],
+      p_removed: [],
+      p_sent: [
+        {
+          id: randomUUID(),
+          sender_id: await userIdOf(email),
+          recipient_id: creditor.userId,
+          amount: 30000,
+          sent_at: new Date().toISOString(),
+        },
+      ],
+      p_withdrawn: [],
+    },
+  });
+}
+
 const edited = { title: "Czynsz (edited)", amount: "600,00", purchasedOn: todayInWarsaw };
 
 function checkExpenseError(groupIndex, error, suffix = "") {
@@ -415,7 +487,7 @@ const steps = [
   [
     "group page shows the edited expense and the new debt",
     requestGroupA,
-    { status: 200, check: bodyContains("Czynsz (edited)", "300,00") },
+    { status: 200, check: bodyContains("Czynsz (edited)", "600,00") },
   ],
   [
     "an invalid account number is rejected",
@@ -473,6 +545,45 @@ const steps = [
     },
   ],
   [
+    "the debtor cannot send more than the debt",
+    () => postPayment(email2, paymentIds.tooMuch, "400,00"),
+    { status: 302, check: checkPaymentError("payment_exceeds_debt") },
+  ],
+  [
+    "the debtor sends part of the debt",
+    () => postPayment(email2, paymentIds.part, "100,00"),
+    { status: 302, check: checkExpenseLocation(0) },
+  ],
+  [
+    "the debt shrinks by the payment, which is listed and can be withdrawn",
+    requestGroupA,
+    {
+      status: 200,
+      check: allOf(
+        bodyContains(
+          "You owe",
+          "200,00",
+          "Includes payments awaiting confirmation",
+          "Payments",
+          "100,00",
+          "awaiting confirmation",
+          "Withdraw",
+        ),
+        checkPaymentRows(1),
+      ),
+    },
+  ],
+  [
+    "sending the same form again records nothing more",
+    () => postPayment(email2, paymentIds.part, "100,00"),
+    { status: 302, check: checkExpenseLocation(0) },
+  ],
+  [
+    "the payment is still listed once and the debt is unchanged",
+    requestGroupA,
+    { status: 200, check: allOf(bodyContains("You owe", "200,00"), checkPaymentRows(1)) },
+  ],
+  [
     "the debtor's own profile page does not show the creditor's number",
     () => request("/profile"),
     { status: 200, check: bodyLacks(ACCOUNT_LABEL, ACCOUNT_DIGITS) },
@@ -496,13 +607,35 @@ const steps = [
   [
     "the expense is untouched by the refused attempts",
     requestGroupA,
-    { status: 200, check: bodyContains("Czynsz (edited)", "300,00") },
+    { status: 200, check: bodyContains("Czynsz (edited)", "600,00") },
   ],
   ["first user signs out", () => request("/api/auth/signout", { method: "POST" }), { status: 302, location: "/" }],
   [
     "second user signs in again",
     () => request("/api/auth/signin", { method: "POST", form: { email: email2, password } }),
     { status: 302, location: "/dashboard" },
+  ],
+  [
+    "the creditor sees the payment, without a way to withdraw it",
+    requestGroupA,
+    {
+      status: 200,
+      check: allOf(
+        bodyContains("Payments", "100,00", "awaiting confirmation"),
+        bodyLacks("Withdraw"),
+        checkPaymentRows(1),
+      ),
+    },
+  ],
+  [
+    "the creditor cannot send a payment to the debtor, who owes them",
+    () => postPayment(email, paymentIds.byCreditor, "50,00"),
+    { status: 302, check: checkPaymentError("no_debt_to_pay") },
+  ],
+  [
+    "the creditor cannot store a payment in the debtor's name through the Data API",
+    creditorSendsInDebtorsNameDirectly,
+    { status: 403, check: bodyContains('"code":"42501"') },
   ],
   [
     "the author deletes the expense",
@@ -526,6 +659,36 @@ const steps = [
   ],
   [
     "second user signs out again",
+    () => request("/api/auth/signout", { method: "POST" }),
+    { status: 302, location: "/" },
+  ],
+  [
+    "first user signs in once more",
+    () => request("/api/auth/signin", { method: "POST", form: { email, password } }),
+    { status: 302, location: "/dashboard" },
+  ],
+  [
+    "the payment still counts after the debt is gone: the creditor now owes the debtor",
+    requestGroupA,
+    { status: 200, check: bodyContains("owes", "You", "100,00", "Withdraw") },
+  ],
+  [
+    "the debtor withdraws the payment",
+    () => withdrawPayment(paymentIds.part),
+    { status: 302, check: checkExpenseLocation(0) },
+  ],
+  [
+    "the payment and the debt are gone",
+    requestGroupA,
+    { status: 200, check: bodyContains("No payments yet", "All settled") },
+  ],
+  [
+    "withdrawing it again is not an error",
+    () => withdrawPayment(paymentIds.part),
+    { status: 302, check: checkExpenseLocation(0) },
+  ],
+  [
+    "first user signs out once more",
     () => request("/api/auth/signout", { method: "POST" }),
     { status: 302, location: "/" },
   ],
