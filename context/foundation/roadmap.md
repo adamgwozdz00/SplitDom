@@ -51,7 +51,7 @@ People who share household costs — partners or roommates — settle shared exp
 | S-05 | edit-own-expense-rules      | expense author can edit or delete their own expense only while it is still editable   | F-02          | FR-005                 | done        |
 | S-06 | generate-transfer-details   | debtor can copy transfer details (account number, amount, title) for a debt           | S-04          | FR-007                 | done        |
 | S-07 | mark-transfer-sent          | debtor can record a transfer as a payment that counts in the balances (pending)       | F-02          | FR-008                 | done       |
-| S-08 | confirm-debt-paid           | creditor can confirm or reject a payment, which makes it final (posted)               | F-02          | FR-009                 | proposed    |
+| S-08 | confirm-debt-paid           | creditor can confirm or reject a payment, which makes it final (posted)               | F-02          | FR-009                 | in-progress    |
 | S-09 | host-closes-period          | host can close a finished period, which freezes it and opens the next one             | S-05, S-08    | US-02, FR-015          | proposed    |
 | S-10 | member-profile-display-name | member can set a display name that the group shows instead of their email             | S-04          | — (supports US-01)     | proposed    |
 
@@ -230,7 +230,7 @@ Foundations below assume these are present and do NOT re-scaffold them.
 - **Unknowns:**
   - Is FR-005's paid-debt lock of an expense still needed? Payments now live in the ledger, so editing an expense after a payment only shifts the balance and keeps the payment. Decide in S-08 planning whether to drop the lock or keep it for confirmed payments. — Owner: user.
 - **Risk:** The only action that finally settles money in the app; S-09's closing precondition depends on it, so it sits on the path to milestone completion.
-- **Status:** proposed
+- **Status:** in-progress
 
 ### S-09: Host closes the billing period
 

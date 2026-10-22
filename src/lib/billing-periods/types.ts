@@ -14,6 +14,8 @@ export type BillingPeriodErrorCode =
   | "payment_not_found"
   | "not_payment_sender"
   | "payment_confirmed"
+  | "not_payment_recipient"
+  | "payment_not_pending"
   | "period_changed"
   | "group_not_found"
   | "not_authenticated"
@@ -41,8 +43,8 @@ export interface ExpenseSnapshot {
 }
 
 /**
- * Persistence shape of a payment. `amount` is integer grosze; `sentAt` and `confirmedAt` are UTC ISO strings
- * (`confirmedAt` is null until the recipient confirms).
+ * Persistence shape of a payment. `amount` is integer grosze; `sentAt`, `confirmedAt` and `rejectedAt` are UTC
+ * ISO strings (`confirmedAt` and `rejectedAt` are null until the recipient decides, and never both set).
  */
 export interface PaymentSnapshot {
   id: string;
@@ -51,6 +53,7 @@ export interface PaymentSnapshot {
   amount: number;
   sentAt: string;
   confirmedAt: string | null;
+  rejectedAt: string | null;
 }
 
 /** Persistence shape of the BillingPeriod aggregate. `month` is `YYYY-MM-01`; timestamps are UTC ISO strings. */
@@ -71,7 +74,7 @@ export interface BillingPeriodRepository {
   findCurrentOfGroup(group: Group): Promise<Result<BillingPeriod | null>>;
   /** Stores a newly opened period; `"conflict"` when the group already got one concurrently. */
   open(period: BillingPeriod): Promise<Result<"opened" | "conflict">>;
-  /** Stores the expenses added, changed and removed since load if the period's version is unchanged; `"conflict"` otherwise. */
+  /** Stores the expense and payment changes (including confirmed and rejected payments) since load if the period's version is unchanged; `"conflict"` otherwise. */
   save(period: BillingPeriod): Promise<Result<"saved" | "conflict">>;
   /** The open period's month of every group the signed-in user belongs to. */
   listOpenMonthsOfCurrentUser(): Promise<Result<{ groupId: string; month: BillingMonth }[]>>;
