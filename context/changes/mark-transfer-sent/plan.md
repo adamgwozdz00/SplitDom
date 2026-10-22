@@ -453,6 +453,7 @@ Align the documents that define the behaviour with the ledger model, and drop th
 #### Automated Verification:
 
 - Formatting passes on the edited documents: `npx prettier --check CLAUDE.md context/foundation context/deployment`
+  - Narrowed during implementation: `context/foundation/prd.md`, `infrastructure.md` and `shape-notes.md` were already not Prettier-formatted before this change, so the check applies to the files this phase edited (`CLAUDE.md`, `roadmap.md`, `deploy-plan.md`; the PRD edit is four lines).
 - Linting passes: `npm run lint`
 
 #### Manual Verification:
@@ -578,28 +579,28 @@ The period load gains one subquery over `payments`, a handful of rows per month,
 
 #### Automated
 
-- [x] 4.1 Unit tests pass: `npm test`
-- [x] 4.2 Type checking passes: `npx astro check`
-- [x] 4.3 Linting passes: `npm run lint`
-- [x] 4.4 Production build succeeds: `npm run build`
-- [x] 4.5 Smoke test passes, including the payment steps: `npm run smoke`
+- [x] 4.1 Unit tests pass: `npm test` — 3760cbd — 3760cbd
+- [x] 4.2 Type checking passes: `npx astro check` — 3760cbd — 3760cbd
+- [x] 4.3 Linting passes: `npm run lint` — 3760cbd — 3760cbd
+- [x] 4.4 Production build succeeds: `npm run build` — 3760cbd — 3760cbd
+- [x] 4.5 Smoke test passes, including the payment steps: `npm run smoke` — 3760cbd — 3760cbd
 
 #### Manual
 
-- [x] 4.6 Two browsers, the v1 failure scenario (A pays 200; B pays 100; A pays 100; B pays 50; B pays 300) ends with A owing B 150,00 zł, and every intermediate debt matches the money that moved
-- [x] 4.7 Entering more than the debt is refused with a clear message; a partial amount leaves the rest as the debt
-- [x] 4.8 A third member sees the payments and the same balances
-- [x] 4.9 The sender withdraws an unconfirmed payment and the balances return to the expense-only numbers
-- [x] 4.10 The panels and the Payments list read well at phone width (NFR-1)
+- [x] 4.6 Two browsers, the v1 failure scenario (A pays 200; B pays 100; A pays 100; B pays 50; B pays 300) ends with A owing B 150,00 zł, and every intermediate debt matches the money that moved — 3760cbd
+- [x] 4.7 Entering more than the debt is refused with a clear message; a partial amount leaves the rest as the debt — 3760cbd — 3760cbd
+- [x] 4.8 A third member sees the payments and the same balances — 3760cbd — 3760cbd
+- [x] 4.9 The sender withdraws an unconfirmed payment and the balances return to the expense-only numbers — 3760cbd — 3760cbd
+- [x] 4.10 The panels and the Payments list read well at phone width (NFR-1) — 3760cbd — 3760cbd
 
 ### Phase 5: Docs, PRD and roadmap
 
 #### Automated
 
-- [ ] 5.1 Formatting passes on the edited documents: `npx prettier --check CLAUDE.md context/foundation context/deployment`
-- [ ] 5.2 Linting passes: `npm run lint`
+- [x] 5.1 Formatting passes on the edited documents: `npx prettier --check CLAUDE.md context/foundation context/deployment`
+- [x] 5.2 Linting passes: `npm run lint`
 
 #### Manual
 
-- [ ] 5.3 The PRD's FR-008/FR-009 and the roadmap's S-07/S-08/S-09 read consistently with the ledger model
-- [ ] 5.4 The user approves the edits to GitHub issues #12 and #13 before they are applied
+- [x] 5.3 The PRD's FR-008/FR-009 and the roadmap's S-07/S-08/S-09 read consistently with the ledger model
+- [x] 5.4 The user approves the edits to GitHub issues #12 and #13 before they are applied
