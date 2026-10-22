@@ -8,6 +8,7 @@ const MESSAGES: Record<BillingPeriodErrorCode, string> = {
   billing_period_closed: "This billing period is closed, so expenses can no longer be changed",
   expense_not_found: "Expense not found",
   not_expense_author: "Only the member who paid an expense can change it",
+  expense_locked: "This expense can no longer be changed because a payment for it has been confirmed",
   no_debt_to_pay: "You don't owe this member anything right now",
   payment_exceeds_debt: "The amount is more than you owe this member right now",
   payment_not_found: "Payment not found",

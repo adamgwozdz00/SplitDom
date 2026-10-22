@@ -84,7 +84,7 @@ if (creditorIds.length > 0) {
                     group={group}
                     balances={open.balances}
                     viewerId={user.id}
-                    hasUnconfirmedPayments={open.payments.some((payment) => !payment.isConfirmed())}
+                    hasUnconfirmedPayments={open.payments.some((payment) => payment.isPending())}
                   />
                   <TransferPanel
                     group={group}

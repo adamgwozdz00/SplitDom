@@ -719,19 +719,83 @@ describe("BillingPeriod payments", () => {
       ).toMatchObject({ error: { code: "payment_not_pending" } });
     });
 
-    it("still lets the author edit and delete an expense after a confirmed payment, and the balances shift", () => {
+    it("locks the expense of the pair of a confirmed payment: no edit, no delete, the payment stays", () => {
       const period = storedWithPayment();
       decide(period, "confirm");
       const expense = period.expenses[0];
 
-      expect(period.canEdit(expense, HOST)).toBe(true);
-      edit(period, { grosze: 60000 });
+      expect(period.isLocked(expense)).toBe(true);
+      expect(period.canEdit(expense, HOST)).toBe(false);
+      expect(code(edit(period, { grosze: 60000 }))).toBe("expense_locked");
+      expect(period.removeExpense({ expenseId: "e-1", userId: HOST })).toMatchObject({
+        error: { code: "expense_locked" },
+      });
       expect(period.payments[0].isConfirmed()).toBe(true);
-      expect(debtsOf(period)).toEqual([[MEMBER, HOST, 10000]]);
+      expect(debtsOf(period)).toEqual([]);
+    });
+    describe("the expense lock", () => {
+      const THIRD = "third";
+      const THREE = [HOST, MEMBER, THIRD];
 
-      expect(period.removeExpense({ expenseId: "e-1", userId: HOST })).toEqual({ data: undefined });
-      expect(period.payments[0].isConfirmed()).toBe(true);
-      expect(debtsOf(period)).toEqual([[HOST, MEMBER, 20000]]);
+      // HOST paid e-1 and MEMBER paid e-2, both split between all three; payments are stored as given.
+      function threeWay(payments: { id: string; from: string; to: string; confirmed?: boolean; rejected?: boolean }[]) {
+        const period = octoberPeriod(THREE);
+        add(period, { id: "e-1", payerId: HOST, grosze: 30000 });
+        add(period, { id: "e-2", payerId: MEMBER, grosze: 30000 });
+        const snapshot = period.toSnapshot();
+        return BillingPeriod.restore(
+          {
+            ...snapshot,
+            payments: payments.map((payment) => ({
+              id: payment.id,
+              senderId: payment.from,
+              recipientId: payment.to,
+              amount: 1000,
+              sentAt: "2026-10-16T12:00:00.000Z",
+              confirmedAt: payment.confirmed ? "2026-10-17T08:00:00.000Z" : null,
+              rejectedAt: payment.rejected ? "2026-10-17T08:00:00.000Z" : null,
+            })),
+          },
+          THREE,
+        );
+      }
+      const lockedIds = (period: BillingPeriod) =>
+        period.expenses.filter((expense) => period.isLocked(expense)).map((expense) => expense.id);
+
+      it("locks in the direction sharer to payer", () => {
+        expect(lockedIds(threeWay([{ id: "p", from: MEMBER, to: HOST, confirmed: true }]))).toContain("e-1");
+      });
+
+      it("locks in the direction payer to sharer", () => {
+        expect(lockedIds(threeWay([{ id: "p", from: HOST, to: MEMBER, confirmed: true }]))).toContain("e-1");
+      });
+
+      it("locks both expenses of a pair that paid each other's", () => {
+        expect(lockedIds(threeWay([{ id: "p", from: MEMBER, to: HOST, confirmed: true }]))).toEqual(["e-1", "e-2"]);
+      });
+
+      it("does not lock for a pending or rejected payment", () => {
+        expect(lockedIds(threeWay([{ id: "p", from: MEMBER, to: HOST }]))).toEqual([]);
+        expect(lockedIds(threeWay([{ id: "p", from: MEMBER, to: HOST, rejected: true }]))).toEqual([]);
+      });
+
+      it("does not lock an expense for a confirmed payment of another pair", () => {
+        const period = threeWay([{ id: "p", from: THIRD, to: MEMBER, confirmed: true }]);
+        expect(lockedIds(period)).toEqual(["e-2"]);
+        expect(period.canEdit(period.expenses[0], HOST)).toBe(true);
+        expect(code(edit(period, { grosze: 60000 }))).toBe("ok");
+      });
+
+      it("refuses in order: closed, unknown, not the author, then locked", () => {
+        const period = threeWay([{ id: "p", from: MEMBER, to: HOST, confirmed: true }]);
+        expect(code(edit(period, { expenseId: "nope" }))).toBe("expense_not_found");
+        expect(code(edit(period, { expenseId: "e-1", userId: THIRD }))).toBe("not_expense_author");
+        expect(code(edit(period, { expenseId: "e-1", userId: HOST }))).toBe("expense_locked");
+
+        const snapshot = period.toSnapshot();
+        const closed = BillingPeriod.restore({ ...snapshot, closedAt: "2026-11-02T08:00:00.000Z" }, THREE);
+        expect(code(edit(closed, { expenseId: "e-1", userId: HOST }))).toBe("billing_period_closed");
+      });
     });
 
     it("round-trips decisions through the snapshot", () => {

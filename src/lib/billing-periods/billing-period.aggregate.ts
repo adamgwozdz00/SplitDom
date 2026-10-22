@@ -139,14 +139,28 @@ export class BillingPeriod {
     return { data: expense };
   }
 
-  /** Whether `userId` may change `expense`: the period is open and they paid it. Payments never lock an expense (FR-005 as amended). */
+  /**
+   * Whether a confirmed payment has settled `expense` (FR-005): a confirmed payment exists between its payer and
+   * one of its sharers, in either direction. Pending and rejected payments never lock.
+   */
+  isLocked(expense: Expense): boolean {
+    const sharers = new Set(expense.sharerIds());
+    return this.payments.some(
+      (payment) =>
+        payment.isConfirmed() &&
+        ((payment.senderId === expense.payerId && sharers.has(payment.recipientId)) ||
+          (payment.recipientId === expense.payerId && sharers.has(payment.senderId))),
+    );
+  }
+
+  /** Whether `userId` may change `expense`: the period is open, they paid it and no confirmed payment locks it. */
   canEdit(expense: Expense, userId: string): boolean {
-    return this.isOpen() && expense.payerId === userId;
+    return this.isOpen() && expense.payerId === userId && !this.isLocked(expense);
   }
 
   /**
-   * The expense `userId` may change. Refuses, in this order, a closed period, an unknown expense and an
-   * expense someone else paid.
+   * The expense `userId` may change. Refuses, in this order, a closed period, an unknown expense, an
+   * expense someone else paid and an expense locked by a confirmed payment.
    */
   editableExpense(expenseId: string, userId: string): Result<Expense> {
     if (!this.isOpen()) {
@@ -156,8 +170,11 @@ export class BillingPeriod {
     if (!expense) {
       return billingPeriodError("expense_not_found", { periodId: this.id, expenseId });
     }
-    if (!this.canEdit(expense, userId)) {
+    if (expense.payerId !== userId) {
       return billingPeriodError("not_expense_author", { periodId: this.id, expenseId });
+    }
+    if (this.isLocked(expense)) {
+      return billingPeriodError("expense_locked", { periodId: this.id, expenseId });
     }
     return { data: expense };
   }
