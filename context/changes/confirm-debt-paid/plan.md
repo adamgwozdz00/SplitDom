@@ -7,7 +7,7 @@ The recipient of a payment confirms it after the transfer arrives, or rejects it
 - **Confirm** makes the payment posted and permanent.
 - **Reject** keeps the payment in the ledger with the status "rejected". It drops out of both balances, so the sender's debt comes back, and the Payments list shows the sender why.
 
-The plan also drops FR-005's paid-debt lock of an expense. Editing an expense after a payment only shifts the balance, and the payment stays in the ledger.
+The plan also keeps FR-005's paid-debt lock, now defined on confirmed payments: once the recipient has confirmed a payment between an expense's payer and one of its sharers, the expense can no longer be edited or deleted. (Decided 2026-10-22 during Phase 2 manual verification; it replaces the earlier decision to drop the lock.)
 
 Roadmap item S-08, GitHub issue [#13](https://github.com/adamgwozdz00/SplitDom/issues/13).
 
@@ -28,7 +28,7 @@ S-07 left the model ready for S-08 (`context/archive/2026-10-20-mark-transfer-se
 - Persistence: `save_billing_period_with_payments` (`supabase/migrations/20261020111415_payments.sql`) inserts sent payments and deletes withdrawn ones, with caller backstops before the version bump. It has no parameter for confirmations.
   - That migration is **pushed to production**, so S-08 adds a new migration and a new save function (expand before contract). The old function stays for the previously deployed Worker.
 - UI: `PaymentList.astro` renders each payment as "sender → recipient · amount · date · awaiting confirmation | confirmed" and gives the sender a "Withdraw" form (line 24). `BalancesPanel` shows "Includes payments awaiting confirmation" when `hasUnconfirmedPayments` is set (`src/pages/groups/[id].astro:87`, today computed as "not confirmed").
-- FR-005's lock: `BillingPeriod.canEdit` (line 141) checks only that the period is open and the user is the author. The roadmap left "is the paid-debt lock still needed?" to this slice (S-05, S-08 and F-02 unknowns; issue #13).
+- FR-005's lock (amended 2026-10-22 to a pair lock on confirmed payments, built in Phase 2): `BillingPeriod.canEdit` (line 141) checks only that the period is open and the user is the author. The roadmap left "is the paid-debt lock still needed?" to this slice (S-05, S-08 and F-02 unknowns; issue #13).
 
 ## Desired End State
 
@@ -38,7 +38,7 @@ On the group page, the recipient of an unconfirmed payment sees "Confirm" and "R
 - **Rejecting**: the row reads "rejected" (muted), and the payment leaves both balances, so the sender's debt and transfer details come back. Nobody can confirm, reject or withdraw a rejected payment again.
 - **Repeats**: confirming an already confirmed payment, or rejecting an already rejected one, is a no-op success. A double submit or a retry never shows an error.
 - **Refusals**: only the recipient confirms or rejects. A non-recipient gets `not_payment_recipient`. Confirming a rejected payment, or rejecting a confirmed one, gives `payment_not_pending`.
-- **Edits**: expenses stay editable by their author while the period is open, whatever payments exist. FR-005 in the PRD says so.
+- **Edits**: an expense is locked (no edit, no delete, no Edit link) once a confirmed payment exists between its payer and any member who holds a share of it, in either direction. Pending and rejected payments never lock. Other expenses stay editable by their author while the period is open. The refusal is `expense_locked`.
 - "Includes payments awaiting confirmation" appears only while a pending (neither confirmed nor rejected) payment exists.
 
 Verify with `npm test`, `npm run db:reset && npm run db:types`, `npx astro check`, `npm run lint`, `npm run build`, `npm run smoke`, and a manual two-browser run.
@@ -58,7 +58,7 @@ Verify with `npm test`, `npm run db:reset && npm run db:types`, `npx astro check
 - **A balance check on confirmation.** Confirming states that the money arrived, so it is allowed whatever the balance is now.
 - **A confirmation step for Reject.** It is a one-click form, because a wrong rejection is fixed by the sender sending again.
 - **Changes to the expand/contract leftovers.** `save_billing_period_with_payments` joins the leftovers awaiting the contract migration, and its backstops are not changed.
-- **FR-005's paid-debt lock.** It is dropped, not built.
+- **A lock on pending payments, or on the whole period.** Only a confirmed payment locks, and only the expenses of its pair.
 - Notifications, a separate "To confirm" panel, overpayment corrections, FR-006, and a Playwright E2E spec. Coverage stays Vitest plus smoke, as in S-07.
 
 ## Implementation Approach
@@ -72,7 +72,7 @@ The steps follow S-07:
 Decisions (S-08 planning, 2026-10-22):
 
 1. A rejected payment stays in the ledger as "rejected" (`rejected_at`), outside both balances, and is visible to the group.
-2. FR-005's paid-debt lock is dropped. The PRD and the roadmap unknowns are updated.
+2. FR-005's paid-debt lock is kept and defined on confirmed payments: it locks the expenses whose payer and a sharer are the pair of a confirmed payment. The PRD and the roadmap unknowns are updated. (Amended 2026-10-22: the first decision dropped the lock.)
 3. The recipient acts inline in the Payments list, and a count note sits above it.
 4. Confirmed and rejected are final. Repeating the same decision is a no-op success.
 5. Confirm and reject refuse a closed period. The fate of pending payments at closing goes to S-09.
@@ -124,7 +124,7 @@ Give `Payment` a third state, add the recipient's commands to `BillingPeriod` an
 - `confirmedPayments(): readonly Payment[]` and `rejectedPayments(): readonly Payment[]` are the loaded payments decided since load, for the repository.
 - `withdrawPayment`: after the `payment_confirmed` check, a rejected payment gives `payment_not_pending`.
 - `pendingBalances()` counts expenses plus payments that are not rejected. `postedBalances()` is unchanged (confirmed only).
-- `canEdit` is unchanged. Its doc comment states that payments never lock an expense (FR-005 as amended).
+- `canEdit` is amended in Phase 2 (see Phase 2, section 5); Phase 1 left it unchanged.
 
 #### 3. Types, errors and public API
 
@@ -279,6 +279,21 @@ The recipient confirms or rejects from the Payments list and sees how many payme
    - a direct `save_billing_period_with_confirmations` call in which the debtor confirms `part` (they are not its recipient) is refused with 403 and `"code":"42501"`, mirroring `creditorSendsInDebtorsNameDirectly`;
    - the existing "creditor now owes the debtor" and "withdraw the payment" steps get their new amounts. With `part` (100, pending) and `toConfirm` (50, confirmed), the creditor owes 150,00, and after withdrawing `part` they owe 50,00. "No payments yet" and "All settled" no longer apply, so they become checks for the remaining confirmed and rejected rows.
 
+#### 5. Expense lock after a confirmed payment (amendment, 2026-10-22)
+
+**Files**: `src/lib/billing-periods/billing-period.aggregate.ts`, `billing-period-error.messages.ts`, `types.ts`, `src/components/expenses/ExpenseList.astro` (and the edit page if it shows its own refusal), `__tests__/billing-period.aggregate.test.ts`, `scripts/smoke.mjs`
+
+**Intent**: A confirmed payment closes the expenses it settled: the author decided consciously, so the expense can no longer change. The lock is judged in the aggregate, tests first.
+
+**Contract**:
+
+- `canEdit(expense, userId)` is true only when the period is open, `userId` paid the expense and `isLocked(expense)` is false.
+- `isLocked(expense)`: a confirmed payment exists whose sender and recipient are the expense's payer and one of its `sharerIds()` (either direction). Pending and rejected payments never lock.
+- `editableExpense` refuses, in this order: a closed period, an unknown expense, an expense someone else paid (`not_expense_author`), and then a locked one (`expense_locked`). `editExpense` and `removeExpense` inherit it.
+- New code `expense_locked`: "This expense can no longer be changed because a payment for it has been confirmed". `types.ts` and the messages map get it.
+- The expense list shows no Edit link for a locked expense and says "locked" instead.
+- Smoke: after the creditor confirms `toConfirm`, the author's expense of that pair has no Edit link, and posting an edit or delete is refused with `expense_locked`. Adjust the later smoke steps that edit or delete that expense (the expense edit, the "deleted expense" steps and the payment-withdraw steps) so they still exercise their paths, for instance by running them before the confirmation or with a second expense of another pair.
+
 ### Success Criteria:
 
 #### Automated Verification:
@@ -292,7 +307,7 @@ The recipient confirms or rejects from the Payments list and sees how many payme
 #### Manual Verification:
 
 - Two browsers: the debtor sends two payments; the creditor sees the count note, confirms one and rejects the other; the debtor sees "confirmed" without Withdraw, "rejected", and their debt grown back by the rejected amount
-- After a confirmed payment, the expense author still edits the expense and the balances shift while the payment stays confirmed
+- After a confirmed payment, the author of an expense of that pair can no longer edit or delete it (no Edit link; opening the edit page or posting is refused with a clear message), while an expense of another pair stays editable
 - A third member sees the same statuses and no Confirm or Reject buttons
 - The Payments list with the actions and the note reads well at phone width (NFR-1)
 
@@ -316,7 +331,7 @@ Align the documents that define the behaviour with the decisions of this slice.
 
 **Contract**:
 
-- **FR-005**: an expense cannot be edited or deleted only when its period is closed. A short note explains why the paid-debt clause was dropped: payments are ledger entries, so an edit shifts the balance and the payment stays.
+- **FR-005**: the paid-debt clause is made precise: an expense cannot be edited or deleted when its period is closed, or when the recipient has confirmed a payment between its payer and a member who holds a share of it. Pending and rejected payments do not lock.
 - **FR-009**: rejecting removes the payment from the balances and leaves it visible as rejected. Confirmation and rejection are final.
 
 #### 2. Roadmap and GitHub
@@ -327,7 +342,7 @@ Align the documents that define the behaviour with the decisions of this slice.
 
 **Contract**:
 
-- **S-08**: the outcome mentions the rejected status, and the FR-005 unknown is resolved (dropped, 2026-10-22, pointing to this plan).
+- **S-08**: the outcome mentions the rejected status, and the FR-005 unknown is resolved (kept, as a pair lock on confirmed payments, 2026-10-22, pointing to this plan).
 - **S-05**: its unknown is resolved in the same way.
 - **F-02**: the FR-005 unknown is resolved in the same way.
 - **S-09**: a new unknown asks what happens to other members' pending payments when the host closes the period: carried over, blocking, or confirmable after closing. Owner: user. Block: S-09.
@@ -342,14 +357,14 @@ Align the documents that define the behaviour with the decisions of this slice.
 **Contract**:
 
 - `CLAUDE.md`:
-  - Status: the recipient confirms or rejects a payment, and expenses have no paid-debt lock. Remove "(the paid-debt lock of FR-005 comes with S-08)" and "Confirming or rejecting a payment (S-08)" from the to-do sentence.
+  - Status: the recipient confirms or rejects a payment, and a confirmed payment locks the expenses of its pair. Remove "(the paid-debt lock of FR-005 comes with S-08)" and "Confirming or rejecting a payment (S-08)" from the to-do sentence.
   - Structure: the `confirm.ts` and `reject.ts` endpoints, and the payment states.
   - Database changes, Payments bullet: `rejected_at`, and `save_billing_period_with_confirmations` with the recipient backstops. Also add `save_billing_period_with_payments` to the expand/contract leftovers, and update the billing-period concurrency bullet's function name.
   - Commands: the smoke description includes confirming and rejecting.
 - `deploy-plan.md`:
   - a "Payment confirmations (S-08)" section: the migration is expand-only and needs no configuration change;
   - the rollback note from Critical Implementation Details;
-  - removal of the sentence "The paid-debt part of FR-005 … arrives with S-08" and of "once S-08 exists".
+  - removal of the sentence "The paid-debt part of FR-005 (no edits once a debt is paid) arrives with S-08" and of "once S-08 exists".
 
 ### Success Criteria:
 
@@ -387,7 +402,7 @@ Align the documents that define the behaviour with the decisions of this slice.
   - The same refusals as confirm, mirrored.
   - Rejecting a confirmed payment gives `payment_not_pending`.
 - `withdrawPayment` refuses a rejected payment with `payment_not_pending`.
-- FR-005 as amended: after a confirmed payment, the author still edits and deletes the expense. The payment stays confirmed, and the balances shift.
+- FR-005 lock (Phase 2, section 5): `canEdit`, `editExpense` and `removeExpense` refuse an expense whose payer and a sharer are the pair of a confirmed payment (`expense_locked`), in either direction. A pending or rejected payment, or a confirmed payment of another pair, does not lock. The refusal comes after the closed-period, unknown-expense and author checks.
 - `BillingPeriodService`:
   - `confirmPayment` and `rejectPayment` are retried after a version conflict.
   - A retry after the sender withdrew the payment meanwhile gives `payment_not_found`.
@@ -432,34 +447,34 @@ The new migration only adds a nullable column, two checks that every existing ro
 
 #### Automated
 
-- [x] 1.1 Unit tests pass, including the confirm, reject and withdraw-after-decision cases: `npm test`
-- [x] 1.2 Migration applies on a fresh database: `npm run db:reset`
-- [x] 1.3 Generated types are up to date: `npm run db:types` leaves no diff
-- [x] 1.4 Type checking passes: `npx astro check`
-- [x] 1.5 Linting passes: `npm run lint`
-- [x] 1.6 Existing smoke flows still pass (expenses, transfer details, send and withdraw payments): `npm run smoke`
+- [x] 1.1 Unit tests pass, including the confirm, reject and withdraw-after-decision cases: `npm test` — b94be20
+- [x] 1.2 Migration applies on a fresh database: `npm run db:reset` — b94be20
+- [x] 1.3 Generated types are up to date: `npm run db:types` leaves no diff — b94be20
+- [x] 1.4 Type checking passes: `npx astro check` — b94be20
+- [x] 1.5 Linting passes: `npm run lint` — b94be20
+- [x] 1.6 Existing smoke flows still pass (expenses, transfer details, send and withdraw payments): `npm run smoke` — b94be20
 
 #### Manual
 
-- [x] 1.7 In Supabase Studio, `payments` has the `rejected_at` column and both new checks, and `save_billing_period_with_confirmations` is executable by `authenticated` only
-- [x] 1.8 Test names read as the rules (recipient only, same decision again is a no-op, opposite decision refused, rejected counts nowhere, expenses stay editable after a confirmed payment)
+- [x] 1.7 In Supabase Studio, `payments` has the `rejected_at` column and both new checks, and `save_billing_period_with_confirmations` is executable by `authenticated` only — b94be20
+- [x] 1.8 Test names read as the rules (recipient only, same decision again is a no-op, opposite decision refused, rejected counts nowhere, expenses stay editable after a confirmed payment) — b94be20
 
 ### Phase 2: Endpoints, Payments list actions and smoke
 
 #### Automated
 
-- [ ] 2.1 Unit tests pass: `npm test`
-- [ ] 2.2 Type checking passes: `npx astro check`
-- [ ] 2.3 Linting passes: `npm run lint`
-- [ ] 2.4 Production build succeeds: `npm run build`
-- [ ] 2.5 Smoke test passes, including the confirm and reject steps: `npm run smoke`
+- [x] 2.1 Unit tests pass: `npm test`
+- [x] 2.2 Type checking passes: `npx astro check`
+- [x] 2.3 Linting passes: `npm run lint`
+- [x] 2.4 Production build succeeds: `npm run build`
+- [x] 2.5 Smoke test passes, including the confirm and reject steps: `npm run smoke`
 
 #### Manual
 
-- [ ] 2.6 Two browsers: the debtor sends two payments; the creditor sees the count note, confirms one and rejects the other; the debtor sees "confirmed" without Withdraw, "rejected", and their debt grown back by the rejected amount
-- [ ] 2.7 After a confirmed payment, the expense author still edits the expense and the balances shift while the payment stays confirmed
-- [ ] 2.8 A third member sees the same statuses and no Confirm or Reject buttons
-- [ ] 2.9 The Payments list with the actions and the note reads well at phone width (NFR-1)
+- [x] 2.6 Two browsers: the debtor sends two payments; the creditor sees the count note, confirms one and rejects the other; the debtor sees "confirmed" without Withdraw, "rejected", and their debt grown back by the rejected amount
+- [x] 2.7 After a confirmed payment, the author of an expense of that pair can no longer edit or delete it (no Edit link; opening the edit page or posting is refused with a clear message), while an expense of another pair stays editable
+- [x] 2.8 A third member sees the same statuses and no Confirm or Reject buttons
+- [x] 2.9 The Payments list with the actions and the note reads well at phone width (NFR-1)
 
 ### Phase 3: Docs, PRD, roadmap and GitHub
 

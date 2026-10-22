@@ -9,6 +9,7 @@ export type BillingPeriodErrorCode =
   | "billing_period_closed"
   | "expense_not_found"
   | "not_expense_author"
+  | "expense_locked"
   | "no_debt_to_pay"
   | "payment_exceeds_debt"
   | "payment_not_found"

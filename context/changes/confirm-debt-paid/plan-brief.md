@@ -17,21 +17,21 @@ The recipient of a payment confirms it once the transfer arrives, or rejects it 
 - **Confirm**: the payment is permanent and counts in the posted balances.
 - **Reject**: the payment stays visible as "rejected", drops out of both balances, and the sender's debt and transfer details come back.
 - **Repeats and refusals**: deciding the same way twice is harmless. Anyone other than the recipient is refused.
-- **Expenses**: they stay editable by their author while the period is open, whatever payments exist (FR-005 amended).
+- **Expenses**: once the recipient confirms a payment, the expenses of that pair (payer and a sharer) can no longer be edited or deleted (FR-005 made precise); pending and rejected payments never lock.
 
 ## Key Decisions Made
 
-| Decision         | Choice                                                                           | Why (1 sentence)                                                                                         | Source   |
-| ---------------- | -------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------- | -------- |
-| Rejected payment | Kept in the ledger as "rejected" (`rejected_at`), outside both balances          | The sender sees why their debt came back, and the ledger keeps its history (corrections as new entries). | Plan     |
-| FR-005 lock      | Dropped; payments never lock an expense                                          | A payment is a ledger entry, so an edit only shifts the balance, and closing (S-09) freezes everything.  | Plan     |
-| Where to act     | Inline Confirm/Reject in the Payments list, plus a count note above it           | Reuses the Withdraw row-action pattern and stays noticeable without a new panel.                         | Plan     |
-| Finality         | Confirmed and rejected are both final; the same decision again is a no-op        | Confirmed was already permanent in S-07; a wrong rejection is fixed by sending again.                    | Research |
-| Idempotency      | In the aggregate, not the endpoint                                               | A double submit and a retry after a version conflict are the same case, as with `sendPayment`.           | Plan     |
-| Balance check    | None on confirmation                                                             | Confirming states that money arrived, whatever the balance is now.                                       | Plan     |
-| Closed period    | Confirm and reject refuse it; pending payments at closing become an S-09 unknown | Every command refuses a closed period today, and closing does not exist yet.                             | Plan     |
-| Persistence      | New migration plus `save_billing_period_with_confirmations`; old function kept   | The S-07 migration is pushed, so expand before contract.                                                 | Plan     |
-| Testing          | Vitest test-first plus smoke; no E2E                                             | Same pattern as S-05 to S-07.                                                                            | Research |
+| Decision         | Choice                                                                                          | Why (1 sentence)                                                                                                    | Source                    |
+| ---------------- | ----------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------- | ------------------------- |
+| Rejected payment | Kept in the ledger as "rejected" (`rejected_at`), outside both balances                         | The sender sees why their debt came back, and the ledger keeps its history (corrections as new entries).            | Plan                      |
+| FR-005 lock      | Kept: a confirmed payment locks the expenses of its pair (payer and a sharer, either direction) | The author consciously confirmed, so what the payment settled is closed; pending and rejected payments do not lock. | Plan (amended in Phase 2) |
+| Where to act     | Inline Confirm/Reject in the Payments list, plus a count note above it                          | Reuses the Withdraw row-action pattern and stays noticeable without a new panel.                                    | Plan                      |
+| Finality         | Confirmed and rejected are both final; the same decision again is a no-op                       | Confirmed was already permanent in S-07; a wrong rejection is fixed by sending again.                               | Research                  |
+| Idempotency      | In the aggregate, not the endpoint                                                              | A double submit and a retry after a version conflict are the same case, as with `sendPayment`.                      | Plan                      |
+| Balance check    | None on confirmation                                                                            | Confirming states that money arrived, whatever the balance is now.                                                  | Plan                      |
+| Closed period    | Confirm and reject refuse it; pending payments at closing become an S-09 unknown                | Every command refuses a closed period today, and closing does not exist yet.                                        | Plan                      |
+| Persistence      | New migration plus `save_billing_period_with_confirmations`; old function kept                  | The S-07 migration is pushed, so expand before contract.                                                            | Plan                      |
+| Testing          | Vitest test-first plus smoke; no E2E                                                            | Same pattern as S-05 to S-07.                                                                                       | Research                  |
 
 ## Scope
 
@@ -45,7 +45,7 @@ The recipient of a payment confirms it once the transfer arrives, or rejects it 
 - PRD FR-005/FR-009, the roadmap (S-05, S-08, S-09, F-02), CLAUDE.md and the deploy plan.
 - Issue #13, after the user's approval.
 
-**Out of scope:** undoing a decision, deciding in a closed period, the FR-005 lock, notifications, a separate "To confirm" panel, overpayment corrections, the contract migration, and E2E.
+**Out of scope:** undoing a decision, deciding in a closed period, a lock on pending payments or on the whole period, notifications, a separate "To confirm" panel, overpayment corrections, the contract migration, and E2E.
 
 ## Architecture / Approach
 
@@ -68,7 +68,7 @@ The service runs both commands through the existing change-and-retry path. The r
 
 - After a `wrangler rollback`, the previous Worker counts rejected payments as pending until the next deploy. This is documented in the deploy plan, and no data is lost.
 - Pending payments of other members when the host closes a period are left to S-09 (new unknown).
-- Dropping the FR-005 lock means a creditor who confirmed a payment can see the debt move after a later expense edit. This is accepted, because the confirmed payment itself never changes.
+- One confirmation freezes all of that pair's expenses in the period, including ones added later; a typo in them can no longer be fixed.
 
 ## Success Criteria (Summary)
 
