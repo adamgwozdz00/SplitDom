@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { aGroup, anExpense, HOST_ID, memberId } from "@/lib/billing-periods/__tests__/billing-periods.harness";
 import type { Expense } from "@/lib/billing-periods/expense.entity";
+import { Money } from "@/lib/billing-periods/money.value";
 import { PeriodBalances } from "@/lib/billing-periods/period-balances.value";
 
 const A = HOST_ID;
@@ -195,4 +196,76 @@ describe("PeriodBalances invariants", () => {
       });
     }
   }
+});
+
+describe("PeriodBalances.of with payments", () => {
+  const group = aGroup({ memberCount: 3 });
+  const pay = (senderId: string, recipientId: string, grosze: number) => ({
+    senderId,
+    recipientId,
+    amount: Money.ofGrosze(grosze),
+  });
+  const summary = (memberIds: string[], expenses: Expense[], payments: ReturnType<typeof pay>[]) => {
+    const result = PeriodBalances.of({ memberIds, expenses, payments });
+    return {
+      members: result.members.map((member) => [member.userId, member.balance.grosze]),
+      debts: result.debts.map((debt) => [debt.debtorId, debt.creditorId, debt.amount.grosze]),
+    };
+  };
+  // A pays 400 between A and B, so B owes A 200.
+  const expenses = [anExpense({ group: aGroup({ memberCount: 2 }), payerId: A, grosze: 40000 })];
+
+  it("settles the pair when B pays A the whole debt", () => {
+    expect(summary([A, B], expenses, [pay(B, A, 20000)])).toEqual({
+      members: [
+        [A, 0],
+        [B, 0],
+      ],
+      debts: [],
+    });
+  });
+
+  it("leaves the rest of the debt after a partial payment", () => {
+    expect(summary([A, B], expenses, [pay(B, A, 5000)])).toEqual({
+      members: [
+        [A, 15000],
+        [B, -15000],
+      ],
+      debts: [[B, A, 15000]],
+    });
+  });
+
+  it("turns the debt around when the payment is larger than the debt", () => {
+    expect(summary([A, B], expenses, [pay(B, A, 35000)]).debts).toEqual([[A, B, 15000]]);
+  });
+
+  it("adds up several payments of one pair", () => {
+    expect(summary([A, B], expenses, [pay(B, A, 5000), pay(B, A, 5000)]).debts).toEqual([[B, A, 10000]]);
+  });
+
+  it("nets a payment against debts in the other direction too", () => {
+    const both = [...expenses, anExpense({ id: "e-2", group: aGroup({ memberCount: 2 }), payerId: B, grosze: 10000 })];
+    // B owes A 200 − 50 = 150; paying 150 settles it.
+    expect(summary([A, B], both, [pay(B, A, 15000)]).debts).toEqual([]);
+  });
+
+  it("ignores payments that involve a non-member", () => {
+    const result = summary([A, B], expenses, [pay("stranger", A, 20000), pay(B, "stranger", 20000)]);
+    expect(result.debts).toEqual([[B, A, 20000]]);
+  });
+
+  it("keeps each balance equal to its incoming debts minus its outgoing debts", () => {
+    const three = [anExpense({ group, payerId: A, grosze: 30000 })];
+    const result = PeriodBalances.of({ memberIds: [A, B, C], expenses: three, payments: [pay(B, A, 4000)] });
+
+    for (const member of result.members) {
+      const incoming = result.debts
+        .filter((d) => d.creditorId === member.userId)
+        .reduce((s, d) => s + d.amount.grosze, 0);
+      const outgoing = result.debts
+        .filter((d) => d.debtorId === member.userId)
+        .reduce((s, d) => s + d.amount.grosze, 0);
+      expect(member.balance.grosze).toBe(incoming - outgoing);
+    }
+  });
 });

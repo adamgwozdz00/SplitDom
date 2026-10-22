@@ -13,6 +13,13 @@ export interface PaidExpense {
   readonly shares: readonly ExpenseShare[];
 }
 
+/** What balances need from a payment: who sent money to whom. */
+export interface PaymentBetween {
+  readonly senderId: string;
+  readonly recipientId: string;
+  readonly amount: Money;
+}
+
 export interface PairDebt {
   readonly debtorId: string;
   readonly creditorId: string;
@@ -23,7 +30,9 @@ export interface PairDebt {
  * Each member's balance and the netted debt of each pair of members, derived from one period's expenses.
  * "A owes B" is A's shares in expenses B paid minus B's shares in expenses A paid, kept only when positive,
  * so a pair never appears in both directions and each balance equals incoming minus outgoing debts.
- * Only the given members count; an expense share held by anyone else is ignored.
+ * A payment from B to A counts like money B gave A: it raises B's balance, lowers A's and counts as a debt of A
+ * to B in the pair netting, so it can settle a debt or turn it around.
+ * Only the given members count; an expense share or payment of anyone else is ignored.
  */
 export class PeriodBalances {
   private constructor(
@@ -31,8 +40,12 @@ export class PeriodBalances {
     readonly debts: readonly PairDebt[],
   ) {}
 
-  static of(input: { memberIds: readonly string[]; expenses: readonly PaidExpense[] }): PeriodBalances {
-    const { memberIds, expenses } = input;
+  static of(input: {
+    memberIds: readonly string[];
+    expenses: readonly PaidExpense[];
+    payments?: readonly PaymentBetween[];
+  }): PeriodBalances {
+    const { memberIds, expenses, payments = [] } = input;
     const index = new Map(memberIds.map((id, position) => [id, position]));
     const size = memberIds.length;
 
@@ -56,6 +69,17 @@ export class PeriodBalances {
           owed[debtor][payer] = (owed[debtor][payer] ?? 0) + share.amount.grosze;
         }
       }
+    }
+
+    for (const payment of payments) {
+      const sender = index.get(payment.senderId);
+      const recipient = index.get(payment.recipientId);
+      if (sender === undefined || recipient === undefined || sender === recipient) {
+        continue;
+      }
+      balance[sender] = (balance[sender] ?? 0) + payment.amount.grosze;
+      balance[recipient] = (balance[recipient] ?? 0) - payment.amount.grosze;
+      owed[recipient][sender] = (owed[recipient][sender] ?? 0) + payment.amount.grosze;
     }
 
     const members = memberIds.map((userId, position) => ({

@@ -2,11 +2,14 @@ import type { BillingMonth } from "@/lib/billing-periods/billing-month.value";
 import { BillingPeriod } from "@/lib/billing-periods/billing-period.aggregate";
 import { billingPeriodError } from "@/lib/billing-periods/billing-period-error.messages";
 import type { Expense } from "@/lib/billing-periods/expense.entity";
+import type { Payment } from "@/lib/billing-periods/payment.entity";
 import { ExpenseTitle } from "@/lib/billing-periods/expense-title.value";
 import { Money } from "@/lib/billing-periods/money.value";
 import type { PeriodBalances } from "@/lib/billing-periods/period-balances.value";
 import type { BillingPeriodRepository, Result } from "@/lib/billing-periods/types";
 import type { Group } from "@/lib/groups";
+
+const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
 /**
  * The only entry point to the BillingPeriod aggregate: it loads a period through the repository, runs a
@@ -133,6 +136,43 @@ export class BillingPeriodService {
     );
   }
 
+  /**
+   * Records a payment `senderId` made to `recipientId`. `paymentId` is the id the form carried, so a repeated
+   * submit or a retry after a lost race records it once; the retry judges the amount against the period as it
+   * is then, so a debt that shrank meanwhile refuses it.
+   */
+  async sendPayment(input: {
+    group: Group;
+    senderId: string;
+    recipientId: string;
+    paymentId: string;
+    amount: string;
+  }): Promise<Result<void>> {
+    if (!UUID.test(input.paymentId)) {
+      return billingPeriodError("unexpected", { groupId: input.group.id });
+    }
+    const amount = Money.parse(input.amount);
+    if ("error" in amount) {
+      return amount;
+    }
+    const command = {
+      id: input.paymentId,
+      senderId: input.senderId,
+      recipientId: input.recipientId,
+      amount: amount.data,
+      now: this.clock(),
+    };
+    const sent = await this.change(input.group, (period) => period.sendPayment(command));
+    return "error" in sent ? sent : { data: undefined };
+  }
+
+  /** Withdraws `userId`'s own unconfirmed payment, retried like `addExpense` on a lost race. */
+  async withdrawPayment(input: { group: Group; userId: string; paymentId: string }): Promise<Result<void>> {
+    return this.change(input.group, (period) =>
+      period.withdrawPayment({ paymentId: input.paymentId, userId: input.userId }),
+    );
+  }
+
   /** The open period and one of its expenses, when `userId` may change it (for the edit page). */
   async getEditableExpense(input: {
     group: Group;
@@ -148,15 +188,29 @@ export class BillingPeriodService {
   }
 
   /** The open period with its expenses newest first and the balances of its participants. */
-  async summarizeOpen(
-    group: Group,
-  ): Promise<Result<{ period: BillingPeriod; expenses: readonly Expense[]; balances: PeriodBalances }>> {
+  async summarizeOpen(group: Group): Promise<
+    Result<{
+      period: BillingPeriod;
+      expenses: readonly Expense[];
+      /** Expenses plus every payment not withdrawn: what the page shows. */
+      balances: PeriodBalances;
+      /** Expenses plus confirmed payments only: what rules (confirming, closing) judge. */
+      postedBalances: PeriodBalances;
+      payments: readonly Payment[];
+    }>
+  > {
     const period = await this.openFor(group);
     if ("error" in period) {
       return period;
     }
     return {
-      data: { period: period.data, expenses: period.data.expensesNewestFirst(), balances: period.data.balances() },
+      data: {
+        period: period.data,
+        expenses: period.data.expensesNewestFirst(),
+        balances: period.data.pendingBalances(),
+        postedBalances: period.data.postedBalances(),
+        payments: period.data.paymentsNewestFirst(),
+      },
     };
   }
 
