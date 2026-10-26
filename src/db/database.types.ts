@@ -310,48 +310,12 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
-      add_expense: {
-        Args: {
-          p_amount: number
-          p_created_at: string
-          p_expense_id: string
-          p_group_id: string
-          p_payer_id: string
-          p_period_id: string
-          p_purchased_on: string
-          p_shares: Json
-          p_title: string
-        }
-        Returns: undefined
-      }
       add_group: {
         Args: {
           p_group_id: string
           p_host_id: string
           p_name: string
           p_now: string
-        }
-        Returns: undefined
-      }
-      create_group: {
-        Args: {
-          p_group_id: string
-          p_host_id: string
-          p_name: string
-          p_now: string
-          p_period_id: string
-          p_period_month: string
-        }
-        Returns: undefined
-      }
-      create_group_invite: {
-        Args: {
-          p_created_at: string
-          p_created_by: string
-          p_expires_at: string
-          p_group_id: string
-          p_invite_id: string
-          p_token: string
         }
         Returns: undefined
       }
@@ -364,21 +328,14 @@ export type Database = {
         Args: { p_token_hash: string }
         Returns: Json
       }
-      get_group_invite: { Args: { p_token: string }; Returns: Json }
       get_group_member_account_numbers: {
         Args: { p_group_id: string; p_user_ids: string[] }
         Returns: Json
       }
       get_invite_preview: { Args: { p_token_hash: string }; Returns: Json }
-      get_my_group: { Args: { p_group_id: string }; Returns: Json }
       get_my_member_profile: { Args: never; Returns: Json }
       list_my_group_aggregates: { Args: never; Returns: Json }
-      list_my_groups: { Args: never; Returns: Json }
       list_my_open_billing_months: { Args: never; Returns: Json }
-      list_period_expenses: {
-        Args: { p_group_id: string; p_period_id: string }
-        Returns: Json
-      }
       open_billing_period: {
         Args: {
           p_group_id: string
@@ -389,30 +346,6 @@ export type Database = {
         }
         Returns: undefined
       }
-      redeem_group_invite: {
-        Args: { p_token: string; p_used_at: string }
-        Returns: Json
-      }
-      save_billing_period: {
-        Args: {
-          p_expected_version: number
-          p_expenses: Json
-          p_group_id: string
-          p_period_id: string
-        }
-        Returns: boolean
-      }
-      save_billing_period_changes: {
-        Args: {
-          p_added: Json
-          p_changed: Json
-          p_expected_version: number
-          p_group_id: string
-          p_period_id: string
-          p_removed: string[]
-        }
-        Returns: boolean
-      }
       save_billing_period_with_confirmations: {
         Args: {
           p_added: Json
@@ -422,19 +355,6 @@ export type Database = {
           p_group_id: string
           p_period_id: string
           p_rejected: Json
-          p_removed: string[]
-          p_sent: Json
-          p_withdrawn: string[]
-        }
-        Returns: boolean
-      }
-      save_billing_period_with_payments: {
-        Args: {
-          p_added: Json
-          p_changed: Json
-          p_expected_version: number
-          p_group_id: string
-          p_period_id: string
           p_removed: string[]
           p_sent: Json
           p_withdrawn: string[]

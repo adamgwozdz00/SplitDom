@@ -3,7 +3,7 @@ project: SplitDom
 version: 1
 status: draft
 created: 2026-09-26
-updated: 2026-10-22
+updated: 2026-10-26
 prd_version: 1
 main_goal: speed
 top_blocker: time
@@ -52,7 +52,7 @@ People who share household costs — partners or roommates — settle shared exp
 | S-06 | generate-transfer-details   | debtor can copy transfer details (account number, amount, title) for a debt           | S-04          | FR-007                 | done        |
 | S-07 | mark-transfer-sent          | debtor can record a transfer as a payment that counts in the balances (pending)       | F-02          | FR-008                 | done        |
 | S-08 | confirm-debt-paid           | creditor can confirm or reject a payment, which makes it final (posted)               | F-02          | FR-009                 | in-progress |
-| S-09 | host-closes-period          | host can close a finished period, which freezes it and opens the next one             | S-05, S-08    | US-02, FR-015          | proposed    |
+| S-09 | host-closes-period          | host can close a finished period, which freezes it and opens the next one             | S-05, S-08    | US-02, FR-015          | in-progress |
 | S-10 | member-profile-display-name | member can set a display name that the group shows instead of their email             | S-04          | — (supports US-01)     | proposed    |
 
 ## Streams
@@ -248,7 +248,7 @@ Foundations below assume these are present and do NOT re-scaffold them.
   - Can the new open period's month start after today in Europe/Warsaw? If so, `PurchaseDate.window` gives min > max and rejects every purchase date, so either the next period opens only once its month has started or the window rule changes. (S-04 implementation review, 2026-10-06)
 - **Risk note (2026-10-21):** "the host's own debts are paid" is judged on the posted balances (expenses plus confirmed payments), not on the pending ones.
 - **Risk:** The most rule-heavy slice (host-only, month ended, host's debts paid, exactly one new open period); placed last because it consumes the edit-lock and paid-debt rules from S-05 and S-08.
-- **Status:** proposed
+- **Status:** in-progress
 
 ### S-10: Member profile with a display name
 

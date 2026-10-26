@@ -175,7 +175,7 @@ async function readAccountNumberAs(userEmail, { signUp = false } = {}) {
 }
 
 // The gate judges `x-app-key` on every Data API request; only the app's key gets through.
-async function firstUserCallsDirectly(appKey, rpcName = "list_my_groups", args = {}) {
+async function firstUserCallsDirectly(appKey, rpcName = "list_my_group_aggregates", args = {}) {
   return directRpc(rpcName, {
     args,
     token: await firstUserToken(),
@@ -288,7 +288,7 @@ function allOf(...checks) {
 // The creditor tries to store a payment in the debtor's name straight through the Data API; the function refuses it.
 async function creditorSendsInDebtorsNameDirectly() {
   const creditor = await authSession(email2);
-  return directRpc("save_billing_period_with_payments", {
+  return directRpc("save_billing_period_with_confirmations", {
     token: creditor.token,
     headers: { "x-app-key": SUPABASE_APP_KEY },
     args: {
@@ -308,6 +308,8 @@ async function creditorSendsInDebtorsNameDirectly() {
         },
       ],
       p_withdrawn: [],
+      p_confirmed: [],
+      p_rejected: [],
     },
   });
 }
@@ -830,15 +832,19 @@ const steps = [
     { status: 302, location: "/" },
   ],
   [
-    "signed-in user calling the expense changes function directly without the app key is refused",
+    "signed-in user calling the billing period save function directly without the app key is refused",
     () =>
-      firstUserCallsDirectly(undefined, "save_billing_period_changes", {
+      firstUserCallsDirectly(undefined, "save_billing_period_with_confirmations", {
         p_period_id: randomUUID(),
         p_group_id: groupIds[0],
         p_expected_version: 0,
         p_added: [],
         p_changed: [],
         p_removed: [],
+        p_sent: [],
+        p_withdrawn: [],
+        p_confirmed: [],
+        p_rejected: [],
       }),
     { status: 403, check: bodyContains('"code":"APPGATE"') },
   ],
