@@ -2,13 +2,14 @@ import { BillingMonth } from "@/lib/billing-periods/billing-month.value";
 import { Expense } from "@/lib/billing-periods/expense.entity";
 import type { ExpenseTitle } from "@/lib/billing-periods/expense-title.value";
 import type { Money } from "@/lib/billing-periods/money.value";
+import { OpeningDebt } from "@/lib/billing-periods/opening-debt.value";
 import { PeriodBalances } from "@/lib/billing-periods/period-balances.value";
 import { PurchaseDate } from "@/lib/billing-periods/purchase-date.value";
 import type { PurchaseDateWindow } from "@/lib/billing-periods/purchase-date.value";
 import { Payment } from "@/lib/billing-periods/payment.entity";
 import { EqualSplitPolicy } from "@/lib/billing-periods/split-policy";
 import { billingPeriodError } from "@/lib/billing-periods/billing-period-error.messages";
-import type { BillingPeriodSnapshot, Result } from "@/lib/billing-periods/types";
+import type { BillingPeriodErrorCode, BillingPeriodSnapshot, Result } from "@/lib/billing-periods/types";
 
 const EQUAL_SPLIT = new EqualSplitPolicy();
 
@@ -22,21 +23,26 @@ interface BillingPeriodState {
   participants: readonly string[];
   expenses: readonly Expense[];
   payments: readonly Payment[];
+  openingDebts: readonly OpeningDebt[];
 }
 
 /**
  * One billing period of a group: the aggregate root for the period's expenses. It adds expenses,
  * splits them between its participants (the group's members, given when it is loaded) and derives
- * the balances.
+ * the balances. The host closes it once its month has ended, which opens the next period with the
+ * posted debts carried over as opening debts and the pending payments moved along.
  */
 export class BillingPeriod {
   readonly id: string;
   readonly groupId: string;
   readonly month: BillingMonth;
   readonly openedAt: Date;
-  readonly closedAt: Date | null;
   readonly version: number;
   readonly participants: readonly string[];
+  readonly openingDebts: readonly OpeningDebt[];
+  private closedAtValue: Date | null;
+  private closedHere = false;
+  private readonly moved: string[] = [];
   private readonly stored: Expense[];
   private readonly added: Expense[] = [];
   private readonly changed = new Set<string>();
@@ -55,9 +61,10 @@ export class BillingPeriod {
     this.groupId = state.groupId;
     this.month = state.month;
     this.openedAt = state.openedAt;
-    this.closedAt = state.closedAt;
+    this.closedAtValue = state.closedAt;
     this.version = state.version;
     this.participants = Object.freeze([...state.participants]);
+    this.openingDebts = Object.freeze([...state.openingDebts]);
     this.stored = [...state.expenses];
     this.storedPayments = [...state.payments];
   }
@@ -73,6 +80,7 @@ export class BillingPeriod {
       participants: input.participants,
       expenses: [],
       payments: [],
+      openingDebts: [],
     });
   }
 
@@ -88,7 +96,13 @@ export class BillingPeriod {
       participants,
       expenses: snapshot.expenses.map((expense) => Expense.restore(expense)),
       payments: snapshot.payments.map((payment) => Payment.restore(payment)),
+      openingDebts: snapshot.openingDebts.map((debt) => OpeningDebt.restore(debt)),
     });
+  }
+
+  /** When the period was closed; null while it is open. */
+  get closedAt(): Date | null {
+    return this.closedAtValue;
   }
 
   get expenses(): readonly Expense[] {
@@ -96,7 +110,79 @@ export class BillingPeriod {
   }
 
   isOpen(): boolean {
-    return this.closedAt === null;
+    return this.closedAtValue === null;
+  }
+
+  /**
+   * Why `userId` may not close the period at `now`, or null when they may. Refuses, in this order, a closed
+   * period, a user who is not the group's host (`hostId`), a month that has not ended yet (Europe/Warsaw) and a
+   * host who still owes someone on the posted balances (a pending payment does not count until confirmed).
+   * Other members' debts never block: they carry over.
+   */
+  closeRefusal(input: { userId: string; hostId: string; now: Date }): BillingPeriodErrorCode | null {
+    if (!this.isOpen()) {
+      return "billing_period_closed";
+    }
+    if (input.userId !== input.hostId) {
+      return "not_group_host";
+    }
+    if (!this.month.hasEndedAt(input.now)) {
+      return "period_not_ended";
+    }
+    if (this.postedBalances().debts.some((debt) => debt.debtorId === input.hostId)) {
+      return "host_has_debts";
+    }
+    return null;
+  }
+
+  /**
+   * The host closes the period at `now` and gets the next one. Refuses with `closeRefusal`. Otherwise this period
+   * is closed at `now` (a pending write) and the returned period, `nextPeriodId`, covers the month after this one,
+   * opened at `now` with the same participants and no expenses. Every posted pair debt of this period becomes one
+   * of its opening debts and every pending payment of this period moves to it unchanged, so both its balances
+   * equal this period's at the moment of the close. Confirmed and rejected payments stay here.
+   */
+  close(input: { userId: string; hostId: string; nextPeriodId: string; now: Date }): Result<BillingPeriod> {
+    const refusal = this.closeRefusal(input);
+    if (refusal !== null) {
+      return billingPeriodError(refusal, { periodId: this.id });
+    }
+    const openingDebts = this.postedBalances().debts.map((debt) =>
+      OpeningDebt.of({ debtorId: debt.debtorId, creditorId: debt.creditorId, amount: debt.amount }),
+    );
+    const pending = this.payments.filter((payment) => payment.isPending());
+    const next = new BillingPeriod({
+      id: input.nextPeriodId,
+      groupId: this.groupId,
+      month: this.month.next(),
+      openedAt: input.now,
+      closedAt: null,
+      version: 0,
+      participants: this.participants,
+      expenses: [],
+      payments: pending,
+      openingDebts,
+    });
+    // Clocks of separate Worker isolates can differ by milliseconds, so an early close is recorded at `openedAt`.
+    this.closedAtValue = input.now.getTime() < this.openedAt.getTime() ? this.openedAt : input.now;
+    this.closedHere = true;
+    this.moved.push(...pending.map((payment) => payment.id));
+    return { data: next };
+  }
+
+  /** Whether the period was closed since it was loaded, which the repository still has to store. */
+  closedNow(): boolean {
+    return this.closedHere;
+  }
+
+  /** The ids of the pending payments the close moved to the next period, which the repository still has to move. */
+  movedPaymentIds(): readonly string[] {
+    return [...this.moved];
+  }
+
+  /** Whether `payment` was carried over from the previous period: it was sent before this period opened. */
+  isCarried(payment: Payment): boolean {
+    return payment.sentAt.getTime() < this.openedAt.getTime();
   }
 
   /** The purchase dates an expense added at `now` may carry: within the period's month and not in the future. */
@@ -140,17 +226,34 @@ export class BillingPeriod {
   }
 
   /**
-   * Whether a confirmed payment has settled `expense` (FR-005): a confirmed payment exists between its payer and
-   * one of its sharers, in either direction. Pending and rejected payments never lock.
+   * Whether a confirmed payment has settled `expense` (FR-005), applied oldest first: confirmed payments of a pair
+   * first settle the opening debt carried in the same direction, so for each direction between the expense's
+   * payer and one of its sharers, the expense is locked once the confirmed payments in that direction add up to
+   * more than the opening debt in that direction (0 when there is none). The lock covers every expense of the
+   * pair, in both directions and including later ones. Pending and rejected payments never count; with no
+   * opening debt any confirmed payment of the pair locks.
    */
   isLocked(expense: Expense): boolean {
-    const sharers = new Set(expense.sharerIds());
-    return this.payments.some(
-      (payment) =>
-        payment.isConfirmed() &&
-        ((payment.senderId === expense.payerId && sharers.has(payment.recipientId)) ||
-          (payment.recipientId === expense.payerId && sharers.has(payment.senderId))),
-    );
+    return expense
+      .sharerIds()
+      .filter((sharerId) => sharerId !== expense.payerId)
+      .some(
+        (sharerId) =>
+          this.confirmedBeyondOpeningDebt(expense.payerId, sharerId) ||
+          this.confirmedBeyondOpeningDebt(sharerId, expense.payerId),
+      );
+  }
+
+  private confirmedBeyondOpeningDebt(senderId: string, recipientId: string): boolean {
+    const confirmed = this.payments
+      .filter(
+        (payment) => payment.isConfirmed() && payment.senderId === senderId && payment.recipientId === recipientId,
+      )
+      .reduce((sum, payment) => sum + payment.amount.grosze, 0);
+    const carried = this.openingDebts
+      .filter((debt) => debt.debtorId === senderId && debt.creditorId === recipientId)
+      .reduce((sum, debt) => sum + debt.amount.grosze, 0);
+    return confirmed > carried;
   }
 
   /** Whether `userId` may change `expense`: the period is open, they paid it and no confirmed payment locks it. */
@@ -412,21 +515,23 @@ export class BillingPeriod {
     );
   }
 
-  /** Expenses plus every payment not withdrawn or rejected: what the members owe if every payment sent did arrive. */
+  /** Opening debts, expenses and every payment not withdrawn or rejected: what the members owe if every payment sent did arrive. */
   pendingBalances(): PeriodBalances {
     return PeriodBalances.of({
       memberIds: this.participants,
       expenses: this.expenses,
       payments: this.payments.filter((payment) => !payment.isRejected()),
+      openingDebts: this.openingDebts,
     });
   }
 
-  /** Expenses plus confirmed payments only: what is settled for certain. */
+  /** Opening debts, expenses and confirmed payments only: what is settled for certain. */
   postedBalances(): PeriodBalances {
     return PeriodBalances.of({
       memberIds: this.participants,
       expenses: this.expenses,
       payments: this.payments.filter((payment) => payment.isConfirmed()),
+      openingDebts: this.openingDebts,
     });
   }
 
@@ -440,6 +545,7 @@ export class BillingPeriod {
       version: this.version,
       expenses: this.expenses.map((expense) => expense.toSnapshot()),
       payments: this.payments.map((payment) => payment.toSnapshot()),
+      openingDebts: this.openingDebts.map((debt) => debt.toSnapshot()),
     };
   }
 }

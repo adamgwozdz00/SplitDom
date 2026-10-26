@@ -13,16 +13,22 @@ import { Group, GroupName } from "@/lib/groups";
 
 /**
  * In-memory BillingPeriodRepository for unit tests. It holds the latest period of each group as a snapshot,
- * so every load restores a fresh aggregate, and guards `save` with the stored version like the database does.
+ * so every load restores a fresh aggregate, and guards `save` and `close` with the stored version like the
+ * database does. A close stores the next period as the group's latest and keeps the closed one in `closedPeriods`.
  */
 export class FakeBillingPeriodRepository implements BillingPeriodRepository {
   readonly findCalls: string[] = [];
   readonly openCalls: BillingPeriod[] = [];
   readonly saveCalls: BillingPeriod[] = [];
+  readonly closeCalls: { closed: BillingPeriod; next: BillingPeriod }[] = [];
+  /** The periods closed through `close`, as stored after the close (without the payments that moved). */
+  readonly closedPeriods: BillingPeriodSnapshot[] = [];
   /** Answers this many `open` calls with "conflict" before storing anything. */
   openConflicts = 0;
   /** Answers this many `save` calls with "conflict" before storing anything. */
   saveConflicts = 0;
+  /** Answers this many `close` calls with "conflict" before storing anything. */
+  closeConflicts = 0;
   /** Runs on every forced conflict: the concurrent write that caused it. */
   onConflict: (() => void) | null = null;
   /** When set, every call fails with this error. */
@@ -113,6 +119,38 @@ export class FakeBillingPeriodRepository implements BillingPeriodRepository {
       ],
     });
     return Promise.resolve({ data: "saved" });
+  }
+
+  close(closed: BillingPeriod, next: BillingPeriod): Promise<Result<"closed" | "conflict">> {
+    this.closeCalls.push({ closed, next });
+    if (this.failure) {
+      return Promise.resolve(this.failure);
+    }
+    if (this.closeConflicts > 0) {
+      this.closeConflicts -= 1;
+      this.onConflict?.();
+      return Promise.resolve({ data: "conflict" });
+    }
+    // The version and open check; a stored period other than the closed one would make the next period a
+    // second open period of the group, which the one-open-period index refuses.
+    const stored = this.periods.get(closed.groupId);
+    if (stored?.id !== closed.id || stored.version !== closed.version || stored.closedAt !== null) {
+      return Promise.resolve({ data: "conflict" });
+    }
+    if (closed.closedAt === null) {
+      throw new Error("FakeBillingPeriodRepository.close: the period was not closed");
+    }
+    const moved = new Set(closed.movedPaymentIds());
+    this.closedPeriods.push(
+      structuredClone({
+        ...stored,
+        version: stored.version + 1,
+        closedAt: closed.closedAt.toISOString(),
+        payments: stored.payments.filter((payment) => !moved.has(payment.id)),
+      }),
+    );
+    this.put(next.toSnapshot());
+    return Promise.resolve({ data: "closed" });
   }
 
   listOpenMonthsOfCurrentUser(): Promise<Result<{ groupId: string; month: BillingMonth }[]>> {

@@ -581,32 +581,32 @@ None. A close writes one period update, one insert, at most n·(n−1)/2 opening
 
 #### Automated
 
-- [x] 1.1 Migration applies on a fresh database: `npm run db:reset`
-- [x] 1.2 Generated types are up to date: `npm run db:types` leaves no diff
-- [x] 1.3 No source or smoke reference to a dropped function: `grep -rnE "\b(create_group|add_expense|list_period_expenses|save_billing_period|save_billing_period_changes|save_billing_period_with_payments|create_group_invite|get_group_invite|redeem_group_invite|get_my_group|list_my_groups)\b" src scripts` finds nothing
-- [x] 1.4 Type checking passes: `npx astro check`
-- [x] 1.5 Unit tests pass: `npm test`
-- [x] 1.6 Smoke passes, including the app-key gate and backstop steps: `npm run smoke`
+- [x] 1.1 Migration applies on a fresh database: `npm run db:reset` — fb11323
+- [x] 1.2 Generated types are up to date: `npm run db:types` leaves no diff — fb11323
+- [x] 1.3 No source or smoke reference to a dropped function: `grep -rnE "\b(create_group|add_expense|list_period_expenses|save_billing_period|save_billing_period_changes|save_billing_period_with_payments|create_group_invite|get_group_invite|redeem_group_invite|get_my_group|list_my_groups)\b" src scripts` finds nothing — fb11323
+- [x] 1.4 Type checking passes: `npx astro check` — fb11323
+- [x] 1.5 Unit tests pass: `npm test` — fb11323
+- [x] 1.6 Smoke passes, including the app-key gate and backstop steps: `npm run smoke` — fb11323
 
 #### Manual
 
-- [x] 1.7 In Supabase Studio, none of the dropped functions is listed in schema `public`
+- [x] 1.7 In Supabase Studio, none of the dropped functions is listed in schema `public` — fb11323
 
 ### Phase 2: Closing in the domain and persistence (test-first)
 
 #### Automated
 
-- [ ] 2.1 Unit tests pass, including the close, carry-forward, moved-payment and oldest-first lock cases: `npm test`
-- [ ] 2.2 Migration applies on a fresh database: `npm run db:reset`
-- [ ] 2.3 Generated types are up to date: `npm run db:types` leaves no diff
-- [ ] 2.4 Type checking passes: `npx astro check`
-- [ ] 2.5 Linting passes: `npm run lint`
-- [ ] 2.6 Existing smoke flows still pass: `npm run smoke`
+- [x] 2.1 Unit tests pass, including the close, carry-forward, moved-payment and oldest-first lock cases: `npm test`
+- [x] 2.2 Migration applies on a fresh database: `npm run db:reset`
+- [x] 2.3 Generated types are up to date: `npm run db:types` leaves no diff
+- [x] 2.4 Type checking passes: `npx astro check`
+- [x] 2.5 Linting passes: `npm run lint`
+- [x] 2.6 Existing smoke flows still pass: `npm run smoke`
 
 #### Manual
 
-- [ ] 2.7 In Supabase Studio, `opening_debts` has RLS on, no policies and no grants for `anon`/`authenticated`, and `close_billing_period` is executable by `authenticated` only
-- [ ] 2.8 Test names read as the rules (host only, month must have ended, host's posted debts block, balances unchanged across the close, pending payments move, oldest-first lock)
+- [x] 2.7 In Supabase Studio, `opening_debts` has RLS on, no policies and no grants for `anon`/`authenticated`, and `close_billing_period` is executable by `authenticated` only
+- [x] 2.8 Test names read as the rules (host only, month must have ended, host's posted debts block, balances unchanged across the close, pending payments move, oldest-first lock)
 
 ### Phase 3: Close endpoint, group page and smoke
 

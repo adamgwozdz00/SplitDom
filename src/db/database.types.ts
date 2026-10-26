@@ -247,6 +247,52 @@ export type Database = {
         }
         Relationships: []
       }
+      opening_debts: {
+        Row: {
+          amount: number
+          creditor_id: string
+          debtor_id: string
+          group_id: string
+          period_id: string
+        }
+        Insert: {
+          amount: number
+          creditor_id: string
+          debtor_id: string
+          group_id: string
+          period_id: string
+        }
+        Update: {
+          amount?: number
+          creditor_id?: string
+          debtor_id?: string
+          group_id?: string
+          period_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "opening_debts_group_id_creditor_id_fkey"
+            columns: ["group_id", "creditor_id"]
+            isOneToOne: false
+            referencedRelation: "group_members"
+            referencedColumns: ["group_id", "user_id"]
+          },
+          {
+            foreignKeyName: "opening_debts_group_id_debtor_id_fkey"
+            columns: ["group_id", "debtor_id"]
+            isOneToOne: false
+            referencedRelation: "group_members"
+            referencedColumns: ["group_id", "user_id"]
+          },
+          {
+            foreignKeyName: "opening_debts_period_id_group_id_fkey"
+            columns: ["period_id", "group_id"]
+            isOneToOne: false
+            referencedRelation: "billing_periods"
+            referencedColumns: ["id", "group_id"]
+          },
+        ]
+      }
       payments: {
         Row: {
           amount: number
@@ -318,6 +364,20 @@ export type Database = {
           p_now: string
         }
         Returns: undefined
+      }
+      close_billing_period: {
+        Args: {
+          p_closed_at: string
+          p_expected_version: number
+          p_group_id: string
+          p_moved: string[]
+          p_next_month: string
+          p_next_opened_at: string
+          p_next_period_id: string
+          p_opening: Json
+          p_period_id: string
+        }
+        Returns: boolean
       }
       get_current_billing_period: {
         Args: { p_group_id: string }

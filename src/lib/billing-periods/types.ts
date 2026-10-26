@@ -17,6 +17,9 @@ export type BillingPeriodErrorCode =
   | "payment_confirmed"
   | "not_payment_recipient"
   | "payment_not_pending"
+  | "not_group_host"
+  | "period_not_ended"
+  | "host_has_debts"
   | "period_changed"
   | "group_not_found"
   | "not_authenticated"
@@ -57,6 +60,13 @@ export interface PaymentSnapshot {
   rejectedAt: string | null;
 }
 
+/** Persistence shape of a debt carried into a period from the period before it; `amountGrosze` is positive. */
+export interface OpeningDebtSnapshot {
+  debtorId: string;
+  creditorId: string;
+  amountGrosze: number;
+}
+
 /** Persistence shape of the BillingPeriod aggregate. `month` is `YYYY-MM-01`; timestamps are UTC ISO strings. */
 export interface BillingPeriodSnapshot {
   id: string;
@@ -67,6 +77,7 @@ export interface BillingPeriodSnapshot {
   version: number;
   expenses: ExpenseSnapshot[];
   payments: PaymentSnapshot[];
+  openingDebts: OpeningDebtSnapshot[];
 }
 
 /** Loads and persists BillingPeriod aggregates on behalf of the signed-in user. */
@@ -77,6 +88,12 @@ export interface BillingPeriodRepository {
   open(period: BillingPeriod): Promise<Result<"opened" | "conflict">>;
   /** Stores the expense and payment changes (including confirmed and rejected payments) since load if the period's version is unchanged; `"conflict"` otherwise. */
   save(period: BillingPeriod): Promise<Result<"saved" | "conflict">>;
+  /**
+   * Closes `closed` and opens `next` in one write: stores the close, the next period with its opening debts and
+   * moves the closed period's pending payments to it, if the closed period's version is unchanged and it is still
+   * open; `"conflict"` otherwise.
+   */
+  close(closed: BillingPeriod, next: BillingPeriod): Promise<Result<"closed" | "conflict">>;
   /** The open period's month of every group the signed-in user belongs to. */
   listOpenMonthsOfCurrentUser(): Promise<Result<{ groupId: string; month: BillingMonth }[]>>;
 }

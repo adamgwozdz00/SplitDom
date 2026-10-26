@@ -10,6 +10,7 @@ import type {
   BillingPeriodRepository,
   BillingPeriodSnapshot,
   ExpenseSnapshot,
+  OpeningDebtSnapshot,
   Result,
   PaymentSnapshot,
 } from "@/lib/billing-periods/types";
@@ -19,7 +20,7 @@ type JsonObject = Record<string, Json | undefined>;
 
 /**
  * BillingPeriodRepository on the signed-in user's Supabase client. It talks to the persistence functions
- * from the `billing_period_aggregate` migration, which scope every read and write to `auth.uid()`.
+ * from the `billing_period_aggregate` migration and its successors, which scope every read and write to `auth.uid()`.
  */
 export function createSupabaseBillingPeriodRepository(client: SupabaseClient<Database>): BillingPeriodRepository {
   return {
@@ -72,6 +73,35 @@ export function createSupabaseBillingPeriodRepository(client: SupabaseClient<Dat
       return data ? { data: "saved" } : { data: "conflict" };
     },
 
+    async close(closed, next) {
+      if (closed.closedAt === null) {
+        return billingPeriodError("unexpected", { periodId: closed.id });
+      }
+      const { data, error } = await client.rpc("close_billing_period", {
+        p_period_id: closed.id,
+        p_group_id: closed.groupId,
+        p_expected_version: closed.version,
+        p_closed_at: closed.closedAt.toISOString(),
+        p_next_period_id: next.id,
+        p_next_month: next.month.toDate(),
+        p_next_opened_at: next.openedAt.toISOString(),
+        p_opening: next.openingDebts.map((debt) => ({
+          debtor_id: debt.debtorId,
+          creditor_id: debt.creditorId,
+          amount: debt.amount.grosze,
+        })),
+        p_moved: [...closed.movedPaymentIds()],
+      });
+      // The group got another open period, or a period for the same month, from a concurrent write.
+      if (error?.code === "23505") {
+        return { data: "conflict" };
+      }
+      if (error) {
+        return fromDbError(error);
+      }
+      return data ? { data: "closed" } : { data: "conflict" };
+    },
+
     async listOpenMonthsOfCurrentUser() {
       const { data, error } = await client.rpc("list_my_open_billing_months");
       if (error) {
@@ -114,8 +144,10 @@ function fromDbError(error: PostgrestError): BillingPeriodError {
     case "28000":
       return billingPeriodError("not_authenticated");
     // Also raised by save_billing_period_with_confirmations when an expense or a payment is not the caller's (or a
-    // decided payment was not sent to the caller); the aggregate checks the author and the recipient first, so in
-    // practice this is a caller who is not a member of the group.
+    // decided payment was not sent to the caller), and by close_billing_period when the caller is not the group's
+    // host (or the next period, its opening debts or the moved payments do not match the closed period); the
+    // aggregate checks the author, the recipient and the host first, so in practice this is a caller who is not a
+    // member of the group.
     case "42501":
       return billingPeriodError("group_not_found");
     default:
@@ -162,6 +194,10 @@ function toSnapshot(value: Json): BillingPeriodSnapshot {
   if (!Array.isArray(payments)) {
     throw new TypeError("period.payments: expected an array");
   }
+  const openingDebts = period.opening_debts;
+  if (!Array.isArray(openingDebts)) {
+    throw new TypeError("period.opening_debts: expected an array");
+  }
   return {
     id: asString(period.id, "period.id"),
     groupId: asString(period.group_id, "period.group_id"),
@@ -171,6 +207,16 @@ function toSnapshot(value: Json): BillingPeriodSnapshot {
     version: asInteger(period.version, "period.version"),
     expenses: expenses.map(toExpenseSnapshot),
     payments: payments.map(toPaymentSnapshot),
+    openingDebts: openingDebts.map(toOpeningDebtSnapshot),
+  };
+}
+
+function toOpeningDebtSnapshot(value: Json): OpeningDebtSnapshot {
+  const row = asObject(value, "opening_debt");
+  return {
+    debtorId: asString(row.debtor_id, "opening_debt.debtor_id"),
+    creditorId: asString(row.creditor_id, "opening_debt.creditor_id"),
+    amountGrosze: asInteger(row.amount, "opening_debt.amount"),
   };
 }
 

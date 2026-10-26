@@ -269,3 +269,58 @@ describe("PeriodBalances.of with payments", () => {
     }
   });
 });
+
+describe("PeriodBalances.of with opening debts", () => {
+  const debt = (debtorId: string, creditorId: string, grosze: number) => ({
+    debtorId,
+    creditorId,
+    amount: Money.ofGrosze(grosze),
+  });
+  const summary = (input: Parameters<typeof PeriodBalances.of>[0]) => {
+    const result = PeriodBalances.of(input);
+    return {
+      members: result.members.map((member) => [member.userId, member.balance.grosze]),
+      debts: result.debts.map((pair) => [pair.debtorId, pair.creditorId, pair.amount.grosze]),
+    };
+  };
+  const twoMembers = aGroup({ memberCount: 2 });
+
+  it("counts an opening debt alone: the debtor −amount, the creditor +amount and one pair debt", () => {
+    expect(summary({ memberIds: [A, B], expenses: [], openingDebts: [debt(B, A, 5000)] })).toEqual({
+      members: [
+        [A, 5000],
+        [B, -5000],
+      ],
+      debts: [[B, A, 5000]],
+    });
+  });
+
+  it("nets an opening debt against an expense in the opposite direction", () => {
+    // B carries 50 zł owed to A; B pays 160 zł between A and B, so A owes B 80 zł: A owes B 30 zł in total.
+    const expenses = [anExpense({ group: twoMembers, payerId: B, grosze: 16000 })];
+
+    expect(summary({ memberIds: [A, B], expenses, openingDebts: [debt(B, A, 5000)] })).toEqual({
+      members: [
+        [A, -3000],
+        [B, 3000],
+      ],
+      debts: [[A, B, 3000]],
+    });
+  });
+
+  it("settles an opening debt with a payment of the same amount", () => {
+    const payments = [{ senderId: B, recipientId: A, amount: Money.ofGrosze(5000) }];
+
+    expect(summary({ memberIds: [A, B], expenses: [], payments, openingDebts: [debt(B, A, 5000)] })).toEqual({
+      members: [
+        [A, 0],
+        [B, 0],
+      ],
+      debts: [],
+    });
+  });
+
+  it("ignores an opening debt that involves a non-member", () => {
+    expect(summary({ memberIds: [A, B], expenses: [], openingDebts: [debt("stranger", A, 5000)] }).debts).toEqual([]);
+  });
+});

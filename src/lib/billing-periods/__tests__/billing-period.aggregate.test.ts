@@ -171,6 +171,7 @@ describe("BillingPeriod.restore", () => {
       },
     ],
     payments: [],
+    openingDebts: [{ debtorId: MEMBER, creditorId: HOST, amountGrosze: 5000 }],
   };
 
   it("round-trips a snapshot", () => {
@@ -202,6 +203,14 @@ describe("BillingPeriod.restore", () => {
     ["an unparseable timestamp", { openedAt: "not a date" }],
     ["a close before the opening", { closedAt: "2026-09-30T08:00:00.000Z" }],
     ["an expense whose shares do not sum to its amount", { expenses: [{ ...snapshot.expenses[0], amount: 40001 }] }],
+    [
+      "an opening debt of a member to themselves",
+      { openingDebts: [{ debtorId: HOST, creditorId: HOST, amountGrosze: 1 }] },
+    ],
+    [
+      "an opening debt that is not positive",
+      { openingDebts: [{ debtorId: MEMBER, creditorId: HOST, amountGrosze: 0 }] },
+    ],
   ])("rejects %s", (_, override) => {
     expect(() => BillingPeriod.restore({ ...snapshot, ...override }, [HOST, MEMBER])).toThrow();
   });
@@ -819,5 +828,420 @@ describe("BillingPeriod payments", () => {
     const restored = BillingPeriod.restore(period.toSnapshot(), [HOST, MEMBER]);
     expect(restored.toSnapshot().payments).toEqual(period.toSnapshot().payments);
     expect(restored.sentPayments()).toEqual([]);
+  });
+});
+
+type Status = "pending" | "confirmed" | "rejected";
+
+interface LedgerPayment {
+  id: string;
+  from: string;
+  to: string;
+  grosze: number;
+  status?: Status;
+  sentAt?: string;
+}
+
+// A stored period of `month` with the given expenses (split equally between all participants), payments and
+// opening debts, restored so that everything counts as loaded.
+function ledger(input: {
+  participants?: readonly string[];
+  month?: "2026-10-01" | "2026-11-01";
+  expenses?: { id: string; payerId: string; grosze: number }[];
+  payments?: LedgerPayment[];
+  openingDebts?: { debtorId: string; creditorId: string; grosze: number }[];
+}): BillingPeriod {
+  const participants = input.participants ?? [HOST, MEMBER];
+  const november = input.month === "2026-11-01";
+  const period = BillingPeriod.open({
+    id: PERIOD_ID,
+    groupId: GROUP_ID,
+    participants,
+    now: new Date(november ? "2026-11-01T08:00:00.000Z" : "2026-10-01T08:00:00.000Z"),
+  });
+  for (const expense of input.expenses ?? []) {
+    const added = add(period, {
+      ...expense,
+      purchasedOn: november ? "2026-11-05" : "2026-10-10",
+      now: new Date(november ? "2026-11-05T12:00:00.000Z" : "2026-10-10T12:00:00.000Z"),
+    });
+    if ("error" in added) {
+      throw new Error(added.error.code);
+    }
+  }
+  const sentAt = november ? "2026-11-06T12:00:00.000Z" : "2026-10-16T12:00:00.000Z";
+  const decidedAt = november ? "2026-11-07T08:00:00.000Z" : "2026-10-17T08:00:00.000Z";
+  return BillingPeriod.restore(
+    {
+      ...period.toSnapshot(),
+      payments: (input.payments ?? []).map((payment) => ({
+        id: payment.id,
+        senderId: payment.from,
+        recipientId: payment.to,
+        amount: payment.grosze,
+        sentAt: payment.sentAt ?? sentAt,
+        confirmedAt: payment.status === "confirmed" ? decidedAt : null,
+        rejectedAt: payment.status === "rejected" ? decidedAt : null,
+      })),
+      openingDebts: (input.openingDebts ?? []).map((debt) => ({
+        debtorId: debt.debtorId,
+        creditorId: debt.creditorId,
+        amountGrosze: debt.grosze,
+      })),
+    },
+    participants,
+  );
+}
+
+const memberBalances = (balances: ReturnType<BillingPeriod["pendingBalances"]>) =>
+  balances.members.map((member) => [member.userId, member.balance.grosze]);
+const pairDebts = (balances: ReturnType<BillingPeriod["pendingBalances"]>) =>
+  balances.debts.map((debt) => [debt.debtorId, debt.creditorId, debt.amount.grosze]);
+
+describe("BillingPeriod.close", () => {
+  // 00:30 on 1 November in Warsaw, so October has ended.
+  const AFTER_OCTOBER = new Date("2026-10-31T23:30:00.000Z");
+  // 23:30 on 31 October in Warsaw: October is still running.
+  const LAST_EVENING = new Date("2026-10-31T22:30:00.000Z");
+  const NEXT_ID = "next-period";
+  const THIRD = "third";
+
+  function closeAs(period: BillingPeriod, input: { userId?: string; now?: Date } = {}) {
+    return period.close({
+      userId: input.userId ?? HOST,
+      hostId: HOST,
+      nextPeriodId: NEXT_ID,
+      now: input.now ?? AFTER_OCTOBER,
+    });
+  }
+
+  function refusalOf(period: BillingPeriod, input: { userId?: string; now?: Date } = {}) {
+    return period.closeRefusal({ userId: input.userId ?? HOST, hostId: HOST, now: input.now ?? AFTER_OCTOBER });
+  }
+
+  function closed(period: BillingPeriod): BillingPeriod {
+    const result = closeAs(period);
+    if ("error" in result) {
+      throw new Error(result.error.code);
+    }
+    return result.data;
+  }
+
+  // MEMBER paid 400 zł between HOST and MEMBER, so the host owes MEMBER 200 zł.
+  const hostOwes = (payments: LedgerPayment[] = []) =>
+    ledger({ expenses: [{ id: "e-1", payerId: MEMBER, grosze: 40000 }], payments });
+
+  describe("refusals (host only, month must have ended, host's posted debts block)", () => {
+    it("refuses, in order, a closed period, a non-host, a month that has not ended and a host who owes", () => {
+      const owing = hostOwes();
+      const closedPeriod = BillingPeriod.restore({ ...owing.toSnapshot(), closedAt: "2026-11-01T08:00:00.000Z" }, [
+        HOST,
+        MEMBER,
+      ]);
+
+      expect(code(closeAs(closedPeriod, { userId: MEMBER, now: LAST_EVENING }))).toBe("billing_period_closed");
+      expect(code(closeAs(owing, { userId: MEMBER, now: LAST_EVENING }))).toBe("not_group_host");
+      expect(code(closeAs(owing, { now: LAST_EVENING }))).toBe("period_not_ended");
+      expect(code(closeAs(owing))).toBe("host_has_debts");
+    });
+
+    it("gives the same codes from closeRefusal as from close, and null when the close is allowed", () => {
+      const owing = hostOwes();
+      const closedPeriod = BillingPeriod.restore({ ...owing.toSnapshot(), closedAt: "2026-11-01T08:00:00.000Z" }, [
+        HOST,
+        MEMBER,
+      ]);
+      const cases: [BillingPeriod, { userId?: string; now?: Date }][] = [
+        [closedPeriod, {}],
+        [owing, { userId: MEMBER }],
+        [owing, { now: LAST_EVENING }],
+        [owing, {}],
+      ];
+
+      for (const [period, input] of cases) {
+        expect(refusalOf(period, input)).toBe(code(closeAs(period, input)));
+      }
+      expect(refusalOf(ledger({}))).toBeNull();
+    });
+
+    it("refuses a host whose only debt is covered by a pending payment", () => {
+      const period = hostOwes([{ id: "p-1", from: HOST, to: MEMBER, grosze: 20000 }]);
+
+      expect(period.pendingBalances().debts).toEqual([]);
+      expect(code(closeAs(period))).toBe("host_has_debts");
+    });
+
+    it("lets a host whose debt is settled by a confirmed payment close", () => {
+      expect(code(closeAs(hostOwes([{ id: "p-1", from: HOST, to: MEMBER, grosze: 20000, status: "confirmed" }])))).toBe(
+        "ok",
+      );
+    });
+
+    it("lets a host who is only a creditor close, while the other members' debts carry over", () => {
+      const period = ledger({ expenses: [{ id: "e-1", payerId: HOST, grosze: 40000 }] });
+
+      expect(code(closeAs(period))).toBe("ok");
+    });
+
+    it("leaves a refused period open, with nothing to write", () => {
+      const period = hostOwes();
+
+      closeAs(period);
+
+      expect(period.isOpen()).toBe(true);
+      expect(period.closedNow()).toBe(false);
+      expect(period.movedPaymentIds()).toEqual([]);
+    });
+  });
+
+  describe("the next period", () => {
+    // HOST paid 300 zł and MEMBER paid 90 zł between all three: MEMBER owes HOST 70, THIRD owes HOST 100 and
+    // MEMBER 30. THIRD has sent HOST 40 (pending), MEMBER 10 (confirmed) and HOST 25 (rejected).
+    const threeWay = () =>
+      ledger({
+        participants: [HOST, MEMBER, THIRD],
+        expenses: [
+          { id: "e-1", payerId: HOST, grosze: 30000 },
+          { id: "e-2", payerId: MEMBER, grosze: 9000 },
+        ],
+        payments: [
+          { id: "p-pending", from: THIRD, to: HOST, grosze: 4000 },
+          { id: "p-confirmed", from: THIRD, to: MEMBER, grosze: 1000, status: "confirmed" },
+          { id: "p-rejected", from: THIRD, to: HOST, grosze: 2500, status: "rejected" },
+        ],
+      });
+
+    it("opens the month after the closed one at now, with version 0, the same participants and no expenses", () => {
+      const next = closed(threeWay());
+
+      expect(next.id).toBe(NEXT_ID);
+      expect(next.groupId).toBe(GROUP_ID);
+      expect(next.month.toDate()).toBe("2026-11-01");
+      expect(next.openedAt).toEqual(AFTER_OCTOBER);
+      expect(next.closedAt).toBeNull();
+      expect(next.version).toBe(0);
+      expect(next.participants).toEqual([HOST, MEMBER, THIRD]);
+      expect(next.expenses).toEqual([]);
+    });
+
+    it("takes the month after the closed one even when the close comes months later", () => {
+      const next = closeAs(ledger({}), { now: new Date("2027-01-15T12:00:00.000Z") });
+
+      expect("data" in next && next.data.month.toDate()).toBe("2026-11-01");
+    });
+
+    it("carries one opening debt per posted pair debt", () => {
+      const period = threeWay();
+      const next = closed(period);
+
+      expect(next.openingDebts.map((debt) => [debt.debtorId, debt.creditorId, debt.amount.grosze])).toEqual(
+        pairDebts(period.postedBalances()),
+      );
+      expect(pairDebts(period.postedBalances())).toEqual([
+        [MEMBER, HOST, 7000],
+        [THIRD, HOST, 10000],
+        [THIRD, MEMBER, 2000],
+      ]);
+    });
+
+    it("moves exactly the pending payments, unchanged, and keeps confirmed and rejected payments behind", () => {
+      const period = threeWay();
+      const pendingBefore = period.payments.find((payment) => payment.id === "p-pending")?.toSnapshot();
+
+      const next = closed(period);
+
+      expect(next.payments.map((payment) => payment.toSnapshot())).toEqual([pendingBefore]);
+      expect(next.sentPayments()).toEqual([]);
+      expect(period.movedPaymentIds()).toEqual(["p-pending"]);
+      expect(period.payments.map((payment) => payment.id)).toEqual(["p-pending", "p-confirmed", "p-rejected"]);
+    });
+
+    it("marks the closed period closed at now as a pending write, and refuses a second close", () => {
+      const period = threeWay();
+
+      closed(period);
+
+      expect(period.isOpen()).toBe(false);
+      expect(period.closedAt).toEqual(AFTER_OCTOBER);
+      expect(period.closedNow()).toBe(true);
+      expect(code(closeAs(period))).toBe("billing_period_closed");
+    });
+
+    it("keeps balances unchanged across the close: the pending and posted balances of both periods match", () => {
+      const period = threeWay();
+
+      const next = closed(period);
+
+      expect(memberBalances(next.pendingBalances())).toEqual(memberBalances(period.pendingBalances()));
+      expect(pairDebts(next.pendingBalances())).toEqual(pairDebts(period.pendingBalances()));
+      expect(memberBalances(next.postedBalances())).toEqual(memberBalances(period.postedBalances()));
+      expect(pairDebts(next.postedBalances())).toEqual(pairDebts(period.postedBalances()));
+    });
+
+    it("round-trips the next period, with its opening debts, through the snapshot", () => {
+      const next = closed(threeWay());
+
+      const restored = BillingPeriod.restore(next.toSnapshot(), [HOST, MEMBER, THIRD]);
+
+      expect(restored.toSnapshot()).toEqual(next.toSnapshot());
+      expect(restored.toSnapshot().openingDebts).toEqual([
+        { debtorId: MEMBER, creditorId: HOST, amountGrosze: 7000 },
+        { debtorId: THIRD, creditorId: HOST, amountGrosze: 10000 },
+        { debtorId: THIRD, creditorId: MEMBER, amountGrosze: 2000 },
+      ]);
+    });
+  });
+
+  describe("invariant: balances unchanged across the close, for random small ledgers", () => {
+    // A fixed pseudo-random sequence (LCG) keeps the grid deterministic without a property-testing dependency.
+    function sequence(seed: number): () => number {
+      let state = seed;
+      return () => {
+        state = (state * 1664525 + 1013904223) % 4294967296;
+        return state;
+      };
+    }
+    const STATUSES: Status[] = ["pending", "confirmed", "rejected"];
+
+    for (const memberCount of [2, 3, 4]) {
+      for (const seed of [1, 2, 3, 4, 5, 6]) {
+        it(`holds for ${memberCount} members, seed ${seed}`, () => {
+          const next = sequence(seed * 104729 + memberCount);
+          const participants = [HOST, ...Array.from({ length: memberCount - 1 }, (_, i) => `member-${i + 1}`)];
+          const pick = () => participants[next() % memberCount];
+          const payments: LedgerPayment[] = [];
+          for (let position = 0; position < 6; position += 1) {
+            const from = pick();
+            const to = participants.find((candidate) => candidate !== from && next() % 2 === 0) ?? pick();
+            if (from !== to) {
+              payments.push({
+                id: `p-${position}`,
+                from,
+                to,
+                grosze: 1 + (next() % 50_000),
+                status: STATUSES[next() % 3],
+              });
+            }
+          }
+          // The host settles their own posted debts with confirmed payments, so the close is allowed.
+          const draft = ledger({
+            participants,
+            expenses: Array.from({ length: 5 }, (_, position) => ({
+              id: `e-${position}`,
+              payerId: pick(),
+              grosze: 1 + (next() % 100_000),
+            })),
+            payments,
+          });
+          const settling = draft
+            .postedBalances()
+            .debts.filter((debt) => debt.debtorId === HOST)
+            .map((debt, position) => ({
+              id: `settle-${position}`,
+              from: HOST,
+              to: debt.creditorId,
+              grosze: debt.amount.grosze,
+              status: "confirmed" as const,
+            }));
+          const period = ledger({
+            participants,
+            expenses: draft.expenses.map((expense) => ({
+              id: expense.id,
+              payerId: expense.payerId,
+              grosze: expense.amount.grosze,
+            })),
+            payments: [...payments, ...settling],
+          });
+
+          const result = closeAs(period);
+
+          if ("error" in result) {
+            throw new Error(result.error.code);
+          }
+          expect(memberBalances(result.data.pendingBalances())).toEqual(memberBalances(period.pendingBalances()));
+          expect(pairDebts(result.data.pendingBalances())).toEqual(pairDebts(period.pendingBalances()));
+          expect(memberBalances(result.data.postedBalances())).toEqual(memberBalances(period.postedBalances()));
+          expect(pairDebts(result.data.postedBalances())).toEqual(pairDebts(period.postedBalances()));
+        });
+      }
+    }
+  });
+
+  describe("isCarried", () => {
+    it("is true only for a payment sent before the period opened", () => {
+      const period = ledger({
+        month: "2026-11-01",
+        openingDebts: [{ debtorId: MEMBER, creditorId: HOST, grosze: 5000 }],
+        payments: [
+          { id: "moved", from: MEMBER, to: HOST, grosze: 1000, sentAt: "2026-10-20T12:00:00.000Z" },
+          { id: "new", from: MEMBER, to: HOST, grosze: 1000 },
+        ],
+      });
+
+      expect(period.payments.filter((payment) => period.isCarried(payment)).map((payment) => payment.id)).toEqual([
+        "moved",
+      ]);
+    });
+  });
+});
+
+describe("BillingPeriod.isLocked (FR-005, oldest-first)", () => {
+  // November: MEMBER carries a 50 zł debt to HOST from October; HOST paid e-1 (40 zł, split between both).
+  function november(payments: LedgerPayment[], carried = 5000): BillingPeriod {
+    return ledger({
+      month: "2026-11-01",
+      expenses: [{ id: "e-1", payerId: HOST, grosze: 4000 }],
+      payments,
+      openingDebts: carried > 0 ? [{ debtorId: MEMBER, creditorId: HOST, grosze: carried }] : [],
+    });
+  }
+  const lockedIds = (period: BillingPeriod) =>
+    period.expenses.filter((expense) => period.isLocked(expense)).map((expense) => expense.id);
+
+  it("behaves as in S-08 without an opening debt: one confirmed grosz locks", () => {
+    expect(lockedIds(november([{ id: "p", from: MEMBER, to: HOST, grosze: 1, status: "confirmed" }], 0))).toEqual([
+      "e-1",
+    ]);
+  });
+
+  it("does not lock while confirmed payments only cover the carried debt", () => {
+    const period = november([
+      { id: "p-1", from: MEMBER, to: HOST, grosze: 2000, status: "confirmed" },
+      { id: "p-2", from: MEMBER, to: HOST, grosze: 3000, status: "confirmed" },
+    ]);
+
+    expect(lockedIds(period)).toEqual([]);
+    expect(period.canEdit(period.expenses[0], HOST)).toBe(true);
+  });
+
+  it("locks the pair's expenses one grosz above the carried debt, in both directions and including later ones", () => {
+    const period = november([{ id: "p-1", from: MEMBER, to: HOST, grosze: 5001, status: "confirmed" }]);
+    add(period, {
+      id: "e-2",
+      payerId: MEMBER,
+      grosze: 2000,
+      purchasedOn: "2026-11-08",
+      now: new Date("2026-11-08T12:00:00.000Z"),
+    });
+
+    expect(lockedIds(period)).toEqual(["e-1", "e-2"]);
+    expect(code(period.removeExpense({ expenseId: "e-1", userId: HOST }))).toBe("expense_locked");
+  });
+
+  it("locks on a confirmed payment in the direction opposite to the opening debt", () => {
+    expect(lockedIds(november([{ id: "p", from: HOST, to: MEMBER, grosze: 1, status: "confirmed" }]))).toEqual(["e-1"]);
+  });
+
+  it("never counts pending or rejected payments", () => {
+    expect(
+      lockedIds(
+        november([
+          { id: "p-1", from: MEMBER, to: HOST, grosze: 5000, status: "confirmed" },
+          { id: "p-2", from: MEMBER, to: HOST, grosze: 9000 },
+          { id: "p-3", from: MEMBER, to: HOST, grosze: 9000, status: "rejected" },
+          { id: "p-4", from: HOST, to: MEMBER, grosze: 9000 },
+        ]),
+      ),
+    ).toEqual([]);
   });
 });

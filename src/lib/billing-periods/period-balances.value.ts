@@ -32,7 +32,9 @@ export interface PairDebt {
  * so a pair never appears in both directions and each balance equals incoming minus outgoing debts.
  * A payment from B to A counts like money B gave A: it raises B's balance, lowers A's and counts as a debt of A
  * to B in the pair netting, so it can settle a debt or turn it around.
- * Only the given members count; an expense share or payment of anyone else is ignored.
+ * An opening debt of A to B (carried from the previous period) counts like an expense share of A paid by B: it
+ * lowers A's balance, raises B's and adds to what A owes B in the pair netting.
+ * Only the given members count; an expense share, payment or opening debt of anyone else is ignored.
  */
 export class PeriodBalances {
   private constructor(
@@ -44,8 +46,9 @@ export class PeriodBalances {
     memberIds: readonly string[];
     expenses: readonly PaidExpense[];
     payments?: readonly PaymentBetween[];
+    openingDebts?: readonly PairDebt[];
   }): PeriodBalances {
-    const { memberIds, expenses, payments = [] } = input;
+    const { memberIds, expenses, payments = [], openingDebts = [] } = input;
     const index = new Map(memberIds.map((id, position) => [id, position]));
     const size = memberIds.length;
 
@@ -80,6 +83,17 @@ export class PeriodBalances {
       balance[sender] = (balance[sender] ?? 0) + payment.amount.grosze;
       balance[recipient] = (balance[recipient] ?? 0) - payment.amount.grosze;
       owed[recipient][sender] = (owed[recipient][sender] ?? 0) + payment.amount.grosze;
+    }
+
+    for (const opening of openingDebts) {
+      const debtor = index.get(opening.debtorId);
+      const creditor = index.get(opening.creditorId);
+      if (debtor === undefined || creditor === undefined || debtor === creditor) {
+        continue;
+      }
+      balance[creditor] = (balance[creditor] ?? 0) + opening.amount.grosze;
+      balance[debtor] = (balance[debtor] ?? 0) - opening.amount.grosze;
+      owed[debtor][creditor] = (owed[debtor][creditor] ?? 0) + opening.amount.grosze;
     }
 
     const members = memberIds.map((userId, position) => ({
