@@ -56,8 +56,8 @@ Order rows by impact × likelihood. Out of the map on purpose:
 direct RPC calls that bypass the app (interview Q2) are closed by the
 app-key gate and probed by the smoke test, which makes it an
 observability concern rather than a test phase; expense author-only edits
-and period-close locks (PRD Guardrails, FR-005, FR-015) do not exist until
-S-05 and S-09 ship and enter the map through `--refresh`.
+and period-close locks (PRD Guardrails, FR-005, FR-015) entered the map with
+S-05 and S-09; the period-close risks are listed after the table below.
 
 ### Risk Response Guidance
 
@@ -69,6 +69,12 @@ S-05 and S-09 ship and enter the map through `--refresh`.
 | #4   | Every invalid value yields the right error code and redirect and stores nothing; boundary dates behave on month edges in Europe/Warsaw      | "The HTML input already enforces the format" | Validation order; the date window rule at month boundaries; how codes map to messages and status codes                       | unit (validation) plus smoke (HTTP codes)           | Snapshot of HTML without meaning; re-implementing the validation rule inside the test           |
 | #5   | The previous Worker version keeps working against the new schema                                                                            | "Migration applied locally, so it is safe"   | Which functions and columns the deployed Worker calls; how compatibility can be checked without database tests               | to be decided by research (checklist or CI step)    | A SQL test that carries logic; relying on a green smoke run as the only proof                   |
 | #6   | SQL functions only persist and load; no rule lives outside an aggregate                                                                     | "A backstop check in SQL is harmless"        | Which checks sit in functions today; where the line between a backstop and a rule falls                                      | review, lint or hook (hypothesis)                   | Testing SQL itself (excluded in §7); judging code style instead of behavior                     |
+
+### Period-close risks (added with S-09, 2026-10-27)
+
+- **#7 Balances change across the close.** Proof: for random small ledgers, the new period's pending and posted balances and pair debts equal the closed period's at the moment of close (unit invariant in `billing-period.aggregate.test.ts`). Must challenge: "the opening debts are copied, so they match". Cheapest layer: unit. Anti-pattern: expected values computed with the production netting.
+- **#8 Someone other than the host closes, or the host closes too early or while owing.** Proof: refusals in order (closed, not host, month not ended, host owes on the posted balances), judged in the aggregate, plus a direct `close_billing_period` call by a member refused with 42501 (smoke). Must challenge: "the button is hidden for members". Cheapest layer: unit plus smoke. Anti-pattern: treating the hidden panel as proof.
+- **#9 Warsaw month edges decide "the month has ended".** Proof: `hasEndedAt` around Warsaw midnight, including DST months (unit). The smoke flow back-dates the period through the local service-role key because it cannot move the server clock. Cheapest layer: unit. Anti-pattern: testing only mid-month dates.
 
 ## 3. Phased Rollout
 
@@ -189,7 +195,7 @@ contributors should respect these unless the underlying assumption changes.
 
 Refresh (`/10x-test-plan --refresh`) when:
 
-- a new top-3 risk surfaces from the roadmap or archive (S-05 and S-09 will add edit-lock and period-close rules),
+- a new top-3 risk surfaces from the roadmap or archive (S-05 and S-09 added edit-lock and period-close rules; S-09 risks #7–#9 are recorded),
 - a recommended tool's `checked:` date is older than three months,
 - the project's tech stack changes (new framework, new test runner),
 - §7 negative-space no longer matches what the team believes.

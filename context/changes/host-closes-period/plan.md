@@ -612,27 +612,27 @@ None. A close writes one period update, one insert, at most n·(n−1)/2 opening
 
 #### Automated
 
-- [x] 3.1 Unit tests pass: `npm test`
-- [x] 3.2 Type checking passes: `npx astro check`
-- [x] 3.3 Linting passes: `npm run lint`
-- [x] 3.4 Production build succeeds: `npm run build`
-- [x] 3.5 Smoke passes, including the back-dated close flow: `npm run smoke`
+- [x] 3.1 Unit tests pass: `npm test` — bfa283a
+- [x] 3.2 Type checking passes: `npx astro check` — bfa283a
+- [x] 3.3 Linting passes: `npm run lint` — bfa283a
+- [x] 3.4 Production build succeeds: `npm run build` — bfa283a
+- [x] 3.5 Smoke passes, including the back-dated close flow: `npm run smoke` — bfa283a
 
 #### Manual
 
-- [x] 3.6 Two browsers, after back-dating locally: the host closes the period; the member sees the carried debt and the moved payment; balances match what was shown before the close
-- [x] 3.7 Before back-dating, the host's panel shows "This month has not ended yet…", and a host who owes money sees the debts message and no button
-- [x] 3.8 A non-host never sees the panel
-- [x] 3.9 The panel, the carried section and the Payments marker read well at phone width (NFR-1)
+- [x] 3.6 Two browsers, after back-dating locally: the host closes the period; the member sees the carried debt and the moved payment; balances match what was shown before the close — bfa283a
+- [x] 3.7 Before back-dating, the host's panel shows "This month has not ended yet…", and a host who owes money sees the debts message and no button — bfa283a
+- [x] 3.8 A non-host never sees the panel — bfa283a
+- [x] 3.9 The panel, the carried section and the Payments marker read well at phone width (NFR-1) — bfa283a
 
 ### Phase 4: Docs, PRD, roadmap and GitHub
 
 #### Automated
 
-- [ ] 4.1 Formatting passes on the edited documents: `npx prettier --check CLAUDE.md context/foundation/roadmap.md context/foundation/test-plan.md context/deployment/deploy-plan.md`
-- [ ] 4.2 Linting passes: `npm run lint`
+- [x] 4.1 Formatting passes on the edited documents: `npx prettier --check CLAUDE.md context/foundation/roadmap.md context/foundation/test-plan.md context/deployment/deploy-plan.md`
+- [x] 4.2 Linting passes: `npm run lint`
 
 #### Manual
 
-- [ ] 4.3 The PRD's FR-005/FR-015/US-02 and the roadmap's S-09 read consistently with the decisions
-- [ ] 4.4 The user approves the edit to GitHub issue #14 (and any new history-slice issue) before it is applied
+- [x] 4.3 The PRD's FR-005/FR-015/US-02 and the roadmap's S-09 read consistently with the decisions
+- [x] 4.4 The user approves the edit to GitHub issue #14 (and any new history-slice issue) before it is applied
