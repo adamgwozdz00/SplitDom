@@ -629,10 +629,10 @@ None. A close writes one period update, one insert, at most n·(n−1)/2 opening
 
 #### Automated
 
-- [x] 4.1 Formatting passes on the edited documents: `npx prettier --check CLAUDE.md context/foundation/roadmap.md context/foundation/test-plan.md context/deployment/deploy-plan.md`
-- [x] 4.2 Linting passes: `npm run lint`
+- [x] 4.1 Formatting passes on the edited documents: `npx prettier --check CLAUDE.md context/foundation/roadmap.md context/foundation/test-plan.md context/deployment/deploy-plan.md` — de7a0d6
+- [x] 4.2 Linting passes: `npm run lint` — de7a0d6
 
 #### Manual
 
-- [x] 4.3 The PRD's FR-005/FR-015/US-02 and the roadmap's S-09 read consistently with the decisions
-- [x] 4.4 The user approves the edit to GitHub issue #14 (and any new history-slice issue) before it is applied
+- [x] 4.3 The PRD's FR-005/FR-015/US-02 and the roadmap's S-09 read consistently with the decisions — de7a0d6
+- [x] 4.4 The user approves the edit to GitHub issue #14 (and any new history-slice issue) before it is applied — de7a0d6

@@ -1,9 +1,9 @@
 ---
 change_id: host-closes-period
 title: Host closes the billing period (S-09)
-status: implementing
+status: implemented
 created: 2026-10-23
-updated: 2026-10-26
+updated: 2026-10-27
 ---
 
 ## Notes
