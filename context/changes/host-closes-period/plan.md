@@ -596,34 +596,34 @@ None. A close writes one period update, one insert, at most n·(n−1)/2 opening
 
 #### Automated
 
-- [x] 2.1 Unit tests pass, including the close, carry-forward, moved-payment and oldest-first lock cases: `npm test`
-- [x] 2.2 Migration applies on a fresh database: `npm run db:reset`
-- [x] 2.3 Generated types are up to date: `npm run db:types` leaves no diff
-- [x] 2.4 Type checking passes: `npx astro check`
-- [x] 2.5 Linting passes: `npm run lint`
-- [x] 2.6 Existing smoke flows still pass: `npm run smoke`
+- [x] 2.1 Unit tests pass, including the close, carry-forward, moved-payment and oldest-first lock cases: `npm test` — c1e1ee9
+- [x] 2.2 Migration applies on a fresh database: `npm run db:reset` — c1e1ee9
+- [x] 2.3 Generated types are up to date: `npm run db:types` leaves no diff — c1e1ee9
+- [x] 2.4 Type checking passes: `npx astro check` — c1e1ee9
+- [x] 2.5 Linting passes: `npm run lint` — c1e1ee9
+- [x] 2.6 Existing smoke flows still pass: `npm run smoke` — c1e1ee9
 
 #### Manual
 
-- [x] 2.7 In Supabase Studio, `opening_debts` has RLS on, no policies and no grants for `anon`/`authenticated`, and `close_billing_period` is executable by `authenticated` only
-- [x] 2.8 Test names read as the rules (host only, month must have ended, host's posted debts block, balances unchanged across the close, pending payments move, oldest-first lock)
+- [x] 2.7 In Supabase Studio, `opening_debts` has RLS on, no policies and no grants for `anon`/`authenticated`, and `close_billing_period` is executable by `authenticated` only — c1e1ee9
+- [x] 2.8 Test names read as the rules (host only, month must have ended, host's posted debts block, balances unchanged across the close, pending payments move, oldest-first lock) — c1e1ee9
 
 ### Phase 3: Close endpoint, group page and smoke
 
 #### Automated
 
-- [ ] 3.1 Unit tests pass: `npm test`
-- [ ] 3.2 Type checking passes: `npx astro check`
-- [ ] 3.3 Linting passes: `npm run lint`
-- [ ] 3.4 Production build succeeds: `npm run build`
-- [ ] 3.5 Smoke passes, including the back-dated close flow: `npm run smoke`
+- [x] 3.1 Unit tests pass: `npm test`
+- [x] 3.2 Type checking passes: `npx astro check`
+- [x] 3.3 Linting passes: `npm run lint`
+- [x] 3.4 Production build succeeds: `npm run build`
+- [x] 3.5 Smoke passes, including the back-dated close flow: `npm run smoke`
 
 #### Manual
 
-- [ ] 3.6 Two browsers, after back-dating locally: the host closes the period; the member sees the carried debt and the moved payment; balances match what was shown before the close
-- [ ] 3.7 Before back-dating, the host's panel shows "This month has not ended yet…", and a host who owes money sees the debts message and no button
-- [ ] 3.8 A non-host never sees the panel
-- [ ] 3.9 The panel, the carried section and the Payments marker read well at phone width (NFR-1)
+- [x] 3.6 Two browsers, after back-dating locally: the host closes the period; the member sees the carried debt and the moved payment; balances match what was shown before the close
+- [x] 3.7 Before back-dating, the host's panel shows "This month has not ended yet…", and a host who owes money sees the debts message and no button
+- [x] 3.8 A non-host never sees the panel
+- [x] 3.9 The panel, the carried section and the Payments marker read well at phone width (NFR-1)
 
 ### Phase 4: Docs, PRD, roadmap and GitHub
 
