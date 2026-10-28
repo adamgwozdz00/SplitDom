@@ -6,9 +6,13 @@ import TransferPanel from "@/components/expenses/TransferPanel.astro";
 import ClosePeriodPanel from "@/components/expenses/ClosePeriodPanel.astro";
 import OpeningDebtList from "@/components/expenses/OpeningDebtList.astro";
 import PaymentList from "@/components/expenses/PaymentList.astro";
+import PeriodSummary from "@/components/expenses/PeriodSummary.astro";
 import ExpenseForm from "@/components/expenses/ExpenseForm.astro";
 import ExpenseList from "@/components/expenses/ExpenseList.astro";
 import InvitePanel from "@/components/invites/InvitePanel.astro";
+import Alert from "@/components/ui/Alert.astro";
+import BackHeader from "@/components/ui/BackHeader.astro";
+import Icon from "@/components/ui/Icon.astro";
 import {
   createBillingPeriodService,
   creditorIdsOf,
@@ -54,14 +58,16 @@ const paymentError = group && paymentErrorParam ? billingPeriodErrorMessage(paym
 
 const closeErrorParam = Astro.url.searchParams.get("closeError");
 
-// A failure to load expenses only replaces the expenses section; the rest of the page still renders.
+// A failure to load expenses only replaces the period sections; the rest of the page still renders.
 const summary = group && supabase ? await createBillingPeriodService(supabase).summarizeOpen(group) : null;
 const open = summary && "data" in summary ? summary.data : null;
 
-// The host sees the close panel; the refusal is judged on the request time, the service re-judges it on submit.
+// Every member sees the month-end banner; the host's refusal is judged on the request time, and the service
+// re-judges it on submit.
+const now = new Date();
+const isHost = group?.isHost(user.id) ?? false;
 const closeRefusal =
-  group && open ? open.period.closeRefusal({ userId: user.id, hostId: group.hostId, now: new Date() }) : null;
-const showClosePanel = group !== null && open !== null && group.isHost(user.id) && open.period.isOpen();
+  group && open && isHost ? open.period.closeRefusal({ userId: user.id, hostId: group.hostId, now }) : null;
 
 // Only the creditors of the viewer's own debts have their account numbers requested. A failed lookup shows
 // the "no number yet" state rather than breaking the page.
@@ -75,90 +81,216 @@ const accountNumbers = accounts && "data" in accounts ? accounts.data : new Map(
 if (creditorIds.length > 0) {
   Astro.response.headers.set("Cache-Control", "no-store");
 }
+
+const awaitingViewer = open
+  ? open.payments.filter((payment) => payment.isPending() && payment.recipientId === user.id).length
+  : 0;
+
+// The tabs of the period. A failed expense form reopens on its own tab; otherwise the script restores the tab
+// the viewer last used in this group.
+const tabs = [
+  { id: "wydatki", label: "Wydatki" },
+  { id: "dlugi", label: "Długi" },
+  { id: "wplaty", label: "Wpłaty" },
+] as const;
+const initialTab = expenseError ? "wydatki" : "";
 ---
 
-<Layout title={group ? group.name.value : notFound ? groupErrorMessage("group_not_found") : "Group"}>
-  <div class="bg-cosmic flex min-h-screen items-center justify-center p-4">
-    <div class="w-full max-w-md rounded-2xl border border-white/10 bg-white/10 p-8 text-white backdrop-blur-xl">
-      {group ? (
-        <>
-          <GroupCard group={group} month={open?.period.month ?? null} userId={user.id} />
-          {showClosePanel && (
-            <section class="mt-6 border-t border-white/10 pt-6">
-              <ClosePeriodPanel group={group} period={open.period} refusal={closeRefusal} error={closeErrorParam} />
-            </section>
-          )}
-          <section class="mt-6 border-t border-white/10 pt-6" data-expenses>
-            <h2 class="mb-3 text-lg font-semibold text-white">Expenses</h2>
-            {open ? (
-              <>
-                <ExpenseForm group={group} period={open.period} error={expenseError} />
-                <div class="mt-6 space-y-6">
-                  <BalancesPanel
-                    group={group}
-                    balances={open.balances}
-                    viewerId={user.id}
-                    hasUnconfirmedPayments={open.payments.some((payment) => payment.isPending())}
-                  />
-                  <TransferPanel
-                    group={group}
-                    balances={open.balances}
-                    viewerId={user.id}
-                    monthLabel={open.period.month.label()}
-                    accountNumbers={accountNumbers}
-                    error={paymentError}
-                  />
-                  <PaymentList
-                    group={group}
-                    payments={open.payments}
-                    viewerId={user.id}
-                    periodOpen={open.period.isOpen()}
-                    period={open.period}
-                  />
-                  <OpeningDebtList
-                    group={group}
-                    openingDebts={open.openingDebts}
-                    viewerId={user.id}
-                    previousMonthLabel={open.period.month.previous().label()}
-                  />
-                  <ExpenseList
-                    group={group}
-                    period={open.period}
-                    month={open.period.month}
-                    expenses={open.expenses}
-                    viewerId={user.id}
-                  />
-                </div>
-              </>
-            ) : (
-              <p role="alert" class="rounded-lg border border-red-500/30 bg-red-900/30 px-3 py-2 text-sm text-red-300">
-                {EXPENSES_LOAD_FAILED_MESSAGE}
-              </p>
+<Layout title={group ? group.name.value : notFound ? groupErrorMessage("group_not_found") : "Grupa"}>
+  {group ? (
+    <>
+      <GroupCard group={group} userId={user.id} />
+      <main class="flex flex-1 flex-col gap-4 px-5 pt-4 pb-[118px]">
+        {open ? (
+          <>
+            <PeriodSummary
+              period={open.period}
+              balances={open.balances}
+              viewerId={user.id}
+              hasUnconfirmedPayments={open.payments.some((payment) => payment.isPending())}
+            />
+            {open.period.isOpen() && (
+              <ClosePeriodPanel
+                group={group}
+                period={open.period}
+                isHost={isHost}
+                refusal={closeRefusal}
+                error={closeErrorParam}
+                now={now}
+              />
             )}
-          </section>
-          <InvitePanel groupId={group.id} inviteUrl={inviteUrl} error={inviteError} />
-        </>
-      ) : (
-        <>
-          {notFound ? (
-            <h1 class="bg-gradient-to-r from-blue-200 to-purple-200 bg-clip-text text-3xl font-bold text-transparent">
-              {groupErrorMessage("group_not_found")}
-            </h1>
-          ) : (
-            <>
-              <h1 class="mb-4 bg-gradient-to-r from-blue-200 to-purple-200 bg-clip-text text-3xl font-bold text-transparent">
-                Group
-              </h1>
-              <p role="alert" class="rounded-lg border border-red-500/30 bg-red-900/30 px-3 py-2 text-sm text-red-300">
-                {GROUPS_LOAD_FAILED_MESSAGE}
-              </p>
-            </>
-          )}
-          <a href="/dashboard" class="mt-6 inline-block text-sm text-purple-300 hover:underline">
-            Back to dashboard
-          </a>
-        </>
-      )}
-    </div>
-  </div>
+            {paymentError && <Alert>{paymentError}</Alert>}
+
+            <div role="tablist" aria-label="Okres rozliczeniowy" class="segmented grid-cols-3" hidden data-tabs>
+              {tabs.map((tab, index) => (
+                <button
+                  type="button"
+                  role="tab"
+                  id={`tab-${tab.id}`}
+                  aria-controls={`panel-${tab.id}`}
+                  aria-selected={index === 0 ? "true" : "false"}
+                  tabindex={index === 0 ? 0 : -1}
+                  class="segment relative"
+                  data-tab={tab.id}
+                >
+                  {tab.label}
+                  {tab.id === "wplaty" && awaitingViewer > 0 && (
+                    <span class="ml-1.5 flex size-5 items-center justify-center rounded-full bg-warn text-[11px] text-white">
+                      {awaitingViewer}
+                      <span class="sr-only">do potwierdzenia</span>
+                    </span>
+                  )}
+                </button>
+              ))}
+            </div>
+
+            <section
+              id="panel-wydatki"
+              role="tabpanel"
+              aria-labelledby="tab-wydatki"
+              class="flex flex-col gap-4"
+              data-panel="wydatki"
+            >
+              <h2 class="sr-only">Wydatki</h2>
+              <ExpenseList group={group} period={open.period} expenses={open.expenses} viewerId={user.id} />
+              <section
+                id="nowy-wydatek"
+                class="card-dashed flex scroll-mt-4 flex-col gap-3 p-[18px]"
+                aria-labelledby="new-expense"
+              >
+                <h3 id="new-expense" class="text-[17px] font-extrabold">
+                  Nowy wydatek
+                </h3>
+                <p class="-mt-1.5 text-[13px] text-ink-muted">Dzielony po równo między wszystkich członków grupy.</p>
+                <ExpenseForm group={group} period={open.period} error={expenseError} />
+              </section>
+            </section>
+
+            <section
+              id="panel-dlugi"
+              role="tabpanel"
+              aria-labelledby="tab-dlugi"
+              class="flex flex-col gap-5"
+              data-panel="dlugi"
+            >
+              <h2 class="sr-only">Długi</h2>
+              <TransferPanel
+                group={group}
+                balances={open.balances}
+                viewerId={user.id}
+                monthLabel={open.period.month.label()}
+                accountNumbers={accountNumbers}
+              />
+              <BalancesPanel group={group} balances={open.balances} viewerId={user.id} />
+              <OpeningDebtList
+                group={group}
+                openingDebts={open.openingDebts}
+                viewerId={user.id}
+                previousMonthLabel={open.period.month.previous().label()}
+              />
+            </section>
+
+            <section
+              id="panel-wplaty"
+              role="tabpanel"
+              aria-labelledby="tab-wplaty"
+              class="flex flex-col gap-4"
+              data-panel="wplaty"
+            >
+              <h2 class="sr-only">Wpłaty</h2>
+              <PaymentList
+                group={group}
+                payments={open.payments}
+                viewerId={user.id}
+                periodOpen={open.period.isOpen()}
+                period={open.period}
+              />
+            </section>
+
+            <script is:inline define:vars={{ storageKey: `sd-tab:${group.id}`, initialTab }}>
+              // Runs as soon as the panels are parsed, so the inactive ones never flash. Without JavaScript the
+              // tab list stays hidden and every panel shows, one below the other.
+              (function () {
+                var tablist = document.querySelector("[data-tabs]");
+                if (!tablist) return;
+                var buttons = Array.prototype.slice.call(tablist.querySelectorAll("[data-tab]"));
+                var ids = buttons.map(function (button) {
+                  return button.dataset.tab;
+                });
+                function remembered() {
+                  try {
+                    return sessionStorage.getItem(storageKey);
+                  } catch (error) {
+                    return null;
+                  }
+                }
+                function select(id, focus) {
+                  buttons.forEach(function (button) {
+                    var active = button.dataset.tab === id;
+                    button.setAttribute("aria-selected", active ? "true" : "false");
+                    button.tabIndex = active ? 0 : -1;
+                    if (active && focus) button.focus();
+                    var panel = document.getElementById(button.getAttribute("aria-controls"));
+                    if (panel) panel.hidden = !active;
+                  });
+                  try {
+                    sessionStorage.setItem(storageKey, id);
+                  } catch (error) {
+                    // Storage can be unavailable (private mode); the tab still switches.
+                  }
+                }
+                var start = initialTab || remembered();
+                select(ids.indexOf(start) >= 0 ? start : ids[0], false);
+                tablist.hidden = false;
+                buttons.forEach(function (button, index) {
+                  button.addEventListener("click", function () {
+                    select(button.dataset.tab, false);
+                  });
+                  button.addEventListener("keydown", function (event) {
+                    var step = event.key === "ArrowRight" ? 1 : event.key === "ArrowLeft" ? -1 : 0;
+                    if (!step) return;
+                    event.preventDefault();
+                    select(ids[(index + step + ids.length) % ids.length], true);
+                  });
+                });
+                // "Dodaj wydatek" in the bottom bar opens the expenses tab before jumping to the form.
+                document.querySelectorAll('a[href="#nowy-wydatek"]').forEach(function (link) {
+                  link.addEventListener("click", function () {
+                    select("wydatki", false);
+                    setTimeout(function () {
+                      var amount = document.getElementById("expense-amount");
+                      if (amount) amount.focus({ preventScroll: true });
+                    }, 0);
+                  });
+                });
+              })();
+            </script>
+            <div class="fixed bottom-0 left-1/2 z-10 w-full max-w-[480px] -translate-x-1/2 border-t border-line bg-white px-5 pt-3.5 pb-[max(24px,env(safe-area-inset-bottom))]">
+              <a href="#nowy-wydatek" class="btn-primary h-[54px] w-full">
+                <Icon name="plus" strokeWidth={2.4} />
+                Dodaj wydatek
+              </a>
+            </div>
+          </>
+        ) : (
+          <Alert>{EXPENSES_LOAD_FAILED_MESSAGE}</Alert>
+        )}
+        <InvitePanel groupId={group.id} inviteUrl={inviteUrl} error={inviteError} />
+      </main>
+    </>
+  ) : (
+    <>
+      <BackHeader href="/dashboard" label="Twoje grupy" />
+      <main class="flex flex-col gap-4 px-6 pt-3">
+        {notFound ? (
+          <h1 class="text-[28px] font-extrabold tracking-[-0.02em]">{groupErrorMessage("group_not_found")}</h1>
+        ) : (
+          <>
+            <h1 class="text-[28px] font-extrabold tracking-[-0.02em]">Grupa</h1>
+            <Alert>{GROUPS_LOAD_FAILED_MESSAGE}</Alert>
+          </>
+        )}
+      </main>
+    </>
+  )}
 </Layout>

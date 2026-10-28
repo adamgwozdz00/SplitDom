@@ -13,8 +13,8 @@ test("signed-out visitor opening a group page is sent to sign-in", async ({ page
   await page.goto(`/groups/${groupId}`);
 
   await expect(page).toHaveURL("/auth/signin");
-  await expect(page.getByRole("heading", { name: "Sign in", level: 1 })).toBeVisible();
-  await expect(page.getByRole("button", { name: "Add expense" })).toBeHidden();
+  await expect(page.getByRole("heading", { name: "Witaj ponownie", level: 1 })).toBeVisible();
+  await expect(page.getByRole("button", { name: "Dodaj wydatek" })).toBeHidden();
 
   // Nothing to clean up: the test creates no data.
 });

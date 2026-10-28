@@ -1,0 +1,17 @@
+---
+import type { Money } from "@/lib/billing-periods";
+
+/** A balance with its sign: green when the member gets money back, red when they owe, plain at zero. */
+interface Props {
+  amount: Money;
+  class?: string;
+}
+
+const { amount, class: className } = Astro.props;
+---
+
+<span
+  class:list={["amount", amount.isZero() ? "text-ink" : amount.isPositive() ? "text-brand" : "text-danger", className]}
+>
+  {amount.signedLabel()}
+</span>

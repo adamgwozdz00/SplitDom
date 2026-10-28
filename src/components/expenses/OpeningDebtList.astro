@@ -2,12 +2,13 @@
 import type { OpeningDebt } from "@/lib/billing-periods";
 import type { Group } from "@/lib/groups";
 import { memberLabel } from "@/components/expenses/member-label";
+import Icon from "@/components/ui/Icon.astro";
 
 interface Props {
   group: Group;
   openingDebts: readonly OpeningDebt[];
   viewerId: string;
-  /** e.g. "September 2026": the month the debts come from. */
+  /** e.g. "wrzesień 2026": the month the debts come from. */
   previousMonthLabel: string;
 }
 
@@ -21,15 +22,18 @@ const rows = openingDebts.map((debt) => ({
 ---
 
 {rows.length > 0 && (
-  <div data-opening-debts>
-    <h3 class="mb-2 text-sm font-semibold text-blue-100/80">Carried over from {previousMonthLabel}</h3>
-    <ul class="space-y-1">
+  <div class="flex flex-col gap-3" data-opening-debts>
+    <h3 class="section-title">Przeniesione z poprzedniego miesiąca ({previousMonthLabel})</h3>
+    <ul class="card flex flex-col px-4 py-1.5">
       {rows.map((row) => (
-        <li class="flex items-baseline justify-between gap-3 text-sm" data-opening-debt>
-          <span class="min-w-0 break-words text-white">
+        <li class="flex min-h-14 items-center gap-3 border-b border-line py-2 last:border-b-0" data-opening-debt>
+          <span class="flex size-9 shrink-0 items-center justify-center rounded-full bg-track text-ink-muted">
+            <Icon name="history" size={18} />
+          </span>
+          <span class="min-w-0 flex-1 font-semibold break-words">
             {row.debtor} → {row.creditor}
           </span>
-          <span class="shrink-0 font-semibold text-white">{row.amountLabel}</span>
+          <span class="amount">{row.amountLabel}</span>
         </li>
       ))}
     </ul>

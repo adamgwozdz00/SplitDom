@@ -1,5 +1,7 @@
 ---
 import { GroupName } from "@/lib/groups";
+import Alert from "@/components/ui/Alert.astro";
+import Icon from "@/components/ui/Icon.astro";
 
 interface Props {
   error?: string | null;
@@ -8,10 +10,10 @@ interface Props {
 const { error } = Astro.props;
 ---
 
-<form method="POST" action="/api/groups" class="space-y-3" data-create-group>
-  <div>
-    <label for="group-name" class="mb-1 block text-sm text-blue-100/80">
-      Group name
+<form method="POST" action="/api/groups" class="flex flex-col gap-3" data-create-group>
+  <div class="flex flex-col gap-1.5">
+    <label for="group-name" class="field-label">
+      Nazwa grupy
     </label>
     <input
       id="group-name"
@@ -20,29 +22,16 @@ const { error } = Astro.props;
       required
       maxlength={GroupName.MAX_LENGTH}
       autocomplete="off"
-      placeholder="e.g. Mokotów flat"
+      placeholder="np. Mieszkanie na Mokotowie"
       aria-invalid={error ? "true" : undefined}
       aria-describedby={error ? "group-name-error" : undefined}
-      class:list={[
-        "w-full rounded-lg border bg-white/10 px-3 py-2 text-white placeholder-white/40 transition-colors focus:ring-2 focus:outline-none",
-        error ? "border-red-400/60 focus:ring-red-400" : "border-white/20 focus:ring-purple-400",
-      ]}
+      class="field"
     />
   </div>
-  {error && (
-    <p
-      id="group-name-error"
-      role="alert"
-      class="rounded-lg border border-red-500/30 bg-red-900/30 px-3 py-2 text-sm text-red-300"
-    >
-      {error}
-    </p>
-  )}
-  <button
-    type="submit"
-    class="w-full rounded-lg bg-purple-600 px-4 py-2 font-medium text-white transition-colors hover:bg-purple-500 disabled:opacity-60"
-  >
-    Create group
+  {error && <Alert id="group-name-error">{error}</Alert>}
+  <button type="submit" class="btn-primary w-full">
+    <Icon name="plus" size={18} strokeWidth={2.4} />
+    Utwórz grupę
   </button>
 </form>
 

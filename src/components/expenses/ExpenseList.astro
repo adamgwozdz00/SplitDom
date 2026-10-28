@@ -1,53 +1,96 @@
 ---
-import type { BillingMonth, BillingPeriod, Expense } from "@/lib/billing-periods";
+import type { BillingPeriod, Expense } from "@/lib/billing-periods";
 import type { Group } from "@/lib/groups";
 import { memberLabel } from "@/components/expenses/member-label";
+import EmptyState from "@/components/ui/EmptyState.astro";
+import Icon from "@/components/ui/Icon.astro";
 
 interface Props {
   group: Group;
   period: BillingPeriod;
-  month: BillingMonth;
+  /** The period's expenses, newest first. */
   expenses: readonly Expense[];
   viewerId: string;
 }
 
-const { group, period, month, expenses, viewerId } = Astro.props;
+const { group, period, expenses, viewerId } = Astro.props;
+
+// Consecutive expenses of one purchase day share a heading; the list is already newest first.
+const days: { label: string; expenses: Expense[] }[] = [];
+for (const expense of expenses) {
+  const last = days.at(-1);
+  if (last?.expenses[0]?.purchasedOn.equals(expense.purchasedOn)) {
+    last.expenses.push(expense);
+  } else {
+    days.push({ label: expense.purchasedOn.dayLabel(), expenses: [expense] });
+  }
+}
+let position = 0;
+const rows = days.map((day) => ({
+  label: day.label,
+  expenses: day.expenses.map((expense) => ({
+    expense,
+    // Icons alternate green and blue down the list, as in the design.
+    tone: position++ % 2 === 0 ? "bg-brand-soft text-brand" : "bg-sky-soft text-sky",
+    payer: memberLabel(group.members, expense.payerId, viewerId),
+    locked: period.isOpen() && expense.payerId === viewerId && period.isLocked(expense),
+    editHref: period.canEdit(expense, viewerId)
+      ? `/groups/${encodeURIComponent(group.id)}/expenses/${encodeURIComponent(expense.id)}/edit`
+      : null,
+  })),
+}));
+const rowClass = "card flex items-center gap-3.5 px-4 py-3.5 text-ink no-underline";
 ---
 
-<div data-expense-list>
-  <h3 class="mb-2 text-sm font-semibold text-blue-100/80">Expenses</h3>
-  {expenses.length === 0 ? (
-    <p class="text-sm text-blue-100/70">No expenses in {month.label()} yet</p>
+<div class="flex flex-col gap-2.5" data-expense-list>
+  {rows.length === 0 ? (
+    <EmptyState icon="receipt" title="Brak wydatków">
+      Dodaj pierwszy wydatek tego miesiąca poniżej.
+    </EmptyState>
   ) : (
-    <ul class="space-y-3">
-      {expenses.map((expense) => (
-        <li class="text-sm">
-          <div class="flex items-baseline justify-between gap-3">
-            <span class="min-w-0 font-medium break-words text-white">{expense.title.value}</span>
-            <span class="shrink-0 font-semibold text-white">{expense.amount.label()}</span>
-          </div>
-          <div class="text-blue-100/70">
-            Paid by {memberLabel(group.members, expense.payerId, viewerId)} · {expense.purchasedOn.label()}
-            {period.isOpen() && expense.payerId === viewerId && period.isLocked(expense) && (
+    rows.map((day) => (
+      <section class="flex flex-col gap-2.5">
+        <h3 class="section-title pt-1">{day.label}</h3>
+        <ul class="flex flex-col gap-2.5">
+          {day.expenses.map((row) => {
+            const content = (
               <>
-                {" · "}
-                <span data-expense-locked>locked</span>
+                <span class:list={["flex size-11 shrink-0 items-center justify-center rounded-[14px]", row.tone]}>
+                  <Icon name="receipt" />
+                </span>
+                <span class="min-w-0 flex-1">
+                  <span class="block text-base font-bold break-words">{row.expense.title.value}</span>
+                  <span class="flex flex-wrap items-center gap-x-2 gap-y-1 text-[13px] text-ink-muted">
+                    Zapłacił(a): {row.payer}
+                    {row.locked && (
+                      <span class="pill-muted gap-1 py-0.5" data-expense-locked>
+                        <Icon name="lock" size={12} />
+                        Zablokowany
+                      </span>
+                    )}
+                  </span>
+                </span>
+                <span class="amount text-base">{row.expense.amount.label()}</span>
               </>
-            )}
-            {period.canEdit(expense, viewerId) && (
-              <>
-                {" · "}
-                <a
-                  href={`/groups/${encodeURIComponent(group.id)}/expenses/${encodeURIComponent(expense.id)}/edit`}
-                  class="text-purple-300 hover:underline"
-                >
-                  Edit
-                </a>
-              </>
-            )}
-          </div>
-        </li>
-      ))}
-    </ul>
+            );
+            return (
+              <li>
+                {row.editHref ? (
+                  <a
+                    href={row.editHref}
+                    class:list={[rowClass, "transition-colors hover:border-line-strong hover:text-ink"]}
+                  >
+                    {content}
+                    <span class="sr-only">Edytuj</span>
+                  </a>
+                ) : (
+                  <div class:list={rowClass}>{content}</div>
+                )}
+              </li>
+            );
+          })}
+        </ul>
+      </section>
+    ))
   )}
 </div>

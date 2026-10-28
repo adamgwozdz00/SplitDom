@@ -2,51 +2,76 @@
 import { billingPeriodErrorMessage } from "@/lib/billing-periods";
 import type { BillingPeriod, BillingPeriodErrorCode } from "@/lib/billing-periods";
 import type { Group } from "@/lib/groups";
+import Alert from "@/components/ui/Alert.astro";
+import Icon from "@/components/ui/Icon.astro";
 
+/**
+ * The month-end banner above the tabs. Every member sees when the month can be closed; the host also sees why
+ * they cannot close it yet (`refusal`) or the revealed close confirmation.
+ */
 interface Props {
   group: Group;
   period: BillingPeriod;
-  /** Why the viewer cannot close the period now (from `period.closeRefusal`), or null when they can. */
+  isHost: boolean;
+  /** Why the host cannot close the period now (from `period.closeRefusal`), or null when they can. */
   refusal: BillingPeriodErrorCode | null;
   /** The `closeError` code of the last failed attempt, if any. */
   error?: string | null;
+  now: Date;
 }
 
-const { group, period, refusal, error = null } = Astro.props;
+const { group, period, isHost, refusal, error = null, now } = Astro.props;
 
 const closeAction = `/api/groups/${encodeURIComponent(group.id)}/close`;
 const monthLabel = period.month.label();
+const ended = period.month.hasEndedAt(now);
 const errorMessage = error ? billingPeriodErrorMessage(error) : null;
+const warn = isHost && refusal !== null && refusal !== "period_not_ended";
 ---
 
-<div data-close-period>
-  <h3 class="mb-2 text-sm font-semibold text-blue-100/80">Close {monthLabel}</h3>
-  {errorMessage && (
-    <p role="alert" class="mb-2 rounded-lg border border-red-500/30 bg-red-900/30 px-3 py-2 text-sm text-red-300">
-      {errorMessage}
-    </p>
-  )}
-  {refusal ? (
-    <p class="text-sm text-blue-100/70" data-close-refusal>
-      {billingPeriodErrorMessage(refusal)}
-    </p>
-  ) : (
-    <details>
-      <summary class="cursor-pointer text-sm text-purple-300 hover:underline">Close {monthLabel}</summary>
-      <form method="POST" action={closeAction} class="mt-3 space-y-3" data-guard-submit>
+<section
+  class:list={["flex flex-col gap-3 rounded-2xl px-4 py-3.5", warn ? "bg-warn-soft" : "bg-sky-soft"]}
+  aria-label="Zamknięcie miesiąca"
+  data-close-period={isHost ? "" : undefined}
+>
+  <div class="flex items-start gap-3">
+    <Icon name={warn ? "alert" : "calendar"} class:list={["mt-px", warn ? "text-warn" : "text-sky-strong"]} />
+    <div class:list={["text-sm leading-[1.45]", warn ? "text-warn" : "text-sky-ink"]}>
+      <strong class="font-bold">
+        {ended ? `Miesiąc ${monthLabel} dobiegł końca.` : `Zamknięcie miesiąca od ${period.month.next().startLabel()}.`}
+      </strong>{" "}
+      {isHost ? (
+        refusal === "period_not_ended" ? (
+          <span data-close-refusal>Jako gospodarz zamkniesz wtedy okres, a niespłacone długi przejdą dalej.</span>
+        ) : refusal ? (
+          <span data-close-refusal>{billingPeriodErrorMessage(refusal)}</span>
+        ) : (
+          <span>Możesz już zamknąć {monthLabel} — niespłacone długi przejdą na kolejny miesiąc.</span>
+        )
+      ) : ended ? (
+        <span>Gospodarz może go teraz zamknąć, a niespłacone długi przejdą na kolejny miesiąc.</span>
+      ) : (
+        <span>Wtedy gospodarz zamknie okres, a niespłacone długi przejdą na kolejny miesiąc.</span>
+      )}
+    </div>
+  </div>
+  {isHost && errorMessage && <Alert>{errorMessage}</Alert>}
+  {isHost && !refusal && (
+    <details class="group">
+      <summary class="btn-primary h-11 w-full list-none rounded-xl text-[15px] group-open:hidden">
+        Zamknij {monthLabel}
+      </summary>
+      <form method="POST" action={closeAction} class="flex flex-col gap-3" data-guard-submit>
         <input type="hidden" name="periodId" value={period.id} />
-        <p class="text-sm text-blue-100/80">
-          This freezes {monthLabel} for everyone and opens the next month. Debts that are still open carry over, and
-          payments awaiting confirmation move along. Expenses of the new month can be added once the period is closed.
-          It cannot be undone.
+        <p class="text-sm leading-[1.45] text-sky-ink">
+          To zamrozi {monthLabel} dla wszystkich i otworzy kolejny miesiąc. Niespłacone długi przejdą dalej, a wpłaty
+          oczekujące na potwierdzenie zostaną przeniesione. Wydatki nowego miesiąca dodacie po zamknięciu. Tej operacji
+          nie można cofnąć.
         </p>
-        <button
-          type="submit"
-          class="w-full rounded-lg bg-purple-600 px-4 py-2 font-medium text-white transition-colors hover:bg-purple-500 disabled:opacity-60"
-        >
-          Yes, close {monthLabel}
+        <button type="submit" class="btn-primary w-full">
+          Tak, zamknij {monthLabel}
         </button>
       </form>
     </details>
   )}
-</div>
+</section>

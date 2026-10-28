@@ -2,6 +2,8 @@
 import type { BillingPeriod, Payment } from "@/lib/billing-periods";
 import type { Group } from "@/lib/groups";
 import { memberLabel } from "@/components/expenses/member-label";
+import EmptyState from "@/components/ui/EmptyState.astro";
+import Icon from "@/components/ui/Icon.astro";
 
 interface Props {
   group: Group;
@@ -18,6 +20,12 @@ const previousMonthLabel = period.month.previous().label();
 
 const groupPath = `/api/groups/${encodeURIComponent(group.id)}/payments`;
 
+const STATUS = {
+  pending: { label: "oczekuje na potwierdzenie", pill: "pill-warn" },
+  confirmed: { label: "potwierdzona", pill: "pill-brand" },
+  rejected: { label: "odrzucona", pill: "pill-muted" },
+} as const;
+
 const rows = payments.map((payment) => {
   const status = payment.status();
   const pending = status === "pending";
@@ -29,7 +37,7 @@ const rows = payments.map((payment) => {
     amountLabel: payment.amount.label(),
     sentOn: payment.sentOnLabel(),
     carried: period.isCarried(payment),
-    statusLabel: status === "pending" ? "awaiting confirmation" : status,
+    status: STATUS[status],
     rejected: status === "rejected",
     // Only the sender withdraws, and only while the payment is pending and the period is open.
     withdrawAction: periodOpen && pending && payment.senderId === viewerId ? `${paymentPath}/withdraw` : null,
@@ -41,54 +49,73 @@ const rows = payments.map((payment) => {
 });
 
 const awaitingViewer = rows.filter((row) => row.decisionActions).length;
+// "1 wpłata czeka", "3 wpłaty czekają", "5 wpłat czeka": the Polish plural of the count.
+const lastDigit = awaitingViewer % 10;
+const lastTwo = awaitingViewer % 100;
+const few = lastDigit >= 2 && lastDigit <= 4 && (lastTwo < 12 || lastTwo > 14);
+const awaitingLabel =
+  awaitingViewer === 1
+    ? "1 wpłata czeka na Twoje potwierdzenie"
+    : few
+      ? `${awaitingViewer} wpłaty czekają na Twoje potwierdzenie`
+      : `${awaitingViewer} wpłat czeka na Twoje potwierdzenie`;
 ---
 
-<div data-payment-list>
-  <h3 class="mb-2 text-sm font-semibold text-blue-100/80">Payments</h3>
+<div class="flex flex-col gap-3" data-payment-list>
+  <h3 class="sr-only">Wpłaty</h3>
   {awaitingViewer > 0 && (
-    <p class="mb-2 text-sm text-amber-200" data-awaiting-confirmation>
-      {awaitingViewer === 1
-        ? "1 payment awaits your confirmation"
-        : `${awaitingViewer} payments await your confirmation`}
+    <p
+      class="flex items-center gap-2 rounded-2xl bg-warn-soft px-4 py-3 text-sm font-bold text-warn"
+      data-awaiting-confirmation
+    >
+      <Icon name="clock" size={18} />
+      {awaitingLabel}
     </p>
   )}
   {rows.length === 0 ? (
-    <p class="text-sm text-blue-100/70">No payments yet</p>
+    <EmptyState icon="card" title="Brak wpłat">
+      Tutaj pojawią się przelewy między członkami grupy.
+    </EmptyState>
   ) : (
-    <ul class="space-y-2">
+    <ul class="flex flex-col gap-2.5">
       {rows.map((row) => (
-        <li class:list={["text-sm", { "opacity-60": row.rejected }]} data-payment>
-          <div class="flex items-baseline justify-between gap-3">
-            <span class="min-w-0 break-words text-white">
-              {row.sender} → {row.recipient}
+        <li class:list={["card flex flex-col gap-2.5 px-4 py-3.5", { "opacity-70": row.rejected }]} data-payment>
+          <div class="flex items-center gap-3">
+            <span class="flex size-11 shrink-0 items-center justify-center rounded-[14px] bg-sky-soft text-sky">
+              <Icon name="card" />
             </span>
-            <span class:list={["shrink-0 font-semibold text-white", { "line-through": row.rejected }]}>
-              {row.amountLabel}
+            <span class="min-w-0 flex-1">
+              <span class="block font-bold break-words">
+                {row.sender} → {row.recipient}
+              </span>
+              <span class="block text-[13px] text-ink-muted">
+                {row.sentOn}
+                {row.carried && ` · przeniesiona z okresu ${previousMonthLabel}`}
+              </span>
             </span>
+            <span class:list={["amount text-base", { "line-through": row.rejected }]}>{row.amountLabel}</span>
           </div>
-          <div class="text-blue-100/70">
-            {row.sentOn} · {row.statusLabel}
-            {row.carried && ` · carried over from ${previousMonthLabel}`}
+          <div class="flex flex-wrap items-center gap-2">
+            <span class:list={row.status.pill}>{row.status.label}</span>
+            <span class="flex-1"></span>
             {row.withdrawAction && (
-              <form method="POST" action={row.withdrawAction} class="ml-1 inline">
-                {" · "}
-                <button type="submit" class="text-purple-300 hover:underline">
-                  Withdraw
+              <form method="POST" action={row.withdrawAction}>
+                <button type="submit" class="btn-chip">
+                  Wycofaj
                 </button>
               </form>
             )}
             {row.decisionActions && (
               <>
-                <form method="POST" action={row.confirmAction} class="ml-1 inline">
-                  {" · "}
-                  <button type="submit" class="text-purple-300 hover:underline">
-                    Confirm
+                <form method="POST" action={row.rejectAction}>
+                  <button type="submit" class="btn-chip border-danger-line text-danger hover:bg-danger-soft">
+                    Odrzuć
                   </button>
                 </form>
-                <form method="POST" action={row.rejectAction} class="ml-1 inline">
-                  {" · "}
-                  <button type="submit" class="text-amber-300 hover:underline">
-                    Reject
+                <form method="POST" action={row.confirmAction}>
+                  <button type="submit" class="btn-chip border-brand bg-brand text-white hover:bg-brand-hover">
+                    <Icon name="check" size={16} strokeWidth={2.4} />
+                    Potwierdź
                   </button>
                 </form>
               </>

@@ -11,12 +11,13 @@ const WARSAW_CALENDAR = new Intl.DateTimeFormat("en-US", {
 });
 
 // Rendered from the stored calendar day as a UTC instant, so it never shifts with the server timezone.
-const LABEL_FORMAT = new Intl.DateTimeFormat("en-US", {
+const LABEL_FORMAT = new Intl.DateTimeFormat("pl-PL", {
   timeZone: "UTC",
-  year: "numeric",
-  month: "short",
   day: "numeric",
+  month: "long",
+  year: "numeric",
 });
+const DAY_LABEL_FORMAT = new Intl.DateTimeFormat("pl-PL", { timeZone: "UTC", day: "numeric", month: "long" });
 
 const DATE_INPUT = /^(\d{4})-(\d{2})-(\d{2})$/;
 
@@ -102,17 +103,27 @@ export class PurchaseDate {
     return BillingMonth.fromDate(`${this.value.slice(0, 7)}-01`);
   }
 
-  /** e.g. "5 Oct 2026". */
+  /** e.g. "5 października 2026". */
   label(): string {
+    const instant = this.instant();
+    return instant ? LABEL_FORMAT.format(instant) : this.value;
+  }
+
+  /** The day without the year, e.g. "5 października": a heading inside one billing month. */
+  dayLabel(): string {
+    const instant = this.instant();
+    return instant ? DAY_LABEL_FORMAT.format(instant) : this.value;
+  }
+
+  // The stored calendar day as a UTC instant (setUTCFullYear keeps years below 100 literal).
+  private instant(): Date | null {
     const parsed = parseCalendarDate(this.value);
     if (!parsed) {
-      return this.value;
+      return null;
     }
     const instant = new Date(Date.UTC(2000, parsed.month - 1, parsed.day));
     instant.setUTCFullYear(parsed.year);
-    const parts = LABEL_FORMAT.formatToParts(instant);
-    const part = (type: string) => parts.find((p) => p.type === type)?.value ?? "";
-    return `${part("day")} ${part("month")} ${part("year")}`;
+    return instant;
   }
 
   equals(other: PurchaseDate): boolean {

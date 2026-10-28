@@ -5,18 +5,22 @@ import { missingConfigs } from "@/lib/config-status";
 
 interface Props {
   title?: string;
+  /** Extra classes for the page column (the design is a single mobile column, centred on wide screens). */
+  class?: string;
 }
 
-const { title = "10x Astro Starter" } = Astro.props;
+const { title, class: columnClass } = Astro.props;
+const fullTitle = title ? `${title} · SplitDom` : "SplitDom";
 ---
 
 <!doctype html>
-<html lang="en">
+<html lang="pl">
   <head>
     <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="theme-color" content="#f4f8f6" />
     <link rel="icon" type="image/png" href="/favicon.png" />
-    <title>{title}</title>
+    <title>{fullTitle}</title>
   </head>
   <body>
     {missingConfigs.map((cfg) => (
@@ -33,15 +37,8 @@ const { title = "10x Astro Starter" } = Astro.props;
         )}
       </Banner>
     ))}
-    <slot />
+    <div class:list={["relative mx-auto flex min-h-dvh w-full max-w-[480px] flex-col", columnClass]}>
+      <slot />
+    </div>
   </body>
 </html>
-
-<style>
-  html,
-  body {
-    margin: 0;
-    width: 100%;
-    height: 100%;
-  }
-</style>

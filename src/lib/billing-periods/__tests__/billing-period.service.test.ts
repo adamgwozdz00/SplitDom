@@ -197,7 +197,9 @@ describe("BillingPeriodService.addExpense", () => {
     const result = await serviceWith(repository).addExpense({ group: aGroup(), payerId: HOST_ID, ...valid });
 
     expect(result).toEqual(billingPeriodError("period_changed", { groupId: GROUP_ID }));
-    expect("error" in result && result.error.message).toBe("Someone else just changed this billing period, try again");
+    expect("error" in result && result.error.message).toBe(
+      "Ktoś właśnie zmienił ten okres rozliczeniowy, spróbuj ponownie",
+    );
     expect(repository.saveCalls).toHaveLength(2);
   });
 
@@ -281,6 +283,31 @@ describe("BillingPeriodService.summarizeOpen", () => {
     repository.failure = failure;
 
     expect(await serviceWith(repository).summarizeOpen(aGroup())).toBe(failure);
+  });
+});
+
+describe("BillingPeriodService.openPeriodsOf", () => {
+  it("maps each group to its open period", async () => {
+    const other = aGroup({ id: "other-group" });
+    const repository = new FakeBillingPeriodRepository([
+      anOctoberPeriod({ expenses: [{ id: "rent", payerId: HOST_ID, grosze: 40000 }] }),
+      anOctoberPeriod({ group: other, id: "other-period" }),
+    ]);
+
+    const periods = await serviceWith(repository).openPeriodsOf([aGroup(), other]);
+
+    expect([...periods].map(([groupId, period]) => [groupId, period.id])).toEqual([
+      [GROUP_ID, PERIOD_ID],
+      ["other-group", "other-period"],
+    ]);
+    expect(periods.get(GROUP_ID)?.totalExpenses().grosze).toBe(40000);
+  });
+
+  it("leaves out a group whose period could not be loaded", async () => {
+    const repository = new FakeBillingPeriodRepository();
+    repository.failure = billingPeriodError("unexpected");
+
+    expect((await serviceWith(repository).openPeriodsOf([aGroup()])).size).toBe(0);
   });
 });
 

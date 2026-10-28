@@ -10,11 +10,11 @@ describe("TransferDetails", () => {
       amount: Money.ofGrosze(40050),
       accountDigits: "34109010140000000000000000",
       groupName: "Mokotów",
-      monthLabel: "October 2026",
+      monthLabel: "październik 2026",
     });
 
     expect(details.amount).toBe("400,50");
-    expect(details.title).toBe("SplitDom Mokotów October 2026");
+    expect(details.title).toBe("SplitDom Mokotów październik 2026");
     expect(details.account).toBe("34109010140000000000000000");
   });
 
@@ -23,7 +23,7 @@ describe("TransferDetails", () => {
       amount: Money.ofGrosze(10000),
       accountDigits: null,
       groupName: "Dom",
-      monthLabel: "October 2026",
+      monthLabel: "październik 2026",
     });
 
     expect(details.account).toBeNull();
@@ -35,7 +35,7 @@ describe("TransferDetails", () => {
       amount: Money.ofGrosze(100),
       accountDigits: null,
       groupName: "🏠".repeat(200),
-      monthLabel: "October 2026",
+      monthLabel: "październik 2026",
     });
 
     expect(Array.from(details.title)).toHaveLength(140);

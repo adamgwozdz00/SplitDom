@@ -20,11 +20,15 @@ describe("BillingMonth", () => {
     const month = BillingMonth.of(new Date("2026-10-31T23:30:00Z"));
 
     expect(month.toDate()).toBe("2026-11-01");
-    expect(month.label()).toBe("November 2026");
+    expect(month.label()).toBe("listopad 2026");
   });
 
-  it("labels a month in English", () => {
-    expect(BillingMonth.fromDate("2026-10-01").label()).toBe("October 2026");
+  it("labels a month in Polish", () => {
+    expect(BillingMonth.fromDate("2026-10-01").label()).toBe("październik 2026");
+  });
+
+  it("labels the month's first day", () => {
+    expect(BillingMonth.fromDate("2026-11-01").startLabel()).toBe("1 listopada");
   });
 
   it("round-trips the stored form", () => {

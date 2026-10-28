@@ -2,6 +2,8 @@
 import { ExpenseTitle } from "@/lib/billing-periods";
 import type { BillingPeriod, Expense } from "@/lib/billing-periods";
 import type { Group } from "@/lib/groups";
+import Alert from "@/components/ui/Alert.astro";
+import Icon from "@/components/ui/Icon.astro";
 
 interface Props {
   group: Group;
@@ -9,21 +11,69 @@ interface Props {
   error: string | null;
   /** When set, the form edits this expense (prefilled) instead of adding a new one. */
   expense?: Expense;
+  /** The edit form shows who paid under the amount. */
+  payerLabel?: string;
 }
 
-const { group, period, error, expense } = Astro.props;
+const { group, period, error, expense, payerLabel } = Astro.props;
 const window = period.purchaseDateWindow(new Date());
 const groupPath = `/api/groups/${encodeURIComponent(group.id)}/expenses`;
 const action = expense ? `${groupPath}/${encodeURIComponent(expense.id)}/edit` : groupPath;
-const field =
-  "w-full rounded-lg border bg-white/10 px-3 py-2 text-white placeholder-white/40 transition-colors focus:ring-2 focus:outline-none";
-const fieldState = error ? "border-red-400/60 focus:ring-red-400" : "border-white/20 focus:ring-purple-400";
+const invalid = error ? "true" : undefined;
+const describedBy = error ? "expense-error" : undefined;
 ---
 
-<form method="POST" action={action} class="space-y-3" data-guard-submit>
-  <div>
-    <label for="expense-title" class="mb-1 block text-sm text-blue-100/80">
-      Title
+<form method="POST" action={action} class="flex flex-1 flex-col gap-[18px]" data-guard-submit data-expense-form>
+  {expense ? (
+    <div class="card flex flex-col items-center gap-1 rounded-hero px-5 py-[22px]">
+      <label for="expense-amount" class="text-sm font-bold text-ink-muted">
+        Kwota
+      </label>
+      <div class="flex items-baseline justify-center gap-2">
+        <input
+          id="expense-amount"
+          name="amount"
+          type="text"
+          inputmode="decimal"
+          required
+          autocomplete="off"
+          placeholder="0,00"
+          value={expense.amount.formInput()}
+          aria-invalid={invalid}
+          aria-describedby={describedBy}
+          class="w-[190px] rounded-xl border-0 bg-transparent p-0 text-right text-[44px] font-extrabold tracking-[-0.02em] text-ink tabular-nums focus:ring-2 focus:ring-brand/20 focus:outline-none"
+        />
+        <span class="text-2xl font-extrabold text-brand">zł</span>
+      </div>
+      {payerLabel && <span class="text-[13px] text-ink-muted">Zapłacił(a): {payerLabel}</span>}
+    </div>
+  ) : (
+    <div class="flex flex-col gap-1.5">
+      <label for="expense-amount" class="field-label">
+        Kwota
+      </label>
+      <div class="relative">
+        <input
+          id="expense-amount"
+          name="amount"
+          type="text"
+          inputmode="decimal"
+          required
+          autocomplete="off"
+          placeholder="0,00"
+          aria-invalid={invalid}
+          aria-describedby={describedBy}
+          class="field pr-12 tabular-nums"
+        />
+        <span class="pointer-events-none absolute inset-y-0 right-4 flex items-center font-extrabold text-brand">
+          zł
+        </span>
+      </div>
+    </div>
+  )}
+  <div class="flex flex-col gap-1.5">
+    <label for="expense-title" class="field-label">
+      Tytuł
     </label>
     <input
       id="expense-title"
@@ -32,37 +82,16 @@ const fieldState = error ? "border-red-400/60 focus:ring-red-400" : "border-whit
       required
       maxlength={ExpenseTitle.MAX_LENGTH}
       autocomplete="off"
-      placeholder="e.g. Rent"
+      placeholder="np. Czynsz"
       value={expense?.title.value}
-      aria-invalid={error ? "true" : undefined}
-      aria-describedby={error ? "expense-error" : undefined}
-      class:list={[field, fieldState]}
+      aria-invalid={invalid}
+      aria-describedby={describedBy}
+      class="field"
     />
   </div>
-  <div>
-    <label for="expense-amount" class="mb-1 block text-sm text-blue-100/80">
-      Amount
-    </label>
-    <div class="relative">
-      <input
-        id="expense-amount"
-        name="amount"
-        type="text"
-        inputmode="decimal"
-        required
-        autocomplete="off"
-        placeholder="0,00"
-        value={expense?.amount.formInput()}
-        aria-invalid={error ? "true" : undefined}
-        aria-describedby={error ? "expense-error" : undefined}
-        class:list={[field, fieldState, "pr-10"]}
-      />
-      <span class="pointer-events-none absolute inset-y-0 right-3 flex items-center text-white/60">zł</span>
-    </div>
-  </div>
-  <div>
-    <label for="expense-date" class="mb-1 block text-sm text-blue-100/80">
-      Purchase date
+  <div class="flex flex-col gap-1.5">
+    <label for="expense-date" class="field-label">
+      Data zakupu
     </label>
     <input
       id="expense-date"
@@ -72,25 +101,22 @@ const fieldState = error ? "border-red-400/60 focus:ring-red-400" : "border-whit
       min={window.min}
       max={window.max}
       value={expense?.purchasedOn.value ?? window.default}
-      aria-invalid={error ? "true" : undefined}
-      aria-describedby={error ? "expense-error" : undefined}
-      class:list={[field, fieldState]}
+      aria-invalid={invalid}
+      aria-describedby={describedBy}
+      class="field"
     />
   </div>
-  {error && (
-    <p
-      id="expense-error"
-      role="alert"
-      class="rounded-lg border border-red-500/30 bg-red-900/30 px-3 py-2 text-sm text-red-300"
-    >
-      {error}
-    </p>
-  )}
-  <button
-    type="submit"
-    class="w-full rounded-lg bg-purple-600 px-4 py-2 font-medium text-white transition-colors hover:bg-purple-500 disabled:opacity-60"
-  >
-    {expense ? "Save changes" : "Add expense"}
+  {error && <Alert id="expense-error">{error}</Alert>}
+  {expense && <div class="flex-1"></div>}
+  <button type="submit" class="btn-primary w-full">
+    {expense ? (
+      "Zapisz zmiany"
+    ) : (
+      <>
+        <Icon name="plus" size={18} strokeWidth={2.4} />
+        Dodaj wydatek
+      </>
+    )}
   </button>
 </form>
 

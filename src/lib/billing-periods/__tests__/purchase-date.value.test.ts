@@ -86,9 +86,13 @@ describe("PurchaseDate", () => {
     expect(PurchaseDate.fromStored("2026-10-05").month().equals(OCTOBER)).toBe(true);
   });
 
-  it("labels in English without shifting", () => {
-    expect(PurchaseDate.fromStored("2026-10-05").label()).toBe("5 Oct 2026");
-    expect(PurchaseDate.fromStored("2026-09-30").label()).toBe("30 Sep 2026");
+  it("labels in Polish without shifting", () => {
+    expect(PurchaseDate.fromStored("2026-10-05").label()).toBe("5 października 2026");
+    expect(PurchaseDate.fromStored("2026-09-30").label()).toBe("30 września 2026");
+  });
+
+  it("labels the day without the year for headings inside one month", () => {
+    expect(PurchaseDate.fromStored("2026-10-28").dayLabel()).toBe("28 października");
   });
 
   it("rejects a malformed stored value", () => {

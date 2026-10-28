@@ -1,0 +1,31 @@
+---
+/** One of the app's line icons (see `icons.ts`). Always decorative. */
+import { ICON_PATHS } from "@/components/ui/icons";
+import type { IconName } from "@/components/ui/icons";
+
+interface Props {
+  name: IconName;
+  size?: number;
+  strokeWidth?: number;
+  class?: string;
+}
+
+const { name, size = 20, strokeWidth = 2, class: className } = Astro.props;
+---
+
+<svg
+  width={size}
+  height={size}
+  viewBox="0 0 24 24"
+  fill="none"
+  stroke="currentColor"
+  stroke-width={strokeWidth}
+  stroke-linecap="round"
+  stroke-linejoin="round"
+  aria-hidden="true"
+  class:list={["shrink-0", className]}
+>
+  {ICON_PATHS[name].map((d) => (
+    <path d={d} />
+  ))}
+</svg>

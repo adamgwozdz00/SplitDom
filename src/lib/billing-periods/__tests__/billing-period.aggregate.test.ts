@@ -146,6 +146,27 @@ describe("BillingPeriod queries", () => {
       "older-day",
     ]);
   });
+
+  it("sums the expenses of the period and of each payer (the group page summary)", () => {
+    const period = octoberPeriod();
+    expect(period.totalExpenses().grosze).toBe(0);
+    add(period, { id: "rent", payerId: HOST, grosze: 10000 });
+    add(period, { id: "food", payerId: MEMBER, grosze: 5400 });
+
+    expect(period.totalExpenses().grosze).toBe(15400);
+    expect(period.paidBy(HOST).grosze).toBe(10000);
+    expect(period.paidBy(MEMBER).grosze).toBe(5400);
+    expect(period.paidBy("stranger").grosze).toBe(0);
+  });
+
+  it("reads one member's pending balance, zero for a non-member", () => {
+    const period = octoberPeriod();
+    add(period, { payerId: HOST, grosze: 40000 });
+
+    expect(period.pendingBalances().balanceOf(HOST).grosze).toBe(20000);
+    expect(period.pendingBalances().balanceOf(MEMBER).grosze).toBe(-20000);
+    expect(period.pendingBalances().balanceOf("stranger").grosze).toBe(0);
+  });
 });
 
 describe("BillingPeriod.restore", () => {

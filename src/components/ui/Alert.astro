@@ -1,0 +1,29 @@
+---
+/** An inline message box. Errors are announced as alerts, the rest as status updates. */
+type Variant = "error" | "success" | "info" | "warn";
+
+interface Props {
+  variant?: Variant;
+  id?: string;
+  class?: string;
+  [key: `data-${string}`]: unknown;
+}
+
+const { variant = "error", id, class: className, ...data } = Astro.props;
+
+const tone: Record<Variant, string> = {
+  error: "border-danger-line bg-danger-soft text-danger",
+  success: "border-brand-tint bg-brand-soft text-brand-hover",
+  info: "border-sky-soft bg-sky-soft text-sky-ink",
+  warn: "border-warn-line bg-warn-soft text-warn",
+};
+---
+
+<p
+  id={id}
+  role={variant === "error" ? "alert" : "status"}
+  class:list={["rounded-field border px-4 py-3 text-sm leading-snug font-semibold", tone[variant], className]}
+  {...data}
+>
+  <slot />
+</p>

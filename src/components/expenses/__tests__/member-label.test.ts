@@ -9,19 +9,19 @@ const members = [
 ];
 
 describe("memberLabel", () => {
-  it("labels the viewer as You, even when their email is known", () => {
-    expect(memberLabel(members, "host", "host")).toBe("You");
+  it('labels the viewer as "Ty", even when their email is known', () => {
+    expect(memberLabel(members, "host", "host")).toBe("Ty");
   });
 
   it("labels another member by email", () => {
     expect(memberLabel(members, "other", "host")).toBe("other@example.com");
   });
 
-  it("labels a member without a known email as Member", () => {
-    expect(memberLabel(members, "no-email", "host")).toBe("Member");
+  it('labels a member without a known email as "Członek grupy"', () => {
+    expect(memberLabel(members, "no-email", "host")).toBe("Członek grupy");
   });
 
-  it("labels an unknown user as Member", () => {
-    expect(memberLabel(members, "stranger", "host")).toBe("Member");
+  it('labels an unknown user as "Członek grupy"', () => {
+    expect(memberLabel(members, "stranger", "host")).toBe("Członek grupy");
   });
 });

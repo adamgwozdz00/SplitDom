@@ -1,4 +1,7 @@
 ---
+import Alert from "@/components/ui/Alert.astro";
+import Icon from "@/components/ui/Icon.astro";
+
 interface Props {
   groupId: string;
   inviteUrl: string | null;
@@ -8,54 +11,38 @@ interface Props {
 const { groupId, inviteUrl, error } = Astro.props;
 ---
 
-<section class="mt-6 border-t border-white/10 pt-6" data-invite-panel>
-  <h2 class="mb-3 text-lg font-semibold text-white">Invite a member</h2>
-  {error && (
-    <p role="alert" class="mb-3 rounded-lg border border-red-500/30 bg-red-900/30 px-3 py-2 text-sm text-red-300">
-      {error}
-    </p>
-  )}
+<section id="zapros" class="card flex scroll-mt-4 flex-col gap-3.5 p-4" data-invite-panel>
+  <div class="flex items-center gap-3.5">
+    <div class="flex-1">
+      <h2 class="text-[15px] font-extrabold">Zaproś współlokatora</h2>
+      <p class="text-[13px] text-ink-muted">Wyślij link, by dołączyć kogoś do grupy</p>
+    </div>
+    <form method="POST" action={`/api/groups/${encodeURIComponent(groupId)}/invites`} data-generate-invite>
+      <button type="submit" class="btn-sky">
+        {inviteUrl ? "Nowy link" : "Utwórz link"}
+      </button>
+    </form>
+  </div>
+  {error && <Alert>{error}</Alert>}
   {inviteUrl && (
-    <div class="mb-4 space-y-3" data-invite-link>
-      <label for="invite-url" class="block text-sm text-blue-100/80">
-        Invite link
+    <div class="flex flex-col gap-2.5 border-t border-line pt-3.5" data-invite-link>
+      <label for="invite-url" class="field-label">
+        Link z zaproszeniem
       </label>
-      <input
-        id="invite-url"
-        type="text"
-        readonly
-        value={inviteUrl}
-        class="w-full rounded-lg border border-white/20 bg-white/10 px-3 py-2 text-sm text-white focus:ring-2 focus:ring-purple-400 focus:outline-none"
-      />
+      <input id="invite-url" type="text" readonly value={inviteUrl} class="field text-sm" />
       <div class="flex gap-2">
-        <button
-          type="button"
-          data-copy
-          class="flex-1 rounded-lg bg-purple-600 px-4 py-2 font-medium text-white transition-colors hover:bg-purple-500"
-        >
-          Copy link
+        <button type="button" data-copy class="btn-primary h-11 flex-1 rounded-xl text-[15px]">
+          <Icon name="copy" size={18} />
+          Kopiuj link
         </button>
-        <button
-          type="button"
-          data-share
-          hidden
-          class="flex-1 rounded-lg border border-white/20 bg-white/10 px-4 py-2 font-medium text-white transition-colors hover:bg-white/20"
-        >
-          Share
+        <button type="button" data-share hidden class="btn-secondary h-11 flex-1 rounded-xl text-[15px]">
+          Udostępnij
         </button>
       </div>
-      <p role="status" data-copy-status class="min-h-5 text-sm text-green-300"></p>
-      <p class="text-sm text-blue-100/70">Works once and expires in 7 days. You won't see this link again.</p>
+      <p role="status" data-copy-status class="min-h-5 text-sm font-semibold text-brand"></p>
+      <p class="field-hint">Działa raz i wygasa po 7 dniach. Ten link zobaczysz tylko teraz.</p>
     </div>
   )}
-  <form method="POST" action={`/api/groups/${encodeURIComponent(groupId)}/invites`} data-generate-invite>
-    <button
-      type="submit"
-      class="w-full rounded-lg bg-purple-600 px-4 py-2 font-medium text-white transition-colors hover:bg-purple-500 disabled:opacity-60"
-    >
-      {inviteUrl ? "Generate another invite" : "Generate invite"}
-    </button>
-  </form>
 </section>
 
 <script>
@@ -83,16 +70,16 @@ const { groupId, inviteUrl, error } = Astro.props;
       // Called synchronously inside the click handler: Safari rejects clipboard writes after an await.
       if (!navigator.clipboard) {
         input.select();
-        if (status) status.textContent = "Press and hold the link to copy it";
+        if (status) status.textContent = "Przytrzymaj link, aby go skopiować";
         return;
       }
       navigator.clipboard.writeText(url).then(
         () => {
-          if (status) status.textContent = "Link copied";
+          if (status) status.textContent = "Skopiowano link";
         },
         () => {
           input.select();
-          if (status) status.textContent = "Could not copy — select the link and copy it manually";
+          if (status) status.textContent = "Nie udało się skopiować — zaznacz link i skopiuj go ręcznie";
         },
       );
     });

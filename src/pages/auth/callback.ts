@@ -13,7 +13,7 @@ export const GET: APIRoute = async (context) => {
 
   // Google sends only `error=access_denied` when the user cancels consent, so the description arrives empty.
   if (errorCode) {
-    const message = errorCode === "access_denied" ? "Sign-in was cancelled" : errorCode;
+    const message = errorCode === "access_denied" ? "Logowanie zostało anulowane" : errorCode;
     return context.redirect(`/auth/signin?error=${encodeURIComponent(message)}`);
   }
 
@@ -23,7 +23,7 @@ export const GET: APIRoute = async (context) => {
 
   const supabase = createClient(context.request.headers, context.cookies);
   if (!supabase) {
-    return context.redirect(`/auth/signin?error=${encodeURIComponent("Supabase is not configured")}`);
+    return context.redirect(`/auth/signin?error=${encodeURIComponent("Supabase nie jest skonfigurowany")}`);
   }
 
   const { error } = await supabase.auth.exchangeCodeForSession(code);

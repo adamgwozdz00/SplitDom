@@ -2,7 +2,7 @@ import { Money } from "@/lib/billing-periods/money.value";
 import type { PaymentSnapshot } from "@/lib/billing-periods/types";
 
 // Rendered in Europe/Warsaw, like the period's month and the purchase dates.
-const SENT_ON_FORMAT = new Intl.DateTimeFormat("en-US", { timeZone: "Europe/Warsaw", month: "short", day: "numeric" });
+const SENT_ON_FORMAT = new Intl.DateTimeFormat("pl-PL", { timeZone: "Europe/Warsaw", day: "numeric", month: "short" });
 
 interface PaymentState {
   id: string;
@@ -99,7 +99,7 @@ export class Payment {
     return new Payment({ ...this.decidableState(), rejectedAt: this.decisionTime(at) });
   }
 
-  /** The Warsaw calendar day the payment was sent, e.g. "Oct 20". */
+  /** The Warsaw calendar day the payment was sent, e.g. "20 paź". */
   sentOnLabel(): string {
     return SENT_ON_FORMAT.format(this.sentAt);
   }

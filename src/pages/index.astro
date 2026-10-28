@@ -1,8 +1,91 @@
 ---
-import Welcome from "@/components/Welcome.astro";
 import Layout from "@/layouts/Layout.astro";
+import GoogleSignInButton from "@/components/auth/GoogleSignInButton.astro";
+import Brand from "@/components/ui/Brand.astro";
+import Icon from "@/components/ui/Icon.astro";
+
+const { user } = Astro.locals;
+
+const steps = [
+  { icon: "home", tone: "brand", title: "Załóż grupę", text: "i zaproś współlokatorów linkiem" },
+  { icon: "receipt", tone: "sky", title: "Dodawaj wydatki", text: "czynsz, media, zakupy — w kilka sekund" },
+  { icon: "check", tone: "brand", title: "Zamknij miesiąc", text: "i rozlicz się przelewem na konto" },
+] as const;
 ---
 
-<Layout>
-  <Welcome />
+<Layout class="overflow-hidden">
+  <div aria-hidden="true" class="absolute -top-[120px] -right-[140px] size-[360px] rounded-full bg-sky-soft"></div>
+  <div aria-hidden="true" class="absolute top-[120px] -left-[170px] size-[300px] rounded-full bg-brand-soft"></div>
+
+  <header class="relative flex items-center justify-between px-6 pt-5">
+    <Brand size="lg" />
+    {user ? (
+      <a href="/dashboard" class="px-1 py-3 text-[15px] font-bold no-underline">
+        Twoje grupy
+      </a>
+    ) : (
+      <a href="/auth/signin" class="px-1 py-3 text-[15px] font-bold no-underline">
+        Zaloguj się
+      </a>
+    )}
+  </header>
+
+  <main class="relative flex flex-1 flex-col px-6 pt-10 pb-6">
+    <span class="self-start rounded-full border border-line bg-white px-3 py-1.5 text-[13px] font-bold text-brand">
+      Dla współlokatorów i par
+    </span>
+    <h1 class="mt-[18px] text-[38px] leading-[1.08] font-extrabold tracking-[-0.03em]">
+      Wspólne mieszkanie,
+      <br />
+      <span class="text-brand">jasne rachunki.</span>
+    </h1>
+    <p class="mt-4 text-base leading-relaxed text-ink-muted">
+      Wpisujcie wydatki na bieżąco, a na koniec miesiąca od razu zobaczycie, kto komu ile oddaje.
+    </p>
+
+    <ol class="mt-7 flex flex-col gap-4 rounded-panel border border-line bg-white p-[18px]">
+      {steps.map((step) => (
+        <li class="flex items-center gap-3.5">
+          <span
+            class:list={[
+              "flex size-10 shrink-0 items-center justify-center rounded-xl",
+              step.tone === "sky" ? "bg-sky-soft text-sky" : "bg-brand-soft text-brand",
+            ]}
+          >
+            <Icon name={step.icon} />
+          </span>
+          <div>
+            <p class="text-[15px] font-bold">{step.title}</p>
+            <p class="text-sm text-ink-muted">{step.text}</p>
+          </div>
+        </li>
+      ))}
+    </ol>
+
+    <div class="min-h-8 flex-1"></div>
+
+    {user ? (
+      <a href="/dashboard" class="btn-primary w-full">
+        Przejdź do swoich grup
+      </a>
+    ) : (
+      <div class="flex flex-col gap-3">
+        <a href="/auth/signup" class="btn-primary w-full">
+          Załóż darmowe konto
+        </a>
+        <GoogleSignInButton />
+        <p class="mt-1 text-center text-sm text-ink-muted">
+          Masz już konto?{" "}
+          <a href="/auth/signin" class="font-bold">
+            Zaloguj się
+          </a>
+        </p>
+        <p class="text-center text-xs text-ink-muted">
+          <a href="/privacy" class="font-bold">
+            Polityka prywatności
+          </a>
+        </p>
+      </div>
+    )}
+  </main>
 </Layout>

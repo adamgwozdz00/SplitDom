@@ -1,0 +1,35 @@
+---
+import Icon from "@/components/ui/Icon.astro";
+import type { IconName } from "@/components/ui/icons";
+
+/** A centred placeholder for an empty list: "dashed" for nothing yet, "settled" for a good-news state. */
+interface Props {
+  icon: IconName;
+  title: string;
+  variant?: "dashed" | "settled";
+  class?: string;
+}
+
+const { icon, title, variant = "dashed", class: className } = Astro.props;
+---
+
+<div
+  class:list={[
+    "flex flex-col items-center gap-2 rounded-card px-4 py-6 text-center",
+    variant === "settled" ? "bg-brand-soft" : "border border-dashed border-line-dashed bg-white",
+    className,
+  ]}
+>
+  <span
+    class:list={[
+      "flex size-12 items-center justify-center rounded-full",
+      variant === "settled" ? "bg-brand text-white" : "bg-sky-soft text-sky",
+    ]}
+  >
+    <Icon name={icon} size={22} strokeWidth={variant === "settled" ? 2.4 : 2} />
+  </span>
+  <p class="text-base font-extrabold">{title}</p>
+  <p class:list={["text-sm", variant === "settled" ? "text-ink-soft" : "text-ink-muted"]}>
+    <slot />
+  </p>
+</div>

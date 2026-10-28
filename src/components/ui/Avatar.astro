@@ -1,0 +1,23 @@
+---
+/** A round initial for a member: the viewer in sky blue, everyone else in green. */
+interface Props {
+  /** The text the initial is taken from, e.g. an email address. */
+  label: string;
+  isViewer?: boolean;
+  size?: "sm" | "md";
+}
+
+const { label, isViewer = false, size = "sm" } = Astro.props;
+const initial = (Array.from(label.trim()).at(0) ?? "?").toLocaleUpperCase("pl-PL");
+---
+
+<span
+  aria-hidden="true"
+  class:list={[
+    "flex shrink-0 items-center justify-center rounded-full font-extrabold text-white",
+    isViewer ? "bg-sky" : "bg-brand",
+    size === "md" ? "size-11 text-[17px]" : "size-9 text-sm",
+  ]}
+>
+  {initial}
+</span>

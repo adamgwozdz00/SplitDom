@@ -15,14 +15,14 @@ setup("sign in once and save the session", async ({ page }) => {
   // fill + submit until the submit leaves the sign-in page. Clear before filling:
   // re-filling the same value fires no change event in a controlled input.
   await expect(async () => {
-    await page.getByLabel("Email").fill("");
-    await page.getByLabel("Email").fill(username);
-    await page.getByLabel("Password", { exact: true }).fill("");
-    await page.getByLabel("Password", { exact: true }).fill(password);
-    await page.getByRole("button", { name: "Sign in" }).click();
+    await page.getByLabel("E-mail").fill("");
+    await page.getByLabel("E-mail").fill(username);
+    await page.getByLabel("Hasło", { exact: true }).fill("");
+    await page.getByLabel("Hasło", { exact: true }).fill(password);
+    await page.getByRole("button", { name: "Zaloguj się" }).click();
     await page.waitForURL((url) => !url.pathname.startsWith("/auth/signin"), { timeout: 5_000 });
   }).toPass();
-  await expect(page.getByRole("heading", { name: "Dashboard" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Twoje grupy", level: 1 })).toBeVisible();
 
   await page.context().storageState({ path: authFile });
 });

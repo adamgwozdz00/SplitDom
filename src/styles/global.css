@@ -1,82 +1,72 @@
 @import "tailwindcss";
 @import "tw-animate-css";
+@import "@fontsource-variable/manrope";
 
-@custom-variant dark (&:is(.dark *));
+/*
+ * SplitDom design tokens ("Rozliczenia współlokatorów — nowy wygląd"). Pages and components use only these
+ * tokens and the component utilities below — no raw hex colors in markup. Light theme only.
+ */
+@theme {
+  --font-sans: "Manrope Variable", system-ui, -apple-system, "Segoe UI", sans-serif;
 
-:root {
-  --radius: 0.625rem;
-  --background: oklch(1 0 0);
-  --foreground: oklch(0.145 0 0);
-  --card: oklch(1 0 0);
-  --card-foreground: oklch(0.145 0 0);
-  --popover: oklch(1 0 0);
-  --popover-foreground: oklch(0.145 0 0);
-  --primary: oklch(0.205 0 0);
-  --primary-foreground: oklch(0.985 0 0);
-  --secondary: oklch(0.97 0 0);
-  --secondary-foreground: oklch(0.205 0 0);
-  --muted: oklch(0.97 0 0);
-  --muted-foreground: oklch(0.556 0 0);
-  --accent: oklch(0.97 0 0);
-  --accent-foreground: oklch(0.205 0 0);
-  --destructive: oklch(0.577 0.245 27.325);
-  --border: oklch(0.922 0 0);
-  --input: oklch(0.922 0 0);
-  --ring: oklch(0.708 0 0);
-  --chart-1: oklch(0.646 0.222 41.116);
-  --chart-2: oklch(0.6 0.118 184.704);
-  --chart-3: oklch(0.398 0.07 227.392);
-  --chart-4: oklch(0.828 0.189 84.429);
-  --chart-5: oklch(0.769 0.188 70.08);
-  --sidebar: oklch(0.985 0 0);
-  --sidebar-foreground: oklch(0.145 0 0);
-  --sidebar-primary: oklch(0.205 0 0);
-  --sidebar-primary-foreground: oklch(0.985 0 0);
-  --sidebar-accent: oklch(0.97 0 0);
-  --sidebar-accent-foreground: oklch(0.205 0 0);
-  --sidebar-border: oklch(0.922 0 0);
-  --sidebar-ring: oklch(0.708 0 0);
+  --color-canvas: #f4f8f6;
+  --color-ink: #0e2a23;
+  --color-ink-muted: #4f6660;
+  --color-ink-soft: #2f5a4c;
+  --color-line: #dce7e2;
+  --color-line-strong: #c9d8d2;
+  --color-line-dashed: #a9c4ba;
+  --color-track: #e3ece8;
+
+  --color-brand: #0b7a55;
+  --color-brand-hover: #075c40;
+  --color-brand-deep: #096948;
+  --color-brand-soft: #e3f4ec;
+  --color-brand-tint: #d3eee2;
+
+  --color-sky: #1f7ac2;
+  --color-sky-strong: #155e95;
+  --color-sky-soft: #e4f1fb;
+  --color-sky-ink: #12466f;
+
+  --color-danger: #b42318;
+  --color-danger-line: #e7b4ae;
+  --color-danger-soft: #fdedeb;
+
+  --color-warn: #7a4a00;
+  --color-warn-line: #ebcb8b;
+  --color-warn-soft: #fdf3dc;
+
+  --radius-field: 14px;
+  --radius-card: 18px;
+  --radius-panel: 20px;
+  --radius-hero: 24px;
 }
 
-.dark {
-  --background: oklch(0.145 0 0);
-  --foreground: oklch(0.985 0 0);
-  --card: oklch(0.205 0 0);
-  --card-foreground: oklch(0.985 0 0);
-  --popover: oklch(0.205 0 0);
-  --popover-foreground: oklch(0.985 0 0);
-  --primary: oklch(0.922 0 0);
-  --primary-foreground: oklch(0.205 0 0);
-  --secondary: oklch(0.269 0 0);
-  --secondary-foreground: oklch(0.985 0 0);
-  --muted: oklch(0.269 0 0);
-  --muted-foreground: oklch(0.708 0 0);
-  --accent: oklch(0.269 0 0);
-  --accent-foreground: oklch(0.985 0 0);
-  --destructive: oklch(0.704 0.191 22.216);
-  --border: oklch(1 0 0 / 10%);
-  --input: oklch(1 0 0 / 15%);
-  --ring: oklch(0.556 0 0);
-  --chart-1: oklch(0.488 0.243 264.376);
-  --chart-2: oklch(0.696 0.17 162.48);
-  --chart-3: oklch(0.769 0.188 70.08);
-  --chart-4: oklch(0.627 0.265 303.9);
-  --chart-5: oklch(0.645 0.246 16.439);
-  --sidebar: oklch(0.205 0 0);
-  --sidebar-foreground: oklch(0.985 0 0);
-  --sidebar-primary: oklch(0.488 0.243 264.376);
-  --sidebar-primary-foreground: oklch(0.985 0 0);
-  --sidebar-accent: oklch(0.269 0 0);
-  --sidebar-accent-foreground: oklch(0.985 0 0);
-  --sidebar-border: oklch(1 0 0 / 10%);
-  --sidebar-ring: oklch(0.556 0 0);
+/* shadcn/ui variables (components in src/components/ui/) mapped onto the same palette. */
+:root {
+  --radius: 0.875rem;
+  --background: var(--color-canvas);
+  --foreground: var(--color-ink);
+  --card: #ffffff;
+  --card-foreground: var(--color-ink);
+  --popover: #ffffff;
+  --popover-foreground: var(--color-ink);
+  --primary: var(--color-brand);
+  --primary-foreground: #ffffff;
+  --secondary: var(--color-track);
+  --secondary-foreground: var(--color-ink);
+  --muted: var(--color-track);
+  --muted-foreground: var(--color-ink-muted);
+  --accent: var(--color-brand-soft);
+  --accent-foreground: var(--color-ink);
+  --destructive: var(--color-danger);
+  --border: var(--color-line);
+  --input: var(--color-line-strong);
+  --ring: var(--color-brand);
 }
 
 @theme inline {
-  --radius-sm: calc(var(--radius) - 4px);
-  --radius-md: calc(var(--radius) - 2px);
-  --radius-lg: var(--radius);
-  --radius-xl: calc(var(--radius) + 4px);
   --color-background: var(--background);
   --color-foreground: var(--foreground);
   --color-card: var(--card);
@@ -95,30 +85,104 @@
   --color-border: var(--border);
   --color-input: var(--input);
   --color-ring: var(--ring);
-  --color-chart-1: var(--chart-1);
-  --color-chart-2: var(--chart-2);
-  --color-chart-3: var(--chart-3);
-  --color-chart-4: var(--chart-4);
-  --color-chart-5: var(--chart-5);
-  --color-sidebar: var(--sidebar);
-  --color-sidebar-foreground: var(--sidebar-foreground);
-  --color-sidebar-primary: var(--sidebar-primary);
-  --color-sidebar-primary-foreground: var(--sidebar-primary-foreground);
-  --color-sidebar-accent: var(--sidebar-accent);
-  --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
-  --color-sidebar-border: var(--sidebar-border);
-  --color-sidebar-ring: var(--sidebar-ring);
-}
-
-@utility bg-cosmic {
-  background-image: linear-gradient(to bottom, #0a0e1a, #0f1529, #0a0e1a);
 }
 
 @layer base {
   * {
-    @apply border-border outline-ring/50;
+    @apply border-line;
+  }
+  html {
+    -webkit-text-size-adjust: 100%;
   }
   body {
-    @apply bg-background text-foreground;
+    @apply bg-canvas text-ink font-sans antialiased;
   }
+  a {
+    @apply text-brand hover:text-brand-hover;
+  }
+  :focus-visible {
+    outline: 2px solid var(--color-brand);
+    outline-offset: 2px;
+  }
+}
+
+/* --- Component utilities: the shared building blocks of every page. --- */
+
+/* Buttons. Primary actions are full width and 52px tall, as in the design. */
+@utility btn {
+  @apply inline-flex h-13 cursor-pointer items-center justify-center gap-2 rounded-2xl px-5 text-base font-bold no-underline transition-colors disabled:cursor-not-allowed disabled:opacity-60;
+}
+@utility btn-primary {
+  @apply btn bg-brand hover:bg-brand-hover text-white hover:text-white;
+}
+@utility btn-secondary {
+  @apply btn border-line text-ink hover:bg-canvas hover:text-ink border bg-white;
+}
+@utility btn-sky {
+  @apply btn border-sky text-sky-strong hover:bg-sky-soft hover:text-sky-strong h-11 rounded-xl border-[1.5px] bg-white px-4 text-sm;
+}
+@utility btn-danger {
+  @apply btn border-danger-line text-danger hover:bg-danger-soft hover:text-danger border-[1.5px] bg-white text-[15px];
+}
+@utility btn-danger-solid {
+  @apply btn bg-danger hover:bg-danger/90 text-white hover:text-white;
+}
+/* Small inline actions inside a card (copy, confirm, withdraw). */
+@utility btn-chip {
+  @apply border-line text-ink hover:bg-canvas inline-flex h-10 shrink-0 cursor-pointer items-center justify-center gap-1.5 rounded-xl border bg-white px-3 text-sm font-bold transition-colors disabled:opacity-60;
+}
+@utility btn-icon {
+  @apply border-line text-sky hover:bg-sky-soft hover:text-sky inline-flex size-11 shrink-0 items-center justify-center rounded-[14px] border bg-white transition-colors;
+}
+
+/* Form fields. */
+@utility field-label {
+  @apply text-ink text-sm font-bold;
+}
+@utility field {
+  @apply rounded-field border-line-strong text-ink placeholder:text-ink-muted/70 focus:border-brand focus:ring-brand/20 aria-invalid:border-danger aria-invalid:focus:ring-danger/20 h-13 w-full border bg-white px-4 text-base font-medium transition-colors focus:ring-2 focus:outline-none;
+}
+@utility field-hint {
+  @apply text-ink-muted text-[13px];
+}
+
+/* Surfaces. */
+@utility card {
+  @apply rounded-card border-line border bg-white;
+}
+@utility card-dashed {
+  @apply rounded-panel border-line-dashed border border-dashed bg-white;
+}
+@utility section-title {
+  @apply text-ink-muted px-1 text-[13px] font-bold;
+}
+
+/* Pills (status badges). */
+@utility pill {
+  @apply inline-flex items-center rounded-full px-2.5 py-1 text-xs font-bold whitespace-nowrap;
+}
+@utility pill-sky {
+  @apply pill bg-sky-soft text-sky-strong;
+}
+@utility pill-brand {
+  @apply pill bg-brand-soft text-brand;
+}
+@utility pill-warn {
+  @apply pill bg-warn-soft text-warn;
+}
+@utility pill-muted {
+  @apply pill bg-track text-ink-muted;
+}
+
+/* Segmented control (tabs): the active segment carries aria-selected="true" or aria-current="page". */
+@utility segmented {
+  @apply bg-track grid gap-1 rounded-[14px] p-1;
+}
+@utility segment {
+  @apply text-ink-muted hover:text-ink aria-selected:text-brand aria-[current=page]:text-brand flex h-11 cursor-pointer items-center justify-center rounded-[11px] border-0 bg-transparent text-[15px] font-bold no-underline aria-selected:bg-white aria-selected:shadow-[0_1px_3px_rgba(14,42,35,0.12)] aria-[current=page]:bg-white aria-[current=page]:shadow-[0_1px_3px_rgba(14,42,35,0.12)];
+}
+
+/* Amounts line up in columns. */
+@utility amount {
+  @apply font-extrabold whitespace-nowrap tabular-nums;
 }

@@ -11,8 +11,8 @@ test.describe("risk #3: double submit stores one expense", () => {
 
     // Create a fresh group, so the test owns its open period and starts with no expenses.
     await page.goto("/dashboard");
-    await page.getByRole("textbox", { name: "Group name" }).fill(groupName);
-    await page.getByRole("button", { name: "Create group" }).click();
+    await page.getByRole("textbox", { name: "Nazwa grupy" }).fill(groupName);
+    await page.getByRole("button", { name: "Utwórz grupę" }).click();
     await page.waitForURL(/\/groups\/[^/]+$/);
     await expect(page.getByRole("heading", { name: groupName, level: 1 })).toBeVisible();
 
@@ -38,11 +38,11 @@ test.describe("risk #3: double submit stores one expense", () => {
     });
 
     // Fill the expense form and submit it.
-    await page.getByRole("textbox", { name: "Title" }).fill(expenseTitle);
-    await page.getByRole("textbox", { name: "Amount" }).fill("12,34");
-    const addExpense = page.getByRole("button", { name: "Add expense" });
+    await page.getByRole("textbox", { name: "Tytuł" }).fill(expenseTitle);
+    await page.getByRole("textbox", { name: "Kwota" }).fill("12,34");
+    const addExpense = page.getByRole("button", { name: "Dodaj wydatek" });
     const button = await addExpense.boundingBox();
-    if (!button) throw new Error("Add expense button is not rendered");
+    if (!button) throw new Error("Dodaj wydatek button is not rendered");
     // Not awaited yet: the click waits for the navigation it starts, which waits for the second tap.
     const firstTap = addExpense.click();
     await firstRequestStored;
