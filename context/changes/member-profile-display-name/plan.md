@@ -282,26 +282,26 @@ Expand only: a new nullable column, one additive key in `get_my_member_profile`,
 
 #### Automated
 
-- [x] 2.1 Unit tests pass: `npm test`
-- [x] 2.2 Type check passes: `npx astro check`
-- [x] 2.3 Lint passes: `npm run lint`
-- [x] 2.4 Build passes: `npm run build`
+- [x] 2.1 Unit tests pass: `npm test` — e3e63c8
+- [x] 2.2 Type check passes: `npx astro check` — e3e63c8
+- [x] 2.3 Lint passes: `npm run lint` — e3e63c8
+- [x] 2.4 Build passes: `npm run build` — e3e63c8
 
 #### Manual
 
-- [x] 2.5 User A sets the name "Ania" on `/profile`; after reload the field shows "Ania" and "Saved" appears
-- [x] 2.6 User B, in the same group, sees "Ania" (not A's email) in the balances, the debt sentence, the expense list ("Paid by Ania"), the Payments list and the transfer details
-- [x] 2.7 A sees themselves as "You"
-- [x] 2.8 Clearing the name makes B see A's email again
+- [x] 2.5 User A sets the name "Ania" on `/profile`; after reload the field shows "Ania" and "Saved" appears — e3e63c8
+- [x] 2.6 User B, in the same group, sees "Ania" (not A's email) in the balances, the debt sentence, the expense list ("Paid by Ania"), the Payments list and the transfer details — e3e63c8
+- [x] 2.7 A sees themselves as "You" — e3e63c8
+- [x] 2.8 Clearing the name makes B see A's email again — e3e63c8
 - [x] 2.9 An invalid name shows the error on the name form only and leaves the account number untouched
 
 ### Phase 3: Smoke test and documentation
 
 #### Automated
 
-- [ ] 3.1 Smoke passes against local Supabase and a running dev server: `npm run smoke`
-- [ ] 3.2 Full check passes: `npm test && npx astro check && npm run lint && npm run build`
+- [x] 3.1 Smoke passes against local Supabase and a running dev server: `npm run smoke`
+- [x] 3.2 Full check passes: `npm test && npx astro check && npm run lint && npm run build`
 
 #### Manual
 
-- [ ] 3.3 CLAUDE.md and the roadmap describe the display name and the leftover accurately
+- [x] 3.3 CLAUDE.md and the roadmap describe the display name and the leftover accurately

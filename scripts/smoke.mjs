@@ -29,6 +29,8 @@ const email3 = `smoke-stranger-${Date.now()}@example.com`;
 // A valid Polish account number (NRB checksum passes) the creditor saves on the profile page.
 const ACCOUNT_DIGITS = "34109010140000000000000000";
 const ACCOUNT_LABEL = "34 1090 1014 0000 0000 0000 0000";
+// The display name the creditor saves on the profile page; the debtor then sees it instead of the email.
+const DISPLAY_NAME = "Ola Smoke";
 const jar = new Map();
 const stamp = Date.now();
 const groupA = `Smoke household A ${stamp}`;
@@ -172,11 +174,11 @@ async function authSession(userEmail, { signUp = false } = {}) {
   return { token: session.access_token, userId: session.user.id };
 }
 
-// Reads the account numbers of `userId` in group A straight through the Data API, as `userEmail` could.
-async function readAccountNumberAs(userEmail, { signUp = false } = {}) {
+// Reads the account numbers (or, with `rpcName`, the display names) of the creditor in group A straight through the Data API, as `userEmail` could.
+async function readAccountNumberAs(userEmail, { signUp = false, rpcName = "get_group_member_account_numbers" } = {}) {
   const creditor = await authSession(email2);
   const reader = await authSession(userEmail, { signUp });
-  return directRpc("get_group_member_account_numbers", {
+  return directRpc(rpcName, {
     token: reader.token,
     headers: { "x-app-key": SUPABASE_APP_KEY },
     args: { p_group_id: groupIds[0], p_user_ids: [creditor.userId] },
@@ -533,6 +535,11 @@ const steps = [
     { status: 302, location: "/auth/signin" },
   ],
   [
+    "saving a display name redirects anonymous user",
+    () => request("/api/profile/display-name", { method: "POST", form: { displayName: DISPLAY_NAME } }),
+    { status: 302, location: "/auth/signin" },
+  ],
+  [
     "signup creates account",
     () => request("/api/auth/signup", { method: "POST", form: { email, password } }),
     { status: 302, location: "/auth/confirm-email" },
@@ -682,6 +689,21 @@ const steps = [
     { status: 200, check: bodyContains(ACCOUNT_LABEL) },
   ],
   [
+    "a display name over 40 characters is rejected",
+    () => request("/api/profile/display-name", { method: "POST", form: { displayName: "x".repeat(41) } }),
+    { status: 302, location: "/profile?nameError=invalid_display_name" },
+  ],
+  [
+    "the creditor saves a display name",
+    () => request("/api/profile/display-name", { method: "POST", form: { displayName: ` ${DISPLAY_NAME} ` } }),
+    { status: 302, location: "/profile?saved=name" },
+  ],
+  [
+    "the profile page shows the saved name and keeps the account number",
+    () => request("/profile"),
+    { status: 200, check: bodyContains(`value="${DISPLAY_NAME}"`, ACCOUNT_LABEL) },
+  ],
+  [
     "the creditor sees no transfer details for the debt owed to them",
     requestGroupA,
     { status: 200, check: bodyLacks("Transfer details", ACCOUNT_DIGITS) },
@@ -715,6 +737,11 @@ const steps = [
       status: 200,
       check: bodyContains("Transfer details", ACCOUNT_LABEL, ACCOUNT_DIGITS, "300,00", `SplitDom ${groupA}`),
     },
+  ],
+  [
+    "the debtor sees the creditor's display name instead of their email",
+    requestGroupA,
+    { status: 200, check: bodyContains("You owe", DISPLAY_NAME) },
   ],
   [
     "the debtor cannot send more than the debt",
@@ -1182,6 +1209,16 @@ const steps = [
     "a fellow member can read the creditor's account number through the function",
     () => readAccountNumberAs(email),
     { status: 200, check: bodyContains(ACCOUNT_DIGITS) },
+  ],
+  [
+    "a stranger outside the group cannot read the creditor's display name",
+    () => readAccountNumberAs(email3, { rpcName: "get_group_member_display_names" }),
+    { status: 200, check: (actual) => (actual.body.trim() === "[]" ? true : `body is ${actual.body}`) },
+  ],
+  [
+    "a fellow member can read the creditor's display name through the function",
+    () => readAccountNumberAs(email, { rpcName: "get_group_member_display_names" }),
+    { status: 200, check: bodyContains(DISPLAY_NAME) },
   ],
   // Positive control: the same call with the app's key reaches the function and returns the user's data.
   [
