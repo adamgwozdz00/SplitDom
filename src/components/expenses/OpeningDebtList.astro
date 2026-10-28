@@ -1,0 +1,37 @@
+---
+import type { OpeningDebt } from "@/lib/billing-periods";
+import type { Group } from "@/lib/groups";
+import { memberLabel } from "@/components/expenses/member-label";
+
+interface Props {
+  group: Group;
+  openingDebts: readonly OpeningDebt[];
+  viewerId: string;
+  /** e.g. "September 2026": the month the debts come from. */
+  previousMonthLabel: string;
+}
+
+const { group, openingDebts, viewerId, previousMonthLabel } = Astro.props;
+
+const rows = openingDebts.map((debt) => ({
+  debtor: memberLabel(group.members, debt.debtorId, viewerId),
+  creditor: memberLabel(group.members, debt.creditorId, viewerId),
+  amountLabel: debt.amount.label(),
+}));
+---
+
+{rows.length > 0 && (
+  <div data-opening-debts>
+    <h3 class="mb-2 text-sm font-semibold text-blue-100/80">Carried over from {previousMonthLabel}</h3>
+    <ul class="space-y-1">
+      {rows.map((row) => (
+        <li class="flex items-baseline justify-between gap-3 text-sm" data-opening-debt>
+          <span class="min-w-0 break-words text-white">
+            {row.debtor} → {row.creditor}
+          </span>
+          <span class="shrink-0 font-semibold text-white">{row.amountLabel}</span>
+        </li>
+      ))}
+    </ul>
+  </div>
+)}

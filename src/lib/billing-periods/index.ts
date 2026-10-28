@@ -24,3 +24,4 @@ export type { ExpenseShare, SplitPolicy } from "@/lib/billing-periods/split-poli
 export { TransferDetails, creditorIdsOf } from "@/lib/billing-periods/transfer-details.value";
 export { Payment } from "@/lib/billing-periods/payment.entity";
 export type { PaymentStatus } from "@/lib/billing-periods/payment.entity";
+export { OpeningDebt } from "@/lib/billing-periods/opening-debt.value";

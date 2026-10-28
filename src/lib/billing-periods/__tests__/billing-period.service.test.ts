@@ -57,6 +57,7 @@ describe("BillingPeriodService.openFor", () => {
       version: 0,
       expenses: [],
       payments: [],
+      openingDebts: [],
     });
   });
 
@@ -770,5 +771,194 @@ describe("BillingPeriodService confirmPayment and rejectPayment", () => {
     expect(await serviceWith(repository).confirmPayment(decision)).toMatchObject({
       error: { code: "period_changed" },
     });
+  });
+});
+
+describe("BillingPeriodService.closePeriod", () => {
+  const PAYMENT = "11111111-1111-4111-8111-aaaaaaaaaaaa";
+  // 00:30 on 1 November in Warsaw, so October has ended.
+  const AFTER_OCTOBER = new Date("2026-10-31T23:30:00.000Z");
+  const close = { group: aGroup(), userId: HOST_ID, periodId: PERIOD_ID };
+
+  // B owes the host 200 zł and has sent 50 zł of it, still pending.
+  async function repositoryWithPendingPayment(): Promise<FakeBillingPeriodRepository> {
+    const repository = new FakeBillingPeriodRepository([anOctoberPeriod({ expenses: [{ id: "e-1", grosze: 40000 }] })]);
+    await serviceWith(repository).sendPayment({
+      group: aGroup(),
+      senderId: B,
+      recipientId: HOST_ID,
+      paymentId: PAYMENT,
+      amount: "50,00",
+    });
+    return repository;
+  }
+
+  const closeService = (repository: FakeBillingPeriodRepository, ids = ["november"]) =>
+    serviceWith(repository, { ids, now: AFTER_OCTOBER });
+
+  it("closes the open period with one write, storing the next period with the carried debt and the moved payment", async () => {
+    const repository = await repositoryWithPendingPayment();
+
+    const result = await closeService(repository).closePeriod(close);
+
+    expect(result).toEqual({ data: undefined });
+    expect(repository.closeCalls).toHaveLength(1);
+    expect(repository.stored(GROUP_ID)).toMatchObject({
+      id: "november",
+      month: "2026-11-01",
+      openedAt: AFTER_OCTOBER.toISOString(),
+      closedAt: null,
+      version: 0,
+      expenses: [],
+      openingDebts: [{ debtorId: B, creditorId: HOST_ID, amountGrosze: 20000 }],
+      payments: [{ id: PAYMENT, amount: 5000, confirmedAt: null, rejectedAt: null }],
+    });
+    expect(repository.closedPeriods).toMatchObject([
+      { id: PERIOD_ID, version: 2, closedAt: AFTER_OCTOBER.toISOString(), payments: [] },
+    ]);
+  });
+
+  it("refuses a member who is not the host without a write", async () => {
+    const repository = await repositoryWithPendingPayment();
+
+    expect(await closeService(repository).closePeriod({ ...close, userId: B })).toMatchObject({
+      error: { code: "not_group_host" },
+    });
+    expect(repository.closeCalls).toEqual([]);
+  });
+
+  it("refuses while the month has not ended, judged on the clock", async () => {
+    const repository = await repositoryWithPendingPayment();
+
+    expect(await serviceWith(repository, { ids: ["november"] }).closePeriod(close)).toMatchObject({
+      error: { code: "period_not_ended" },
+    });
+    expect(repository.closeCalls).toEqual([]);
+  });
+
+  it("succeeds without a write when the period is no longer the open one (a repeated close)", async () => {
+    const repository = await repositoryWithPendingPayment();
+    await closeService(repository).closePeriod(close);
+
+    const again = await closeService(repository, []).closePeriod(close);
+
+    expect(again).toEqual({ data: undefined });
+    expect(repository.closeCalls).toHaveLength(1);
+    expect(repository.stored(GROUP_ID)?.id).toBe("november");
+  });
+
+  it("succeeds without a write for a period id the group never had, even for a non-host", async () => {
+    const repository = await repositoryWithPendingPayment();
+
+    const forged = await closeService(repository).closePeriod({ ...close, userId: memberId(1), periodId: "not-mine" });
+
+    expect(forged).toEqual({ data: undefined });
+    expect(repository.closeCalls).toHaveLength(0);
+    expect(repository.stored(GROUP_ID)?.id).toBe(PERIOD_ID);
+  });
+
+  it("succeeds after a conflict when the reloaded period shows the close already happened", async () => {
+    const repository = await repositoryWithPendingPayment();
+    repository.closeConflicts = 1;
+    repository.onConflict = () => {
+      repository.put({ ...anOctoberPeriod({ id: "theirs" }), month: "2026-11-01" });
+    };
+
+    const result = await closeService(repository).closePeriod(close);
+
+    expect(result).toEqual({ data: undefined });
+    expect(repository.closeCalls).toHaveLength(1);
+    expect(repository.stored(GROUP_ID)?.id).toBe("theirs");
+  });
+
+  it("closes the reloaded period after a conflict with another write, carrying what changed meanwhile", async () => {
+    const repository = await repositoryWithPendingPayment();
+    repository.closeConflicts = 1;
+    repository.onConflict = () => {
+      // The sender withdraws the payment meanwhile.
+      repository.put(anOctoberPeriod({ expenses: [{ id: "e-1", grosze: 40000 }], version: 2 }));
+    };
+
+    const result = await closeService(repository, ["november-1", "november-2"]).closePeriod(close);
+
+    expect(result).toEqual({ data: undefined });
+    expect(repository.closeCalls).toHaveLength(2);
+    expect(repository.stored(GROUP_ID)).toMatchObject({ id: "november-2", payments: [] });
+  });
+
+  it("gives up with period_changed after a second conflict", async () => {
+    const repository = await repositoryWithPendingPayment();
+    repository.closeConflicts = 2;
+
+    expect(await closeService(repository, ["november-1", "november-2"]).closePeriod(close)).toMatchObject({
+      error: { code: "period_changed" },
+    });
+  });
+
+  it("passes a repository error through unchanged", async () => {
+    const repository = await repositoryWithPendingPayment();
+    const failure = billingPeriodError("unexpected", { dbCode: "XX000" });
+    repository.failure = failure;
+
+    expect(await closeService(repository).closePeriod(close)).toBe(failure);
+  });
+
+  it("lets the recipient confirm a moved payment in the new period after the close", async () => {
+    const repository = await repositoryWithPendingPayment();
+    await closeService(repository).closePeriod(close);
+    const later = new Date("2026-11-02T10:00:00.000Z");
+
+    const result = await serviceWith(repository, { now: later }).confirmPayment({
+      group: aGroup(),
+      userId: HOST_ID,
+      paymentId: PAYMENT,
+    });
+
+    expect(result).toEqual({ data: undefined });
+    expect(repository.stored(GROUP_ID)).toMatchObject({
+      id: "november",
+      version: 1,
+      payments: [{ id: PAYMENT, confirmedAt: later.toISOString() }],
+    });
+  });
+
+  it("lands a confirmation that lost the race to the close on the moved payment in the new period", async () => {
+    const closedElsewhere = await repositoryWithPendingPayment();
+    await closeService(closedElsewhere).closePeriod(close);
+    const afterClose = closedElsewhere.stored(GROUP_ID);
+    if (!afterClose) {
+      throw new Error("no stored period");
+    }
+    const repository = await repositoryWithPendingPayment();
+    repository.saveConflicts = 1;
+    repository.onConflict = () => {
+      repository.put(afterClose);
+    };
+
+    const result = await serviceWith(repository, { now: new Date("2026-11-02T10:00:00.000Z") }).confirmPayment({
+      group: aGroup(),
+      userId: HOST_ID,
+      paymentId: PAYMENT,
+    });
+
+    expect(result).toEqual({ data: undefined });
+    expect(repository.stored(GROUP_ID)).toMatchObject({ id: "november", payments: [{ id: PAYMENT }] });
+    expect(repository.stored(GROUP_ID)?.payments[0].confirmedAt).not.toBeNull();
+  });
+
+  it("summarizes the new period with its opening debts", async () => {
+    const repository = await repositoryWithPendingPayment();
+    await closeService(repository).closePeriod(close);
+
+    const summary = await serviceWith(repository).summarizeOpen(aGroup());
+
+    if ("error" in summary) {
+      throw new Error(summary.error.code);
+    }
+    expect(summary.data.openingDebts.map((debt) => [debt.debtorId, debt.creditorId, debt.amount.grosze])).toEqual([
+      [B, HOST_ID, 20000],
+    ]);
+    expect(summary.data.balances.debts.map((debt) => debt.amount.grosze)).toEqual([15000]);
+    expect(summary.data.postedBalances.debts.map((debt) => debt.amount.grosze)).toEqual([20000]);
   });
 });

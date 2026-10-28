@@ -1,0 +1,52 @@
+---
+import { billingPeriodErrorMessage } from "@/lib/billing-periods";
+import type { BillingPeriod, BillingPeriodErrorCode } from "@/lib/billing-periods";
+import type { Group } from "@/lib/groups";
+
+interface Props {
+  group: Group;
+  period: BillingPeriod;
+  /** Why the viewer cannot close the period now (from `period.closeRefusal`), or null when they can. */
+  refusal: BillingPeriodErrorCode | null;
+  /** The `closeError` code of the last failed attempt, if any. */
+  error?: string | null;
+}
+
+const { group, period, refusal, error = null } = Astro.props;
+
+const closeAction = `/api/groups/${encodeURIComponent(group.id)}/close`;
+const monthLabel = period.month.label();
+const errorMessage = error ? billingPeriodErrorMessage(error) : null;
+---
+
+<div data-close-period>
+  <h3 class="mb-2 text-sm font-semibold text-blue-100/80">Close {monthLabel}</h3>
+  {errorMessage && (
+    <p role="alert" class="mb-2 rounded-lg border border-red-500/30 bg-red-900/30 px-3 py-2 text-sm text-red-300">
+      {errorMessage}
+    </p>
+  )}
+  {refusal ? (
+    <p class="text-sm text-blue-100/70" data-close-refusal>
+      {billingPeriodErrorMessage(refusal)}
+    </p>
+  ) : (
+    <details>
+      <summary class="cursor-pointer text-sm text-purple-300 hover:underline">Close {monthLabel}</summary>
+      <form method="POST" action={closeAction} class="mt-3 space-y-3" data-guard-submit>
+        <input type="hidden" name="periodId" value={period.id} />
+        <p class="text-sm text-blue-100/80">
+          This freezes {monthLabel} for everyone and opens the next month. Debts that are still open carry over, and
+          payments awaiting confirmation move along. Expenses of the new month can be added once the period is closed.
+          It cannot be undone.
+        </p>
+        <button
+          type="submit"
+          class="w-full rounded-lg bg-purple-600 px-4 py-2 font-medium text-white transition-colors hover:bg-purple-500 disabled:opacity-60"
+        >
+          Yes, close {monthLabel}
+        </button>
+      </form>
+    </details>
+  )}
+</div>

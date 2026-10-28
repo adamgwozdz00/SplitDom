@@ -38,7 +38,7 @@ jobs:
       - name: Start local Supabase
         run: |
           npx supabase start -x studio,imgproxy,mailpit,edge-runtime,logflare,vector,realtime,storage-api,supavisor
-          npx supabase status -o env | grep -E '^(API_URL|ANON_KEY)=' > supabase.env
+          npx supabase status -o env | grep -E '^(API_URL|ANON_KEY|SERVICE_ROLE_KEY)=' > supabase.env
       - name: Check generated database types are up to date
         run: |
           npm run db:types
@@ -48,6 +48,8 @@ jobs:
           source supabase.env
           printf 'SUPABASE_URL=%s\nSUPABASE_KEY=%s\nSUPABASE_APP_KEY=local-dev-app-key\n' "$API_URL" "$ANON_KEY" > .env
           cp .env .dev.vars
+          # Local only, for the smoke test's back-dating step: it stays out of the Worker's .dev.vars.
+          printf 'SUPABASE_SERVICE_ROLE_KEY=%s\n' "$SERVICE_ROLE_KEY" >> .env
       - run: npm run build
       - name: Run smoke test against production preview
         run: |

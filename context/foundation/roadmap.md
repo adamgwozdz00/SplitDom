@@ -3,7 +3,7 @@ project: SplitDom
 version: 1
 status: draft
 created: 2026-09-26
-updated: 2026-10-22
+updated: 2026-10-27
 prd_version: 1
 main_goal: speed
 top_blocker: time
@@ -52,7 +52,7 @@ People who share household costs — partners or roommates — settle shared exp
 | S-06 | generate-transfer-details   | debtor can copy transfer details (account number, amount, title) for a debt           | S-04          | FR-007                 | done        |
 | S-07 | mark-transfer-sent          | debtor can record a transfer as a payment that counts in the balances (pending)       | F-02          | FR-008                 | done        |
 | S-08 | confirm-debt-paid           | creditor can confirm or reject a payment, which makes it final (posted)               | F-02          | FR-009                 | in-progress |
-| S-09 | host-closes-period          | host can close a finished period, which freezes it and opens the next one             | S-05, S-08    | US-02, FR-015          | proposed    |
+| S-09 | host-closes-period          | host can close a finished period, which freezes it and opens the next one             | S-05, S-08    | US-02, FR-015          | in-progress |
 | S-10 | member-profile-display-name | member can set a display name that the group shows instead of their email             | S-04          | — (supports US-01)     | proposed    |
 
 ## Streams
@@ -234,7 +234,7 @@ Foundations below assume these are present and do NOT re-scaffold them.
 
 ### S-09: Host closes the billing period
 
-- **Outcome:** host can close the current period once its calendar month has ended and all of the host's own debts from it are confirmed paid; its expenses become read-only and exactly one new open period starts.
+- **Outcome:** host can close the current period once its calendar month has ended and all of the host's own debts from it are confirmed paid; its expenses become read-only and exactly one new open period for the next month starts. Other members' open (posted) debts carry over into it as opening debts, and pending payments move to it unchanged.
 - **Change ID:** host-closes-period
 - **PRD refs:** US-02, FR-015
 - **Prerequisites:** S-05, S-08
@@ -243,12 +243,15 @@ Foundations below assume these are present and do NOT re-scaffold them.
 - **Unknowns:**
   - ~~Which timezone defines "the calendar month has ended"?~~ Resolved 2026-10-02 (S-02 planning): Europe/Warsaw; timestamps stay in UTC, and `BillingMonth` in `src/lib/billing-periods/` is the single place that maps a moment to its billing month.
   - ~~How does `add_expense` stay safe against a period closed between loading the group and storing the expense?~~ Resolved by F-02: `save_billing_period` only stores expenses if the period's `version` is unchanged, so a close that bumped `version` makes the stale add fail, and its retry reloads the closed period, which the aggregate refuses. S-09's close must bump `version`. (S-04 implementation review, 2026-10-06)
-  - S-09 prerequisite (F-02 implementation review, 2026-10-07): the old `add_expense` does not bump `version`, so the contract migration that drops `create_group`, `add_expense`, `list_period_expenses` and `open_period` must land before S-09 ships.
-  - What happens to other members' pending payments when the host closes the period: are they carried over to the next period, do they block closing, or can the recipient still confirm them after closing? (S-08 planning, 2026-10-22; confirm and reject refuse a closed period.) — Owner: user. Block: S-09.
-  - Can the new open period's month start after today in Europe/Warsaw? If so, `PurchaseDate.window` gives min > max and rejects every purchase date, so either the next period opens only once its month has started or the window rule changes. (S-04 implementation review, 2026-10-06)
+  - ~~S-09 prerequisite (F-02 implementation review, 2026-10-07): the old `add_expense` does not bump `version`, so the contract migration that drops `create_group`, `add_expense`, `list_period_expenses` and `open_period` must land before S-09 ships.~~ Resolved 2026-10-26 (S-09 planning): Phase 1 of `context/changes/host-closes-period/plan.md` drops every unused leftover RPC.
+  - ~~What happens to other members' pending payments when the host closes the period: are they carried over to the next period, do they block closing, or can the recipient still confirm them after closing?~~ Resolved 2026-10-23 (S-09 research): they move to the new period unchanged, where the recipient confirms or rejects them; confirmed and rejected payments stay in the closed period (`context/changes/host-closes-period/research.md`, Decision 2).
+  - ~~Can the new open period's month start after today in Europe/Warsaw?~~ Resolved 2026-10-26 (S-09 planning): the next period is the month after the closed one, and closing requires that month to have ended, so it never starts after today.
+  - ~~What happens to the other members' open debts when a period closes?~~ Resolved 2026-10-23 (S-09 research, Decision 1): every non-zero posted pair debt becomes an opening-balance entry of the new period, paid with ordinary payments there.
+  - ~~Does a payment that settles carried debt lock the new period's expenses (FR-005)?~~ Resolved 2026-10-26 (Decision 3): confirmed payments settle the opening debt first; the pair's expenses lock only once confirmed payments in one direction exceed it.
+  - Note on retries: after a close, the retry of a lost race reloads the latest period, which is the new open one, not the closed one (so a stale confirm of a moved payment succeeds on the new period and a stale expense edit gets `expense_not_found`). This corrects the first unknown above, which assumed the retry reloads the closed period.
 - **Risk note (2026-10-21):** "the host's own debts are paid" is judged on the posted balances (expenses plus confirmed payments), not on the pending ones.
 - **Risk:** The most rule-heavy slice (host-only, month ended, host's debts paid, exactly one new open period); placed last because it consumes the edit-lock and paid-debt rules from S-05 and S-08.
-- **Status:** proposed
+- **Status:** in-progress
 
 ### S-10: Member profile with a display name
 
@@ -295,6 +298,7 @@ Mirrored on GitHub: milestone [M-1](https://github.com/adamgwozdz00/SplitDom/mil
 
 - **Minimal set of transfers settling the whole group at once (FR-006)** — Why parked: nice-to-have; pairwise settlement is enough for the `speed` goal.
 - **QR code for bank payment (FR-010)** — Why parked: nice-to-have; PRD accepts it as post-MVP.
+- **Read-only history of closed billing periods** — Why parked: S-09 shows only the new period after a close (decided 2026-10-26). Not yet a slice or a GitHub issue; open one only when the user asks.
 - **Expense categories with monthly/yearly summaries (FR-011)** — Why parked: nice-to-have; PRD §Non-Goals excludes advanced analytics.
 - **Automatic debt payment through a mobile payment system (FR-012)** — Why parked: PRD §Non-Goals — no payment integration in MVP.
 - **Email + password sign-in as an official alternative (FR-013)** — Why parked: nice-to-have; note it already exists in the codebase (see S-01 unknowns).

@@ -3,6 +3,8 @@ import Layout from "@/layouts/Layout.astro";
 import GroupCard from "@/components/groups/GroupCard.astro";
 import BalancesPanel from "@/components/expenses/BalancesPanel.astro";
 import TransferPanel from "@/components/expenses/TransferPanel.astro";
+import ClosePeriodPanel from "@/components/expenses/ClosePeriodPanel.astro";
+import OpeningDebtList from "@/components/expenses/OpeningDebtList.astro";
 import PaymentList from "@/components/expenses/PaymentList.astro";
 import ExpenseForm from "@/components/expenses/ExpenseForm.astro";
 import ExpenseList from "@/components/expenses/ExpenseList.astro";
@@ -50,9 +52,16 @@ const expenseError = group && expenseErrorParam ? billingPeriodErrorMessage(expe
 const paymentErrorParam = Astro.url.searchParams.get("paymentError");
 const paymentError = group && paymentErrorParam ? billingPeriodErrorMessage(paymentErrorParam) : null;
 
+const closeErrorParam = Astro.url.searchParams.get("closeError");
+
 // A failure to load expenses only replaces the expenses section; the rest of the page still renders.
 const summary = group && supabase ? await createBillingPeriodService(supabase).summarizeOpen(group) : null;
 const open = summary && "data" in summary ? summary.data : null;
+
+// The host sees the close panel; the refusal is judged on the request time, the service re-judges it on submit.
+const closeRefusal =
+  group && open ? open.period.closeRefusal({ userId: user.id, hostId: group.hostId, now: new Date() }) : null;
+const showClosePanel = group !== null && open !== null && group.isHost(user.id) && open.period.isOpen();
 
 // Only the creditors of the viewer's own debts have their account numbers requested. A failed lookup shows
 // the "no number yet" state rather than breaking the page.
@@ -74,6 +83,11 @@ if (creditorIds.length > 0) {
       {group ? (
         <>
           <GroupCard group={group} month={open?.period.month ?? null} userId={user.id} />
+          {showClosePanel && (
+            <section class="mt-6 border-t border-white/10 pt-6">
+              <ClosePeriodPanel group={group} period={open.period} refusal={closeRefusal} error={closeErrorParam} />
+            </section>
+          )}
           <section class="mt-6 border-t border-white/10 pt-6" data-expenses>
             <h2 class="mb-3 text-lg font-semibold text-white">Expenses</h2>
             {open ? (
@@ -99,6 +113,13 @@ if (creditorIds.length > 0) {
                     payments={open.payments}
                     viewerId={user.id}
                     periodOpen={open.period.isOpen()}
+                    period={open.period}
+                  />
+                  <OpeningDebtList
+                    group={group}
+                    openingDebts={open.openingDebts}
+                    viewerId={user.id}
+                    previousMonthLabel={open.period.month.previous().label()}
                   />
                   <ExpenseList
                     group={group}

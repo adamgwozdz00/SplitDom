@@ -45,7 +45,27 @@ export class BillingMonth {
     return LABEL_FORMAT.format(new Date(Date.UTC(this.year, this.month - 1, 1)));
   }
 
+  /** The following calendar month; December rolls over to January of the next year. */
+  next(): BillingMonth {
+    return this.month === 12 ? new BillingMonth(this.year + 1, 1) : new BillingMonth(this.year, this.month + 1);
+  }
+
+  /** The preceding calendar month; January rolls back to December of the previous year. */
+  previous(): BillingMonth {
+    return this.month === 1 ? new BillingMonth(this.year - 1, 12) : new BillingMonth(this.year, this.month - 1);
+  }
+
+  /** Whether the month is over at `now`: in Warsaw, `now` already falls in a later month. */
+  hasEndedAt(now: Date): boolean {
+    return BillingMonth.of(now).ordinal() > this.ordinal();
+  }
+
   equals(other: BillingMonth): boolean {
     return this.year === other.year && this.month === other.month;
+  }
+
+  // Months counted from year 0, so later months compare greater.
+  private ordinal(): number {
+    return this.year * 12 + (this.month - 1);
   }
 }

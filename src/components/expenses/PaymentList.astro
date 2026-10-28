@@ -1,5 +1,5 @@
 ---
-import type { Payment } from "@/lib/billing-periods";
+import type { BillingPeriod, Payment } from "@/lib/billing-periods";
 import type { Group } from "@/lib/groups";
 import { memberLabel } from "@/components/expenses/member-label";
 
@@ -9,9 +9,12 @@ interface Props {
   payments: readonly Payment[];
   viewerId: string;
   periodOpen: boolean;
+  /** The period the payments belong to; it tells which of them were carried over from the previous one. */
+  period: BillingPeriod;
 }
 
-const { group, payments, viewerId, periodOpen } = Astro.props;
+const { group, payments, viewerId, periodOpen, period } = Astro.props;
+const previousMonthLabel = period.month.previous().label();
 
 const groupPath = `/api/groups/${encodeURIComponent(group.id)}/payments`;
 
@@ -25,6 +28,7 @@ const rows = payments.map((payment) => {
     recipient: memberLabel(group.members, payment.recipientId, viewerId),
     amountLabel: payment.amount.label(),
     sentOn: payment.sentOnLabel(),
+    carried: period.isCarried(payment),
     statusLabel: status === "pending" ? "awaiting confirmation" : status,
     rejected: status === "rejected",
     // Only the sender withdraws, and only while the payment is pending and the period is open.
@@ -64,6 +68,7 @@ const awaitingViewer = rows.filter((row) => row.decisionActions).length;
           </div>
           <div class="text-blue-100/70">
             {row.sentOn} · {row.statusLabel}
+            {row.carried && ` · carried over from ${previousMonthLabel}`}
             {row.withdrawAction && (
               <form method="POST" action={row.withdrawAction} class="ml-1 inline">
                 {" · "}

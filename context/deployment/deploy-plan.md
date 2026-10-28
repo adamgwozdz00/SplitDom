@@ -167,6 +167,12 @@ The migration `payment_confirmations` adds a nullable column `rejected_at` to `p
 
 Rollback caveat: the previously deployed Worker does not know `rejected_at`, so after a `wrangler rollback` it counts rejected payments as pending (and shows them as awaiting confirmation) until the next deploy. No data is lost, and the current Worker reads the rows correctly again. The paid-debt lock of FR-005 (a confirmed payment locks the expenses of its pair) is judged in the application, so it needs no database change.
 
+## Period closing (added 2026-10-27, change `host-closes-period`, S-09)
+
+Two migrations. `drop_leftover_rpcs` is a contract migration: it drops `create_group`, `add_expense`, `list_period_expenses`, `save_billing_period`, `save_billing_period_changes`, `save_billing_period_with_payments`, `create_group_invite`, `get_group_invite`, `redeem_group_invite`, `get_my_group` and `list_my_groups`. The Worker deployed since S-08 calls none of them (it calls only `save_billing_period_with_confirmations` and the other current functions), so the migration is safe before the new Worker; two of them (`add_expense`, `save_billing_period`) could write into a closed period, which is why they go before closing exists. `close_billing_period` adds the table `opening_debts` (row-level security with no policies and no grants for `anon`/`authenticated`), replaces `get_current_billing_period` with a version that also returns `opening_debts`, and adds one `security definer` function, `close_billing_period`, which closes a period of a group the caller hosts and opens the next one in one call guarded by the period's `version`. It only adds objects and a key, so it needs no Supabase or Cloudflare configuration change.
+
+Rollback caveat: after a `wrangler rollback` to the S-08 Worker, balances omit the debts carried into an already closed period's successor (the old Worker ignores `opening_debts`) until the next deploy; moved payments still show. No data is lost. The smoke test's back-dating step uses `SUPABASE_SERVICE_ROLE_KEY`, which exists only in the local `.env` and in the CI smoke job's `.env` (from `supabase status`); it is never a Worker or production secret. A rollback to a Worker older than S-08 is not supported after the `drop_leftover_rpcs` migration, because that Worker would call functions that no longer exist.
+
 ## Out of scope
 
 Multi-region HA, Docker, and anything beyond first MVP deploy — per `infrastructure.md`'s own scope boundary.

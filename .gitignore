@@ -76,3 +76,9 @@ playwright-report/
 blob-report/
 playwright/.cache/
 .playwright-cli/
+
+# 10xDevs course content (skills, lesson prompts, CLI manifests)
+.10x-cli.json
+.claude/.10x-cli-manifest.json
+.claude/skills/
+.claude/prompts/
