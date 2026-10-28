@@ -18,7 +18,7 @@ describe("MemberProfileService", () => {
       const result = await service.saveAccountNumber({ userId: "u1", raw: "34 1090 1014 0000 0000 0000 0000" });
 
       expect(result).toEqual({ data: undefined });
-      expect(repository.stored("u1")).toEqual({ userId: "u1", accountNumber: VALID, version: 1 });
+      expect(repository.stored("u1")).toEqual({ userId: "u1", accountNumber: VALID, displayName: null, version: 1 });
     });
 
     it("stores nothing for an invalid number", async () => {
@@ -32,12 +32,12 @@ describe("MemberProfileService", () => {
 
     it("clears the number on blank input", async () => {
       const { repository, service } = setup();
-      repository.put({ userId: "u1", accountNumber: VALID, version: 3 });
+      repository.put({ userId: "u1", accountNumber: VALID, displayName: null, version: 3 });
 
       const result = await service.saveAccountNumber({ userId: "u1", raw: "   " });
 
       expect(result).toEqual({ data: undefined });
-      expect(repository.stored("u1")).toEqual({ userId: "u1", accountNumber: null, version: 4 });
+      expect(repository.stored("u1")).toEqual({ userId: "u1", accountNumber: null, displayName: null, version: 4 });
     });
 
     it("retries once on a lost race and then succeeds", async () => {
@@ -91,6 +91,72 @@ describe("MemberProfileService", () => {
 
       expect("data" in result && result.data.size).toBe(0);
       expect(repository.accountNumberCalls).toHaveLength(0);
+    });
+  });
+
+  describe("saveDisplayName", () => {
+    it("stores the name, keeps the account number and bumps the version", async () => {
+      const { repository, service } = setup();
+      repository.put({ userId: "u1", accountNumber: VALID, displayName: null, version: 2 });
+
+      const result = await service.saveDisplayName({ userId: "u1", raw: " Ania " });
+
+      expect(result).toEqual({ data: undefined });
+      expect(repository.stored("u1")).toEqual({ userId: "u1", accountNumber: VALID, displayName: "Ania", version: 3 });
+    });
+
+    it("stores nothing for an invalid name", async () => {
+      const { repository, service } = setup();
+
+      const result = await service.saveDisplayName({ userId: "u1", raw: "a".repeat(41) });
+
+      expect("error" in result && result.error.code).toBe("invalid_display_name");
+      expect(repository.saveCalls).toHaveLength(0);
+    });
+
+    it("clears the name on blank input and keeps the account number", async () => {
+      const { repository, service } = setup();
+      repository.put({ userId: "u1", accountNumber: VALID, displayName: "Ania", version: 1 });
+
+      const result = await service.saveDisplayName({ userId: "u1", raw: "  " });
+
+      expect(result).toEqual({ data: undefined });
+      expect(repository.stored("u1")).toEqual({ userId: "u1", accountNumber: VALID, displayName: null, version: 2 });
+    });
+
+    it("retries once on a lost race and then reports profile_changed", async () => {
+      const { repository, service } = setup();
+      repository.saveConflicts = 1;
+      const retried = await service.saveDisplayName({ userId: "u1", raw: "Ania" });
+      repository.saveConflicts = 2;
+      const lost = await service.saveDisplayName({ userId: "u2", raw: "Basia" });
+
+      expect(retried).toEqual({ data: undefined });
+      expect("error" in lost && lost.error.code).toBe("profile_changed");
+    });
+  });
+
+  describe("displayNamesFor", () => {
+    it("maps the visible names by user id", async () => {
+      const { repository, service } = setup();
+      repository.visibleNames = [
+        { userId: "u2", displayName: "Basia" },
+        { userId: "u3", displayName: "Celina" },
+      ];
+
+      const result = await service.displayNamesFor({ groupId: "g1", userIds: ["u2"] });
+
+      expect("data" in result && result.data.get("u2")?.value).toBe("Basia");
+      expect("data" in result && result.data.has("u3")).toBe(false);
+    });
+
+    it("does not ask the repository when no user is requested", async () => {
+      const { repository, service } = setup();
+
+      const result = await service.displayNamesFor({ groupId: "g1", userIds: [] });
+
+      expect("data" in result && result.data.size).toBe(0);
+      expect(repository.displayNameCalls).toHaveLength(0);
     });
   });
 });
