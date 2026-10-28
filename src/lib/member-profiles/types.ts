@@ -1,8 +1,14 @@
 import type { AccountNumber } from "@/lib/member-profiles/account-number.value";
+import type { DisplayName } from "@/lib/member-profiles/display-name.value";
 import type { MemberProfile } from "@/lib/member-profiles/member-profile.aggregate";
 
 export type MemberProfileErrorCode =
-  "invalid_account_number" | "not_owner" | "profile_changed" | "not_authenticated" | "unexpected";
+  | "invalid_account_number"
+  | "invalid_display_name"
+  | "not_owner"
+  | "profile_changed"
+  | "not_authenticated"
+  | "unexpected";
 
 // Project-wide error shape, owned here until a shared module is introduced.
 export interface MemberProfileError {
@@ -15,6 +21,7 @@ export type Result<T> = { data: T } | MemberProfileError;
 export interface MemberProfileSnapshot {
   userId: string;
   accountNumber: string | null;
+  displayName: string | null;
   version: number;
 }
 
@@ -26,6 +33,10 @@ export interface MemberProfileRepository {
   save(profile: MemberProfile): Promise<Result<"saved" | "conflict">>;
   /** The stored account numbers (26 digits) of those of `userIds` who share the group with the signed-in user. */
   accountNumbers(groupId: string, userIds: string[]): Promise<Result<{ userId: string; accountNumber: string }[]>>;
+  /** The display names of those of `userIds` who have one and share the group with the signed-in user. */
+  displayNames(groupId: string, userIds: string[]): Promise<Result<{ userId: string; displayName: string }[]>>;
 }
 
 export type AccountNumbers = Map<string, AccountNumber>;
+
+export type DisplayNames = Map<string, DisplayName>;

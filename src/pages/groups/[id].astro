@@ -63,6 +63,16 @@ const closeRefusal =
   group && open ? open.period.closeRefusal({ userId: user.id, hostId: group.hostId, now: new Date() }) : null;
 const showClosePanel = group !== null && open !== null && group.isHost(user.id) && open.period.isOpen();
 
+// The display names of all members, one call. A failed lookup falls back to emails rather than breaking the page.
+const names =
+  group && supabase
+    ? await createMemberProfileService(supabase).displayNamesFor({
+        groupId: group.id,
+        userIds: group.members.map((member) => member.userId),
+      })
+    : null;
+const displayNames = names && "data" in names ? names.data : new Map();
+
 // Only the creditors of the viewer's own debts have their account numbers requested. A failed lookup shows
 // the "no number yet" state rather than breaking the page.
 const creditorIds = open ? creditorIdsOf(open.balances, user.id) : [];
@@ -96,12 +106,14 @@ if (creditorIds.length > 0) {
                 <div class="mt-6 space-y-6">
                   <BalancesPanel
                     group={group}
+                    displayNames={displayNames}
                     balances={open.balances}
                     viewerId={user.id}
                     hasUnconfirmedPayments={open.payments.some((payment) => payment.isPending())}
                   />
                   <TransferPanel
                     group={group}
+                    displayNames={displayNames}
                     balances={open.balances}
                     viewerId={user.id}
                     monthLabel={open.period.month.label()}
@@ -110,6 +122,7 @@ if (creditorIds.length > 0) {
                   />
                   <PaymentList
                     group={group}
+                    displayNames={displayNames}
                     payments={open.payments}
                     viewerId={user.id}
                     periodOpen={open.period.isOpen()}
@@ -117,12 +130,14 @@ if (creditorIds.length > 0) {
                   />
                   <OpeningDebtList
                     group={group}
+                    displayNames={displayNames}
                     openingDebts={open.openingDebts}
                     viewerId={user.id}
                     previousMonthLabel={open.period.month.previous().label()}
                   />
                   <ExpenseList
                     group={group}
+                    displayNames={displayNames}
                     period={open.period}
                     month={open.period.month}
                     expenses={open.expenses}

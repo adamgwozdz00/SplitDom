@@ -2,11 +2,13 @@
 import { TransferDetails } from "@/lib/billing-periods";
 import type { PeriodBalances } from "@/lib/billing-periods";
 import type { Group } from "@/lib/groups";
+import type { DisplayNames } from "@/lib/member-profiles";
 import type { AccountNumber } from "@/lib/member-profiles";
 import { memberLabel } from "@/components/expenses/member-label";
 
 interface Props {
   group: Group;
+  displayNames: DisplayNames;
   balances: PeriodBalances;
   viewerId: string;
   monthLabel: string;
@@ -16,7 +18,7 @@ interface Props {
   error: string | null;
 }
 
-const { group, balances, viewerId, monthLabel, accountNumbers, error } = Astro.props;
+const { group, displayNames, balances, viewerId, monthLabel, accountNumbers, error } = Astro.props;
 
 const paymentAction = `/api/groups/${encodeURIComponent(group.id)}/payments`;
 
@@ -29,7 +31,7 @@ const transfers = balances.debts
       // Identifies this form submission, so sending it twice records the payment once.
       paymentId: crypto.randomUUID(),
       amountInput: debt.amount.formInput(),
-      creditor: memberLabel(group.members, debt.creditorId, viewerId),
+      creditor: memberLabel(group.members, debt.creditorId, viewerId, displayNames),
       amountLabel: debt.amount.label(),
       accountLabel: account?.label() ?? null,
       details: TransferDetails.of({
