@@ -263,6 +263,15 @@ export class BillingPeriodService {
     };
   }
 
+  /**
+   * The open period of each of `groups`, by group id, for the group list's summary. A group whose period could
+   * not be loaded is left out, so the list still renders.
+   */
+  async openPeriodsOf(groups: readonly Group[]): Promise<Map<string, BillingPeriod>> {
+    const loaded = await Promise.all(groups.map(async (group) => [group.id, await this.openFor(group)] as const));
+    return new Map(loaded.flatMap(([groupId, period]) => ("data" in period ? [[groupId, period.data] as const] : [])));
+  }
+
   /** The open period's month of every group the signed-in user belongs to, by group id. */
   async openMonthsOf(): Promise<Result<Map<string, BillingMonth>>> {
     const result = await this.repository.listOpenMonthsOfCurrentUser();

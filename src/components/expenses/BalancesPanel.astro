@@ -3,60 +3,75 @@ import type { PeriodBalances } from "@/lib/billing-periods";
 import type { Group } from "@/lib/groups";
 import type { DisplayNames } from "@/lib/member-profiles";
 import { memberLabel } from "@/components/expenses/member-label";
+import SignedAmount from "@/components/expenses/SignedAmount.astro";
+import Avatar from "@/components/ui/Avatar.astro";
+import EmptyState from "@/components/ui/EmptyState.astro";
+import Icon from "@/components/ui/Icon.astro";
 
 interface Props {
   group: Group;
   displayNames: DisplayNames;
   balances: PeriodBalances;
   viewerId: string;
-  /** Whether the balances include a payment the recipient has not confirmed yet. */
-  hasUnconfirmedPayments?: boolean;
 }
 
-const { group, displayNames, balances, viewerId, hasUnconfirmedPayments = false } = Astro.props;
+const { group, displayNames, balances, viewerId } = Astro.props;
+
+// "Oddajesz X", "X oddaje Tobie", "X oddaje Y": the viewer is named in the case the sentence needs.
+const debts = balances.debts.map((debt) => {
+  const debtor = memberLabel(group.members, debt.debtorId, viewerId, displayNames);
+  const creditor =
+    debt.creditorId === viewerId ? "Tobie" : memberLabel(group.members, debt.creditorId, viewerId, displayNames);
+  return {
+    sentence: debt.debtorId === viewerId ? `Oddajesz ${creditor}` : `${debtor} oddaje ${creditor}`,
+    amountLabel: debt.amount.label(),
+    mine: debt.debtorId === viewerId || debt.creditorId === viewerId,
+  };
+});
 ---
 
-<div data-balances>
-  <h3 class="mb-2 text-sm font-semibold text-blue-100/80">Balances</h3>
-  <ul class="space-y-1">
+<div class="flex flex-col gap-3" data-balances>
+  <h3 class="section-title">Salda</h3>
+  <ul class="card flex flex-col px-4 py-1.5">
     {balances.members.map((member) => (
-      <li class="flex items-baseline justify-between gap-3 text-sm">
-        <span class="min-w-0 break-words text-white">
+      <li class="flex min-h-14 items-center gap-3 border-b border-line last:border-b-0">
+        <Avatar
+          label={
+            displayNames.get(member.userId)?.value ??
+            group.members.find((known) => known.userId === member.userId)?.email ??
+            "?"
+          }
+          isViewer={member.userId === viewerId}
+        />
+        <span class="min-w-0 flex-1 font-bold break-words">
           {memberLabel(group.members, member.userId, viewerId, displayNames)}
         </span>
-        <span
-          class:list={[
-            "shrink-0 font-semibold",
-            member.balance.isZero()
-              ? "text-blue-100/80"
-              : member.balance.isPositive()
-                ? "text-green-300"
-                : "text-red-300",
-          ]}
-        >
-          {member.balance.signedLabel()}
-        </span>
+        <SignedAmount amount={member.balance} />
       </li>
     ))}
   </ul>
-  <h3 class="mt-4 mb-2 text-sm font-semibold text-blue-100/80">Debts</h3>
-  {balances.debts.length === 0 ? (
-    <p class="text-sm text-blue-100/70">All settled</p>
+
+  <h3 class="section-title pt-1">Kto komu oddaje</h3>
+  {debts.length === 0 ? (
+    <EmptyState icon="check" variant="settled" title="Wszystko rozliczone">
+      Nikt nikomu nic nie jest winien.
+    </EmptyState>
   ) : (
-    <ul class="space-y-1">
-      {balances.debts.map((debt) => (
-        <li class="text-sm break-words text-white">
-          {memberLabel(group.members, debt.debtorId, viewerId, displayNames)}{" "}
-          {debt.debtorId === viewerId ? "owe" : "owes"}{" "}
-          {memberLabel(group.members, debt.creditorId, viewerId, displayNames)}{" "}
-          <span class="font-semibold">{debt.amount.label()}</span>
+    <ul class="card flex flex-col px-4 py-1.5">
+      {debts.map((debt) => (
+        <li class="flex min-h-14 items-center gap-3 border-b border-line py-2 last:border-b-0">
+          <span
+            class:list={[
+              "flex size-9 shrink-0 items-center justify-center rounded-full",
+              debt.mine ? "bg-sky-soft text-sky" : "bg-track text-ink-muted",
+            ]}
+          >
+            <Icon name="arrow" size={18} />
+          </span>
+          <span class="min-w-0 flex-1 font-semibold break-words">{debt.sentence}</span>
+          <span class="amount">{debt.amountLabel}</span>
         </li>
       ))}
     </ul>
-  )}
-  {hasUnconfirmedPayments && (
-    <p class="mt-2 text-xs text-blue-100/60" data-includes-pending>
-      Includes payments awaiting confirmation
-    </p>
   )}
 </div>

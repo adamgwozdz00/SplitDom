@@ -1,5 +1,8 @@
 ---
 import Layout from "@/layouts/Layout.astro";
+import Alert from "@/components/ui/Alert.astro";
+import Brand from "@/components/ui/Brand.astro";
+import Icon from "@/components/ui/Icon.astro";
 import { createGroupService, groupErrorMessage, InviteToken, rememberPendingInvite } from "@/lib/groups";
 import { createClient } from "@/lib/supabase";
 
@@ -9,7 +12,7 @@ import { createClient } from "@/lib/supabase";
 Astro.response.headers.set("Referrer-Policy", "same-origin");
 Astro.response.headers.set("Cache-Control", "no-store");
 
-const INVITE_LOAD_FAILED_MESSAGE = "We couldn't load this invite, try again";
+const INVITE_LOAD_FAILED_MESSAGE = "Nie udało się wczytać zaproszenia, spróbuj ponownie";
 
 const { user } = Astro.locals;
 const rawToken = Astro.params.token ?? "";
@@ -49,59 +52,47 @@ const errorParam = Astro.url.searchParams.get("error");
 const redeemError = errorParam ? groupErrorMessage(errorParam) : null;
 ---
 
-<Layout title={preview ? "Join group" : "Invite"}>
-  <div class="bg-cosmic flex min-h-screen items-center justify-center p-4">
-    <div class="w-full max-w-md rounded-2xl border border-white/10 bg-white/10 p-8 text-white backdrop-blur-xl">
-      {preview && token ? (
-        <>
-          <h1 class="mb-2 bg-gradient-to-r from-blue-200 to-purple-200 bg-clip-text text-3xl font-bold text-transparent">
-            {preview.groupName}
-          </h1>
-          <p class="mb-4 text-sm text-blue-100/80">You've been invited to join this group.</p>
-          {preview.callerIsMember && (
-            <p class="mb-4 rounded-lg border border-white/20 bg-white/10 px-3 py-2 text-sm text-blue-100">
-              You're already a member of this group.
-            </p>
-          )}
-          {redeemError && (
-            <p
-              role="alert"
-              class="mb-4 rounded-lg border border-red-500/30 bg-red-900/30 px-3 py-2 text-sm text-red-300"
-            >
-              {redeemError}
-            </p>
-          )}
-          <form method="POST" action="/api/invites/redeem" data-join-invite>
-            <input type="hidden" name="token" value={token.value} />
-            <button
-              type="submit"
-              class="w-full rounded-lg bg-purple-600 px-4 py-2 font-medium text-white transition-colors hover:bg-purple-500 disabled:opacity-60"
-            >
-              Join group
-            </button>
-          </form>
-        </>
-      ) : (
-        <>
-          <h1 class="mb-4 bg-gradient-to-r from-blue-200 to-purple-200 bg-clip-text text-3xl font-bold text-transparent">
-            Invite
-          </h1>
-          <p role="alert" class="rounded-lg border border-red-500/30 bg-red-900/30 px-3 py-2 text-sm text-red-300">
-            {loadFailed ? INVITE_LOAD_FAILED_MESSAGE : groupErrorMessage("invite_invalid")}
-          </p>
-          {user && (
-            <a href="/dashboard" class="mt-6 inline-block text-sm text-purple-300 hover:underline">
-              Go to dashboard
-            </a>
-          )}
-        </>
-      )}
-    </div>
-  </div>
+<Layout title={preview ? "Dołącz do grupy" : "Zaproszenie"}>
+  <header class="px-6 pt-5">
+    <Brand />
+  </header>
+  <main class="flex flex-1 flex-col gap-4 px-6 pt-8 pb-6">
+    {preview && token ? (
+      <>
+        <div class="card flex flex-col items-center gap-3 rounded-panel px-5 py-8 text-center">
+          <span class="flex size-14 items-center justify-center rounded-[16px] bg-brand-soft text-brand">
+            <Icon name="home" size={28} />
+          </span>
+          <p class="text-sm font-bold text-ink-muted">Zaproszenie do grupy</p>
+          <h1 class="text-[28px] font-extrabold tracking-[-0.02em] break-words">{preview.groupName}</h1>
+          <p class="text-[15px] text-ink-muted">Dołącz, aby wspólnie zapisywać wydatki i rozliczać się co miesiąc.</p>
+        </div>
+        {preview.callerIsMember && <Alert variant="info">Już należysz do tej grupy.</Alert>}
+        {redeemError && <Alert>{redeemError}</Alert>}
+        <div class="flex-1"></div>
+        <form method="POST" action="/api/invites/redeem" data-join-invite>
+          <input type="hidden" name="token" value={token.value} />
+          <button type="submit" class="btn-primary w-full">
+            Dołącz do grupy
+          </button>
+        </form>
+      </>
+    ) : (
+      <>
+        <h1 class="text-[28px] font-extrabold tracking-[-0.02em]">Zaproszenie</h1>
+        <Alert>{loadFailed ? INVITE_LOAD_FAILED_MESSAGE : groupErrorMessage("invite_invalid")}</Alert>
+        {user && (
+          <a href="/dashboard" class="btn-secondary w-full">
+            Przejdź do swoich grup
+          </a>
+        )}
+      </>
+    )}
+  </main>
 </Layout>
 
 <script>
-  // Progressive enhancement: a double tap on "Join group" would send a second POST of an already-used invite,
+  // Progressive enhancement: a double tap on "Dołącz do grupy" would send a second POST of an already-used invite,
   // which answers "no longer valid" even though the user did join. Without JavaScript the form still submits.
   for (const form of document.querySelectorAll<HTMLFormElement>("form[data-join-invite]")) {
     const button = form.querySelector<HTMLButtonElement>("button[type=submit]");

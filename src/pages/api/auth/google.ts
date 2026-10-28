@@ -4,7 +4,7 @@ import { createClient } from "@/lib/supabase";
 export const POST: APIRoute = async (context) => {
   const supabase = createClient(context.request.headers, context.cookies);
   if (!supabase) {
-    return context.redirect(`/auth/signin?error=${encodeURIComponent("Supabase is not configured")}`);
+    return context.redirect(`/auth/signin?error=${encodeURIComponent("Supabase nie jest skonfigurowany")}`);
   }
   const { data, error } = await supabase.auth.signInWithOAuth({
     provider: "google",

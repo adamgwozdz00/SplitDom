@@ -11,16 +11,16 @@ test.describe("risk #3: the author removes a duplicated expense", () => {
 
     // A fresh group, so the test owns its open period and starts with no expenses.
     await page.goto("/dashboard");
-    await page.getByRole("textbox", { name: "Group name" }).fill(groupName);
-    await page.getByRole("button", { name: "Create group" }).click();
+    await page.getByRole("textbox", { name: "Nazwa grupy" }).fill(groupName);
+    await page.getByRole("button", { name: "Utwórz grupę" }).click();
     await page.waitForURL(/\/groups\/[^/]+$/);
     await expect(page.getByRole("heading", { name: groupName, level: 1 })).toBeVisible();
 
     // Add the same expense twice, as a retried POST would.
     for (let attempt = 0; attempt < 2; attempt += 1) {
-      await page.getByRole("textbox", { name: "Title" }).fill(expenseTitle);
-      await page.getByRole("textbox", { name: "Amount" }).fill("12,34");
-      await page.getByRole("button", { name: "Add expense" }).click();
+      await page.getByRole("textbox", { name: "Tytuł" }).fill(expenseTitle);
+      await page.getByRole("textbox", { name: "Kwota" }).fill("12,34");
+      await page.getByRole("button", { name: "Dodaj wydatek" }).click();
       await expect(page.getByRole("listitem").filter({ hasText: expenseTitle })).toHaveCount(attempt + 1);
     }
 
@@ -29,11 +29,11 @@ test.describe("risk #3: the author removes a duplicated expense", () => {
       .getByRole("listitem")
       .filter({ hasText: expenseTitle })
       .first()
-      .getByRole("link", { name: "Edit" })
+      .getByRole("link", { name: "Edytuj" })
       .click();
-    await expect(page.getByRole("heading", { name: "Edit expense" })).toBeVisible();
-    await page.getByText("Delete expense", { exact: true }).click();
-    await page.getByRole("button", { name: "Yes, delete this expense" }).click();
+    await expect(page.getByRole("heading", { name: "Edytuj wydatek" })).toBeVisible();
+    await page.getByText("Usuń wydatek", { exact: true }).click();
+    await page.getByRole("button", { name: "Tak, usuń ten wydatek" }).click();
     await page.waitForURL(/\/groups\/[^/]+$/);
 
     // One expense is left, also after a fresh load from the server.
@@ -45,9 +45,9 @@ test.describe("risk #3: the author removes a duplicated expense", () => {
 
     // Cleanup: delete the other one too, so the group is left without expenses. The app cannot delete groups
     // yet, so the uniquely named group stays in the local database until `npm run db:reset`.
-    await remaining.getByRole("link", { name: "Edit" }).click();
-    await page.getByText("Delete expense", { exact: true }).click();
-    await page.getByRole("button", { name: "Yes, delete this expense" }).click();
+    await remaining.getByRole("link", { name: "Edytuj" }).click();
+    await page.getByText("Usuń wydatek", { exact: true }).click();
+    await page.getByRole("button", { name: "Tak, usuń ten wydatek" }).click();
     await page.waitForURL(/\/groups\/[^/]+$/);
     await expect(page.getByRole("listitem").filter({ hasText: expenseTitle })).toHaveCount(0);
   });

@@ -368,7 +368,7 @@ const previousWarsawMonthStart = (() => {
 })();
 
 const monthLabelOf = (isoDay) =>
-  new Intl.DateTimeFormat("en-US", { timeZone: "UTC", year: "numeric", month: "long" }).format(
+  new Intl.DateTimeFormat("pl-PL", { timeZone: "UTC", year: "numeric", month: "long" }).format(
     new Date(`${isoDay}T00:00:00Z`),
   );
 const todayMonthLabel = monthLabelOf(`${todayInWarsaw.slice(0, 7)}-01`);
@@ -525,7 +525,7 @@ const steps = [
   [
     "callback reports cancelled provider consent",
     () => request("/auth/callback?error=access_denied&error_description="),
-    { status: 302, location: "/auth/signin?error=Sign-in%20was%20cancelled" },
+    { status: 302, location: "/auth/signin?error=Logowanie%20zosta%C5%82o%20anulowane" },
   ],
   ["dashboard redirects anonymous user", () => request("/dashboard"), { status: 302, location: "/auth/signin" }],
   ["profile redirects anonymous user", () => request("/profile"), { status: 302, location: "/auth/signin" }],
@@ -602,7 +602,7 @@ const steps = [
   [
     "sign-in page mentions the invite",
     () => request("/auth/signin"),
-    { status: 200, check: bodyContains("Sign in or create an account to accept your invite.") },
+    { status: 200, check: bodyContains("Zaloguj się lub załóż konto, aby przyjąć zaproszenie.") },
   ],
   [
     "second user signs up",
@@ -651,7 +651,7 @@ const steps = [
   [
     "the author's edit page is prefilled",
     () => requestExpense(0, "/edit"),
-    { status: 200, check: bodyContains("Edit expense", 'value="Czynsz"', 'value="400,00"') },
+    { status: 200, check: bodyContains("Edytuj wydatek", 'value="Czynsz"', 'value="400,00"') },
   ],
   [
     "an invalid amount on the edit form returns to the edit page",
@@ -706,7 +706,7 @@ const steps = [
   [
     "the creditor sees no transfer details for the debt owed to them",
     requestGroupA,
-    { status: 200, check: bodyLacks("Transfer details", ACCOUNT_DIGITS) },
+    { status: 200, check: bodyLacks("Dane do przelewu", ACCOUNT_DIGITS) },
   ],
   [
     "non-member cannot add an expense to another group",
@@ -729,19 +729,19 @@ const steps = [
     () => request("/api/auth/signin", { method: "POST", form: { email, password } }),
     { status: 302, location: "/dashboard" },
   ],
-  ["first user sees the amount they owe", requestGroupA, { status: 200, check: bodyContains("You owe", "300,00") }],
+  ["first user sees the amount they owe", requestGroupA, { status: 200, check: bodyContains("Oddajesz", "300,00") }],
   [
     "the debtor sees the creditor's transfer details",
     requestGroupA,
     {
       status: 200,
-      check: bodyContains("Transfer details", ACCOUNT_LABEL, ACCOUNT_DIGITS, "300,00", `SplitDom ${groupA}`),
+      check: bodyContains("Dane do przelewu", ACCOUNT_LABEL, ACCOUNT_DIGITS, "300,00", `SplitDom ${groupA}`),
     },
   ],
   [
     "the debtor sees the creditor's display name instead of their email",
     requestGroupA,
-    { status: 200, check: bodyContains("You owe", DISPLAY_NAME) },
+    { status: 200, check: bodyContains("Oddajesz", DISPLAY_NAME) },
   ],
   [
     "the debtor cannot send more than the debt",
@@ -760,13 +760,13 @@ const steps = [
       status: 200,
       check: allOf(
         bodyContains(
-          "You owe",
+          "Oddajesz",
           "200,00",
-          "Includes payments awaiting confirmation",
-          "Payments",
+          "Salda uwzględniają wpłaty oczekujące na potwierdzenie",
+          "Wpłaty",
           "100,00",
-          "awaiting confirmation",
-          "Withdraw",
+          "oczekuje na potwierdzenie",
+          "Wycofaj",
         ),
         checkPaymentRows(1),
       ),
@@ -780,7 +780,7 @@ const steps = [
   [
     "the payment is still listed once and the debt is unchanged",
     requestGroupA,
-    { status: 200, check: allOf(bodyContains("You owe", "200,00"), checkPaymentRows(1)) },
+    { status: 200, check: allOf(bodyContains("Oddajesz", "200,00"), checkPaymentRows(1)) },
   ],
   [
     "the debtor sends a payment the creditor will confirm",
@@ -795,7 +795,7 @@ const steps = [
   [
     "the debt shrinks by all three payments",
     requestGroupA,
-    { status: 200, check: allOf(bodyContains("You owe", "125,00"), checkPaymentRows(3)) },
+    { status: 200, check: allOf(bodyContains("Oddajesz", "125,00"), checkPaymentRows(3)) },
   ],
   [
     "the debtor's own profile page does not show the creditor's number",
@@ -836,14 +836,14 @@ const steps = [
       status: 200,
       check: allOf(
         bodyContains(
-          "Payments",
+          "Wpłaty",
           "100,00",
-          "awaiting confirmation",
-          "3 payments await your confirmation",
-          "Confirm",
-          "Reject",
+          "oczekuje na potwierdzenie",
+          "3 wpłaty czekają na Twoje potwierdzenie",
+          "Potwierdź",
+          "Odrzuć",
         ),
-        bodyLacks("Withdraw"),
+        bodyLacks("Wycofaj"),
         checkPaymentRows(3),
       ),
     },
@@ -905,7 +905,14 @@ const steps = [
     {
       status: 200,
       check: allOf(
-        bodyContains("confirmed", "rejected", "You owe", "110,00", "1 payment awaits your confirmation", "locked"),
+        bodyContains(
+          "potwierdzona",
+          "odrzucona",
+          "Oddajesz",
+          "110,00",
+          "1 wpłata czeka na Twoje potwierdzenie",
+          "Zablokowany",
+        ),
         bodyLacks("/edit"),
         checkPaymentRows(3),
       ),
@@ -939,7 +946,7 @@ const steps = [
   [
     "the payment still counts after the debt is gone: the creditor now owes the debtor",
     requestGroupA,
-    { status: 200, check: bodyContains("owes", "You", "110,00", "Withdraw") },
+    { status: 200, check: bodyContains("oddaje", "Ty", "110,00", "Wycofaj") },
   ],
   [
     "the debtor cannot withdraw a confirmed payment",
@@ -972,8 +979,8 @@ const steps = [
     {
       status: 200,
       check: allOf(
-        bodyContains("owes", "You", "10,00", "confirmed", "rejected"),
-        bodyLacks("Withdraw", "No payments yet"),
+        bodyContains("oddaje", "Ty", "10,00", "potwierdzona", "odrzucona"),
+        bodyLacks("Wycofaj", "Brak wpłat"),
         checkPaymentRows(2),
       ),
     },
@@ -1038,7 +1045,7 @@ const steps = [
   [
     "close flow: the member owes the host 50,00",
     () => requestCloseGroup(),
-    { status: 200, check: bodyContains("You owe", "50,00") },
+    { status: 200, check: bodyContains("Oddajesz", "50,00") },
   ],
   [
     "close flow: the member sends 20,00, which stays pending",
@@ -1056,7 +1063,7 @@ const steps = [
   [
     "close flow: the member's page has no close panel",
     () => requestCloseGroup(),
-    { status: 200, check: bodyLacks("data-close-period", "Yes, close") },
+    { status: 200, check: bodyLacks("data-close-period", "Tak, zamknij") },
   ],
   ["close flow: the member signs out before the host's turn", signOut, { status: 302, location: "/" }],
   ["close flow: the host signs in for the close", signIn(email), { status: 302, location: "/dashboard" }],
@@ -1065,7 +1072,10 @@ const steps = [
     () => requestCloseGroup(),
     {
       status: 200,
-      check: allOf(bodyContains("data-close-period", "This month has not ended yet"), bodyLacks("Yes, close")),
+      check: allOf(
+        bodyContains("data-close-period", "data-close-refusal", "Jako gospodarz zamkniesz wtedy okres"),
+        bodyLacks("Tak, zamknij"),
+      ),
     },
   ],
   [
@@ -1085,7 +1095,7 @@ const steps = [
   [
     "close flow: the host's page shows the confirmation",
     () => requestCloseGroup(),
-    { status: 200, check: allOf(bodyContains("Yes, close"), checkClosePanelShown) },
+    { status: 200, check: allOf(bodyContains("Tak, zamknij"), checkClosePanelShown) },
   ],
   [
     "close flow: the member cannot close the period through the Data API",
@@ -1110,12 +1120,12 @@ const steps = [
       check: allOf(
         bodyContains(
           todayMonthLabel,
-          `Carried over from ${previousMonthLabel}`,
+          `Przeniesione z poprzedniego miesiąca (${previousMonthLabel})`,
           "50,00",
           "20,00",
-          "owes",
-          `carried over from ${previousMonthLabel}`,
-          "awaiting confirmation",
+          "oddaje",
+          `przeniesiona z okresu ${previousMonthLabel}`,
+          "oczekuje na potwierdzenie",
         ),
         checkPaymentRows(1),
       ),
@@ -1128,7 +1138,15 @@ const steps = [
     () => requestCloseGroup(),
     {
       status: 200,
-      check: bodyContains("Carried over from", "You", "50,00", "You owe", "30,00", "carried over from", "Withdraw"),
+      check: bodyContains(
+        "Przeniesione z poprzedniego miesiąca",
+        "Ty",
+        "50,00",
+        "Oddajesz",
+        "30,00",
+        "przeniesiona z okresu",
+        "Wycofaj",
+      ),
     },
   ],
   ["close flow: the member signs out again", signOut, { status: 302, location: "/" }],
@@ -1146,7 +1164,7 @@ const steps = [
   [
     "close flow: the new expense stays editable (confirmed 20,00 does not exceed the carried 50,00)",
     () => requestCloseGroup(),
-    { status: 200, check: allOf(bodyContains("Prąd nowy", "/edit"), bodyLacks("locked")) },
+    { status: 200, check: allOf(bodyContains("Prąd nowy", "/edit"), bodyLacks("Zablokowany")) },
   ],
   ["close flow: the host signs out after confirming", signOut, { status: 302, location: "/" }],
   ["close flow: the member signs in to pay the rest", signIn(email2), { status: 302, location: "/dashboard" }],
@@ -1165,7 +1183,7 @@ const steps = [
   [
     "close flow: confirmed 70,00 exceeds the carried 50,00, so the new expense is locked",
     () => requestCloseGroup(),
-    { status: 200, check: allOf(bodyContains("Prąd nowy", "locked"), bodyLacks("/edit")) },
+    { status: 200, check: allOf(bodyContains("Prąd nowy", "Zablokowany"), bodyLacks("/edit")) },
   ],
   ["close flow: the host signs out at the end", signOut, { status: 302, location: "/" }],
   [

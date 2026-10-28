@@ -1,6 +1,9 @@
 ---
 import Layout from "@/layouts/Layout.astro";
 import ExpenseForm from "@/components/expenses/ExpenseForm.astro";
+import { memberLabel } from "@/components/expenses/member-label";
+import BackHeader from "@/components/ui/BackHeader.astro";
+import Icon from "@/components/ui/Icon.astro";
 import { billingPeriodErrorMessage, createBillingPeriodService } from "@/lib/billing-periods";
 import { createGroupService } from "@/lib/groups";
 import { createClient } from "@/lib/supabase";
@@ -49,39 +52,47 @@ const error = errorParam ? billingPeriodErrorMessage(errorParam) : null;
 const deleteAction = `/api/groups/${encodeURIComponent(groupId)}/expenses/${encodeURIComponent(expenseId)}/delete`;
 ---
 
-<Layout title="Edit expense">
-  <div class="bg-cosmic flex min-h-screen items-center justify-center p-4">
-    <div class="w-full max-w-md rounded-2xl border border-white/10 bg-white/10 p-8 text-white backdrop-blur-xl">
-      {group && editable ? (
-        <>
-          <h1 class="mb-1 bg-gradient-to-r from-blue-200 to-purple-200 bg-clip-text text-2xl font-bold text-transparent">
-            Edit expense
-          </h1>
-          <p class="mb-4 text-sm text-blue-100/70">
+<Layout title="Edytuj wydatek">
+  {group && editable ? (
+    <>
+      <BackHeader href={groupPage} ariaLabel="Wróć do grupy">
+        <div class="flex min-w-0 flex-col">
+          <h1 class="text-[17px] font-extrabold">Edytuj wydatek</h1>
+          <p class="truncate text-[13px] text-ink-muted">
             {group.name.value} · {editable.period.month.label()}
           </p>
-          <ExpenseForm group={group} period={editable.period} error={error} expense={editable.expense} />
+        </div>
+      </BackHeader>
+      <main class="flex flex-1 flex-col gap-3 px-5 pt-5 pb-6">
+        <ExpenseForm
+          group={group}
+          period={editable.period}
+          error={error}
+          expense={editable.expense}
+          // Only the payer edits an expense, so the label is always the viewer's and needs no display names.
+          payerLabel={memberLabel(group.members, editable.expense.payerId, user.id, new Map())}
+        />
 
-          <details class="mt-6 border-t border-white/10 pt-4">
-            <summary class="cursor-pointer text-sm text-red-300 hover:underline">Delete expense</summary>
-            <form method="POST" action={deleteAction} class="mt-3 space-y-3" data-guard-submit>
-              <p class="text-sm text-blue-100/80">
-                This removes the expense and its split for everyone in the group. It cannot be undone.
-              </p>
-              <button
-                type="submit"
-                class="w-full rounded-lg bg-red-600 px-4 py-2 font-medium text-white transition-colors hover:bg-red-500 disabled:opacity-60"
-              >
-                Yes, delete this expense
-              </button>
-            </form>
-          </details>
-
-          <a href={groupPage} class="mt-6 inline-block text-sm text-purple-300 hover:underline">
-            Back to group
-          </a>
-        </>
-      ) : null}
-    </div>
-  </div>
+        <details class="group">
+          <summary class="btn-danger h-[50px] w-full list-none group-open:hidden">
+            <Icon name="trash" size={18} />
+            Usuń wydatek
+          </summary>
+          <form
+            method="POST"
+            action={deleteAction}
+            class="card flex flex-col gap-3 border-danger-line p-4"
+            data-guard-submit
+          >
+            <p class="text-sm text-ink-soft">
+              To usunie wydatek i jego podział dla wszystkich w grupie. Tej operacji nie można cofnąć.
+            </p>
+            <button type="submit" class="btn-danger-solid w-full">
+              Tak, usuń ten wydatek
+            </button>
+          </form>
+        </details>
+      </main>
+    </>
+  ) : null}
 </Layout>

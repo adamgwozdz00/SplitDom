@@ -17,24 +17,24 @@ const names = new Map([
 const noNames = new Map<string, DisplayName>();
 
 describe("memberLabel", () => {
-  it("labels the viewer as You, even when their email is known", () => {
-    expect(memberLabel(members, "host", "host", noNames)).toBe("You");
+  it('labels the viewer as "Ty", even when their email is known', () => {
+    expect(memberLabel(members, "host", "host", noNames)).toBe("Ty");
   });
 
   it("labels another member by email", () => {
     expect(memberLabel(members, "other", "host", noNames)).toBe("other@example.com");
   });
 
-  it("labels a member without a known email as Member", () => {
-    expect(memberLabel(members, "no-email", "host", noNames)).toBe("Member");
+  it('labels a member without a known email as "Członek grupy"', () => {
+    expect(memberLabel(members, "no-email", "host", noNames)).toBe("Członek grupy");
   });
 
-  it("labels an unknown user as Member", () => {
-    expect(memberLabel(members, "stranger", "host", noNames)).toBe("Member");
+  it('labels an unknown user as "Członek grupy"', () => {
+    expect(memberLabel(members, "stranger", "host", noNames)).toBe("Członek grupy");
   });
 
-  it("labels the viewer as You even with a display name", () => {
-    expect(memberLabel(members, "host", "host", names)).toBe("You");
+  it('labels the viewer as "Ty" even with a display name', () => {
+    expect(memberLabel(members, "host", "host", names)).toBe("Ty");
   });
 
   it("prefers the display name to the email", () => {
@@ -45,11 +45,11 @@ describe("memberLabel", () => {
     expect(memberLabel(members, "other", "host", new Map())).toBe("other@example.com");
   });
 
-  it("labels a member with neither as Member", () => {
-    expect(memberLabel(members, "no-email", "host", names)).toBe("Member");
+  it('labels a member with neither as "Członek grupy"', () => {
+    expect(memberLabel(members, "no-email", "host", names)).toBe("Członek grupy");
   });
 
   it("ignores a display name of a user who is not a member", () => {
-    expect(memberLabel(members, "stranger", "host", names)).toBe("Member");
+    expect(memberLabel(members, "stranger", "host", names)).toBe("Członek grupy");
   });
 });

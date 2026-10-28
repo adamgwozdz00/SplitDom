@@ -1,5 +1,4 @@
 import React, { useState } from "react";
-import { Mail, Lock, LogIn } from "lucide-react";
 import { FormField } from "@/components/auth/FormField";
 import { PasswordToggle } from "@/components/auth/PasswordToggle";
 import { SubmitButton } from "@/components/auth/SubmitButton";
@@ -18,12 +17,12 @@ export default function SignInForm({ serverError }: Props) {
   function validate() {
     const next: typeof errors = {};
     if (!email.trim()) {
-      next.email = "Email is required";
+      next.email = "Podaj adres e-mail";
     } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
-      next.email = "Enter a valid email address";
+      next.email = "Podaj poprawny adres e-mail";
     }
     if (!password) {
-      next.password = "Password is required";
+      next.password = "Podaj hasło";
     }
     setErrors(next);
     return Object.keys(next).length === 0;
@@ -40,33 +39,39 @@ export default function SignInForm({ serverError }: Props) {
   }
 
   return (
-    <form method="POST" action="/api/auth/signin" className="space-y-4" onSubmit={handleSubmit} noValidate>
+    <form
+      method="POST"
+      action="/api/auth/signin"
+      className="flex flex-1 flex-col gap-3.5"
+      onSubmit={handleSubmit}
+      noValidate
+    >
       <FormField
         id="email"
         type="email"
-        label="Email"
+        label="E-mail"
         value={email}
         onChange={(v) => {
           setEmail(v);
           clearError("email");
         }}
-        placeholder="you@example.com"
+        placeholder="ty@przyklad.pl"
+        autoComplete="email"
         error={errors.email}
-        icon={<Mail className="size-4" />}
       />
 
       <FormField
         id="password"
-        label="Password"
+        label="Hasło"
         type={showPassword ? "text" : "password"}
         value={password}
         onChange={(v) => {
           setPassword(v);
           clearError("password");
         }}
-        placeholder="Your password"
+        placeholder="Twoje hasło"
+        autoComplete="current-password"
         error={errors.password}
-        icon={<Lock className="size-4" />}
         endContent={
           <PasswordToggle
             visible={showPassword}
@@ -77,11 +82,9 @@ export default function SignInForm({ serverError }: Props) {
         }
       />
 
+      <div className="min-h-5 flex-1" />
       <ServerError message={serverError} />
-
-      <SubmitButton pendingText="Signing in..." icon={<LogIn className="size-4" />}>
-        Sign in
-      </SubmitButton>
+      <SubmitButton pendingText="Logowanie…">Zaloguj się</SubmitButton>
     </form>
   );
 }

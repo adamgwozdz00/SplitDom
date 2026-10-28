@@ -2,15 +2,15 @@ import type { MemberProfileError, MemberProfileErrorCode } from "@/lib/member-pr
 
 // After a redirect only the code survives, so the message for each code lives here.
 const MESSAGES: Record<MemberProfileErrorCode, string> = {
-  invalid_account_number: "Enter a valid 26-digit Polish account number (NRB), e.g. 61 1090 1014 0000 0712 1981 2874",
-  invalid_display_name: "Enter a name of 1 to 40 characters",
-  not_owner: "Only the owner can change a profile",
-  profile_changed: "Your profile was just changed elsewhere, try again",
-  not_authenticated: "Sign in to continue",
-  unexpected: "Something went wrong, try again",
+  invalid_account_number: "Wpisz poprawny 26-cyfrowy numer konta (NRB), np. 61 1090 1014 0000 0712 1981 2874",
+  invalid_display_name: "Wpisz nazwę o długości od 1 do 40 znaków",
+  not_owner: "Profil może zmienić tylko jego właściciel",
+  profile_changed: "Twój profil został właśnie zmieniony gdzie indziej, spróbuj ponownie",
+  not_authenticated: "Zaloguj się, aby kontynuować",
+  unexpected: "Coś poszło nie tak, spróbuj ponownie",
 };
 
-const GENERIC_MESSAGE = "Something went wrong, try again";
+const GENERIC_MESSAGE = "Coś poszło nie tak, spróbuj ponownie";
 
 function isMemberProfileErrorCode(code: string): code is MemberProfileErrorCode {
   return Object.hasOwn(MESSAGES, code);

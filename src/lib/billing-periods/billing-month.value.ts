@@ -6,7 +6,8 @@ const WARSAW_CALENDAR = new Intl.DateTimeFormat("en-US", {
 });
 
 // The label is rendered from the month's first day in UTC, so it never shifts with the server timezone.
-const LABEL_FORMAT = new Intl.DateTimeFormat("en-US", { timeZone: "UTC", year: "numeric", month: "long" });
+const LABEL_FORMAT = new Intl.DateTimeFormat("pl-PL", { timeZone: "UTC", year: "numeric", month: "long" });
+const START_FORMAT = new Intl.DateTimeFormat("pl-PL", { timeZone: "UTC", day: "numeric", month: "long" });
 
 const MONTH_DATE = /^(\d{4})-(0[1-9]|1[0-2])-01$/;
 
@@ -40,9 +41,14 @@ export class BillingMonth {
     return `${String(this.year).padStart(4, "0")}-${String(this.month).padStart(2, "0")}-01`;
   }
 
-  /** e.g. "October 2026". */
+  /** e.g. "październik 2026". */
   label(): string {
     return LABEL_FORMAT.format(new Date(Date.UTC(this.year, this.month - 1, 1)));
+  }
+
+  /** The month's first day, e.g. "1 listopada". */
+  startLabel(): string {
+    return START_FORMAT.format(new Date(Date.UTC(this.year, this.month - 1, 1)));
   }
 
   /** The following calendar month; December rolls over to January of the next year. */

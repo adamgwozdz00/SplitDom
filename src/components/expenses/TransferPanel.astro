@@ -5,6 +5,7 @@ import type { Group } from "@/lib/groups";
 import type { DisplayNames } from "@/lib/member-profiles";
 import type { AccountNumber } from "@/lib/member-profiles";
 import { memberLabel } from "@/components/expenses/member-label";
+import Icon from "@/components/ui/Icon.astro";
 
 interface Props {
   group: Group;
@@ -14,11 +15,9 @@ interface Props {
   monthLabel: string;
   /** Account numbers of the viewer's creditors; a creditor missing from the map has none (or it could not be loaded). */
   accountNumbers: Map<string, AccountNumber>;
-  /** Already-translated message for a refused payment or withdrawal. */
-  error: string | null;
 }
 
-const { group, displayNames, balances, viewerId, monthLabel, accountNumbers, error } = Astro.props;
+const { group, displayNames, balances, viewerId, monthLabel, accountNumbers } = Astro.props;
 
 const paymentAction = `/api/groups/${encodeURIComponent(group.id)}/payments`;
 
@@ -44,92 +43,81 @@ const transfers = balances.debts
   });
 ---
 
-{(transfers.length > 0 || error) && (
-  <div data-transfer-panel>
-    <h3 class="mb-2 text-sm font-semibold text-blue-100/80">Transfer details</h3>
-    {error && (
-      <p role="alert" class="mb-2 rounded-lg border border-red-500/30 bg-red-900/30 px-3 py-2 text-sm text-red-300">
-        {error}
-      </p>
-    )}
-    <ul class="space-y-3">
+{transfers.length > 0 && (
+  <div class="flex flex-col gap-3" data-transfer-panel>
+    <h3 class="section-title">Dane do przelewu</h3>
+    <ul class="flex flex-col gap-3">
       {transfers.map((transfer) => (
-        <li class="rounded-lg border border-white/10 bg-white/5 p-3 text-sm" data-transfer>
-          <p class="mb-2 break-words text-white">
-            Pay <span class="font-semibold">{transfer.creditor}</span>{" "}
-            <span class="font-semibold">{transfer.amountLabel}</span>
+        <li class="card flex flex-col gap-3 p-4" data-transfer>
+          <p class="text-[15px] break-words">
+            Oddajesz <span class="font-extrabold">{transfer.creditor}</span>{" "}
+            <span class="amount text-brand">{transfer.amountLabel}</span>
           </p>
-          <dl class="space-y-2">
+          <dl class="flex flex-col gap-2.5">
             {transfer.details.account ? (
-              <div class="flex items-center justify-between gap-2">
+              <div class="flex items-center justify-between gap-2 rounded-xl bg-canvas px-3 py-2.5">
                 <div class="min-w-0">
-                  <dt class="text-xs text-blue-100/60">Account number</dt>
-                  <dd class="break-all text-white">{transfer.accountLabel}</dd>
+                  <dt class="text-xs font-semibold text-ink-muted">Numer konta</dt>
+                  <dd class="font-bold break-all tabular-nums">{transfer.accountLabel}</dd>
                 </div>
-                <button
-                  type="button"
-                  data-copy-value={transfer.details.account}
-                  class="shrink-0 rounded-lg border border-white/20 bg-white/10 px-3 py-1 text-white transition-colors hover:bg-white/20"
-                >
-                  Copy
+                <button type="button" data-copy-value={transfer.details.account} class="btn-chip">
+                  <Icon name="copy" size={16} />
+                  Kopiuj
                 </button>
               </div>
             ) : (
-              <p class="text-blue-100/70" data-no-account>
-                {transfer.creditor} hasn't added a bank account number yet. Ask them to add it in their profile.
+              <p class="rounded-xl bg-warn-soft px-3 py-2.5 text-sm text-warn" data-no-account>
+                {transfer.creditor} nie podał(a) jeszcze numeru konta. Poproś o dodanie go w profilu.
               </p>
             )}
-            <div class="flex items-center justify-between gap-2">
+            <div class="flex items-center justify-between gap-2 rounded-xl bg-canvas px-3 py-2.5">
               <div class="min-w-0">
-                <dt class="text-xs text-blue-100/60">Amount</dt>
-                <dd class="text-white">{transfer.details.amount}</dd>
+                <dt class="text-xs font-semibold text-ink-muted">Kwota</dt>
+                <dd class="font-bold tabular-nums">{transfer.details.amount}</dd>
               </div>
-              <button
-                type="button"
-                data-copy-value={transfer.details.amount}
-                class="shrink-0 rounded-lg border border-white/20 bg-white/10 px-3 py-1 text-white transition-colors hover:bg-white/20"
-              >
-                Copy
+              <button type="button" data-copy-value={transfer.details.amount} class="btn-chip">
+                <Icon name="copy" size={16} />
+                Kopiuj
               </button>
             </div>
-            <div class="flex items-center justify-between gap-2">
+            <div class="flex items-center justify-between gap-2 rounded-xl bg-canvas px-3 py-2.5">
               <div class="min-w-0">
-                <dt class="text-xs text-blue-100/60">Transfer title</dt>
-                <dd class="break-words text-white">{transfer.details.title}</dd>
+                <dt class="text-xs font-semibold text-ink-muted">Tytuł przelewu</dt>
+                <dd class="font-bold break-words">{transfer.details.title}</dd>
               </div>
-              <button
-                type="button"
-                data-copy-value={transfer.details.title}
-                class="shrink-0 rounded-lg border border-white/20 bg-white/10 px-3 py-1 text-white transition-colors hover:bg-white/20"
-              >
-                Copy
+              <button type="button" data-copy-value={transfer.details.title} class="btn-chip">
+                <Icon name="copy" size={16} />
+                Kopiuj
               </button>
             </div>
           </dl>
-          <p role="status" data-copy-status class="mt-2 min-h-5 text-sm text-green-300"></p>
-          <form method="POST" action={paymentAction} class="mt-1 space-y-2 border-t border-white/10 pt-2">
+          <p role="status" data-copy-status class="min-h-5 text-sm font-semibold text-brand"></p>
+          <form method="POST" action={paymentAction} class="flex flex-col gap-1.5 border-t border-line pt-3">
             <input type="hidden" name="recipientId" value={transfer.creditorId} />
             <input type="hidden" name="paymentId" value={transfer.paymentId} />
-            <label class="block text-xs text-blue-100/60" for={`amount-${transfer.creditorId}`}>
-              Amount you sent
+            <label class="field-label" for={`amount-${transfer.creditorId}`}>
+              Kwota, którą wysłałeś(-aś)
             </label>
             <div class="flex gap-2">
-              <input
-                id={`amount-${transfer.creditorId}`}
-                name="amount"
-                type="text"
-                inputmode="decimal"
-                required
-                value={transfer.amountInput}
-                class="min-w-0 flex-1 rounded-lg border border-white/20 bg-white/10 px-3 py-1 text-white"
-              />
-              <button
-                type="submit"
-                class="shrink-0 rounded-lg border border-white/20 bg-white/10 px-3 py-1 text-white transition-colors hover:bg-white/20"
-              >
-                Mark as sent
+              <div class="relative min-w-0 flex-1">
+                <input
+                  id={`amount-${transfer.creditorId}`}
+                  name="amount"
+                  type="text"
+                  inputmode="decimal"
+                  required
+                  value={transfer.amountInput}
+                  class="field pr-11 tabular-nums"
+                />
+                <span class="pointer-events-none absolute inset-y-0 right-4 flex items-center font-extrabold text-brand">
+                  zł
+                </span>
+              </div>
+              <button type="submit" class="btn-primary shrink-0 px-4 text-[15px]">
+                Wysłano
               </button>
             </div>
+            <p class="field-hint">Zgłoś przelew po jego wysłaniu — odbiorca potwierdzi, że dotarł.</p>
           </form>
         </li>
       ))}
@@ -146,15 +134,15 @@ const transfers = balances.debts
       button.addEventListener("click", () => {
         // Called synchronously inside the click handler: Safari rejects clipboard writes after an await.
         if (!navigator.clipboard) {
-          if (status) status.textContent = "Select the text and copy it manually";
+          if (status) status.textContent = "Zaznacz tekst i skopiuj go ręcznie";
           return;
         }
         navigator.clipboard.writeText(value).then(
           () => {
-            if (status) status.textContent = "Copied";
+            if (status) status.textContent = "Skopiowano";
           },
           () => {
-            if (status) status.textContent = "Could not copy — select the text and copy it manually";
+            if (status) status.textContent = "Nie udało się skopiować — zaznacz tekst i skopiuj go ręcznie";
           },
         );
       });

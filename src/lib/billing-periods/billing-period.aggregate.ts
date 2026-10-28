@@ -1,7 +1,7 @@
 import { BillingMonth } from "@/lib/billing-periods/billing-month.value";
 import { Expense } from "@/lib/billing-periods/expense.entity";
 import type { ExpenseTitle } from "@/lib/billing-periods/expense-title.value";
-import type { Money } from "@/lib/billing-periods/money.value";
+import { Money } from "@/lib/billing-periods/money.value";
 import { OpeningDebt } from "@/lib/billing-periods/opening-debt.value";
 import { PeriodBalances } from "@/lib/billing-periods/period-balances.value";
 import { PurchaseDate } from "@/lib/billing-periods/purchase-date.value";
@@ -515,6 +515,18 @@ export class BillingPeriod {
     return [...this.expenses].sort(
       (a, b) => b.purchasedOn.value.localeCompare(a.purchasedOn.value) || b.createdAt.getTime() - a.createdAt.getTime(),
     );
+  }
+
+  /** The sum of every expense of the period. */
+  totalExpenses(): Money {
+    return this.expenses.reduce((total, expense) => total.plus(expense.amount), Money.ofGrosze(0));
+  }
+
+  /** The sum of the expenses `userId` paid for. */
+  paidBy(userId: string): Money {
+    return this.expenses
+      .filter((expense) => expense.payerId === userId)
+      .reduce((total, expense) => total.plus(expense.amount), Money.ofGrosze(0));
   }
 
   /** Opening debts, expenses and every payment not withdrawn or rejected: what the members owe if every payment sent did arrive. */

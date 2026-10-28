@@ -1,0 +1,41 @@
+---
+import Icon from "@/components/ui/Icon.astro";
+
+/**
+ * The top bar of an inner page: a back chevron (labelled with `label`, or icon-only with `ariaLabel`), then the
+ * default slot (a title block) and the `actions` slot on the right.
+ */
+interface Props {
+  href: string;
+  /** Visible text next to the chevron, e.g. "Twoje grupy". */
+  label?: string;
+  /** Accessible name when the chevron has no visible label. */
+  ariaLabel?: string;
+}
+
+const { href, label, ariaLabel } = Astro.props;
+---
+
+<header class="flex items-center justify-between gap-2 px-3 pt-3">
+  <div class="flex min-w-0 items-center gap-1">
+    {label ? (
+      <a
+        href={href}
+        class="flex h-11 items-center gap-0.5 rounded-xl pr-2 pl-1 text-[15px] font-bold text-ink no-underline hover:text-brand"
+      >
+        <Icon name="chevron-left" size={22} />
+        {label}
+      </a>
+    ) : (
+      <a
+        href={href}
+        aria-label={ariaLabel}
+        class="flex size-11 shrink-0 items-center justify-center rounded-xl text-ink hover:text-brand"
+      >
+        <Icon name="chevron-left" size={22} />
+      </a>
+    )}
+    <slot />
+  </div>
+  <slot name="actions" />
+</header>

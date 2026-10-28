@@ -57,9 +57,9 @@ describe("Payment.restore", () => {
 
 describe("Payment.sentOnLabel", () => {
   it("shows the Warsaw calendar day", () => {
-    expect(Payment.restore(snapshot).sentOnLabel()).toBe("Oct 20");
+    expect(Payment.restore(snapshot).sentOnLabel()).toBe("20 paź");
     // 23:30 UTC on 20 October is already 21 October in Warsaw.
-    expect(Payment.restore({ ...snapshot, sentAt: "2026-10-20T23:30:00.000Z" }).sentOnLabel()).toBe("Oct 21");
+    expect(Payment.restore({ ...snapshot, sentAt: "2026-10-20T23:30:00.000Z" }).sentOnLabel()).toBe("21 paź");
   });
 });
 

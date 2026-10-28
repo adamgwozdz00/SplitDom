@@ -1,39 +1,70 @@
 ---
-import type { BillingMonth } from "@/lib/billing-periods";
+import type { BillingPeriod } from "@/lib/billing-periods";
 import type { Group } from "@/lib/groups";
+import Icon from "@/components/ui/Icon.astro";
+import EmptyState from "@/components/ui/EmptyState.astro";
+import SignedAmount from "@/components/expenses/SignedAmount.astro";
 
 interface Props {
   groups: Group[];
-  months: Map<string, BillingMonth>;
+  /** The open period of each group, by group id; a group missing here is shown without its summary. */
+  periods: Map<string, BillingPeriod>;
   userId: string;
 }
 
-const { groups, months, userId } = Astro.props;
+const { groups, periods, userId } = Astro.props;
 ---
 
 {groups.length === 0 ? (
-  <p class="rounded-xl border border-white/10 bg-white/5 px-4 py-3 text-sm text-blue-100/70">
-    You don't belong to any group yet
-  </p>
+  <EmptyState icon="home" title="Nie masz jeszcze grup">
+    Załóż pierwszą poniżej albo otwórz link z zaproszenia od współlokatora.
+  </EmptyState>
 ) : (
-  <ul class="space-y-2">
-    {groups.map((group) => (
-      <li>
-        <a
-          href={`/groups/${group.id}`}
-          class="block rounded-xl border border-white/10 bg-white/5 px-4 py-3 transition-colors hover:bg-white/10"
-        >
-          <span class="flex items-center justify-between gap-3">
-            <span class="font-semibold break-words text-white">{group.name.value}</span>
-            {group.isHost(userId) && (
-              <span class="shrink-0 rounded-full bg-purple-500/20 px-2 py-0.5 text-xs text-purple-200">Host</span>
+  <ul class="flex flex-col gap-3">
+    {groups.map((group) => {
+      const period = periods.get(group.id);
+      const balance = period?.pendingBalances().balanceOf(userId);
+      return (
+        <li>
+          <a
+            href={`/groups/${group.id}`}
+            class="card flex flex-col gap-3.5 rounded-panel p-[18px] text-ink no-underline shadow-[0_2px_8px_rgba(14,42,35,0.05)] transition-colors hover:border-line-strong hover:text-ink"
+          >
+            <span class="flex items-center gap-3.5">
+              <span class="flex size-12 shrink-0 items-center justify-center rounded-[14px] bg-brand-soft text-brand">
+                <Icon name="home" size={24} />
+              </span>
+              <span class="min-w-0 flex-1">
+                <span class="flex flex-wrap items-center gap-2">
+                  <span class="text-[17px] font-extrabold break-words">{group.name.value}</span>
+                  {group.isHost(userId) && <span class="pill-sky py-[3px]">Gospodarz</span>}
+                </span>
+                {period && (
+                  <span class="mt-0.5 block text-sm text-ink-muted">Otwarty okres: {period.month.label()}</span>
+                )}
+              </span>
+              <Icon name="chevron-right" class="text-ink-muted" />
+            </span>
+            {period && balance && (
+              <span class="grid grid-cols-2 gap-2.5">
+                <span class="rounded-xl bg-canvas px-3 py-2.5">
+                  <span class="block text-xs font-semibold text-ink-muted">Wydatki grupy</span>
+                  <span class="amount block text-base">{period.totalExpenses().label()}</span>
+                </span>
+                <span
+                  class:list={[
+                    "rounded-xl px-3 py-2.5",
+                    balance.isPositive() || balance.isZero() ? "bg-brand-soft" : "bg-danger-soft",
+                  ]}
+                >
+                  <span class="block text-xs font-semibold text-ink-soft">Twoje saldo</span>
+                  <SignedAmount amount={balance} class="block text-base" />
+                </span>
+              </span>
             )}
-          </span>
-          {months.has(group.id) && (
-            <span class="mt-1 block text-sm text-blue-100/60">Open period: {months.get(group.id)?.label()}</span>
-          )}
-        </a>
-      </li>
-    ))}
+          </a>
+        </li>
+      );
+    })}
   </ul>
 )}

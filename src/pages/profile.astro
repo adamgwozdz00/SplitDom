@@ -1,5 +1,8 @@
 ---
 import Layout from "@/layouts/Layout.astro";
+import Alert from "@/components/ui/Alert.astro";
+import BackHeader from "@/components/ui/BackHeader.astro";
+import Avatar from "@/components/ui/Avatar.astro";
 import { createMemberProfileService, memberProfileErrorMessage } from "@/lib/member-profiles";
 import { createClient } from "@/lib/supabase";
 
@@ -24,70 +27,67 @@ const nameError = nameErrorCode ? memberProfileErrorMessage(nameErrorCode) : nul
 const nameSaved = Astro.url.searchParams.get("saved") === "name";
 const currentName = profile?.displayName?.value ?? "";
 const current = profile?.accountNumber ?? null;
+const email = user.email ?? "";
 ---
 
-<Layout title="Profile">
-  <div class="bg-cosmic flex min-h-screen items-center justify-center p-4">
-    <div class="w-full max-w-md rounded-2xl border border-white/10 bg-white/10 p-8 text-white backdrop-blur-xl">
-      <h1 class="mb-4 bg-gradient-to-r from-blue-200 to-purple-200 bg-clip-text text-3xl font-bold text-transparent">
-        Profile
-      </h1>
-      {profile && (
-        <form method="POST" action="/api/profile/display-name" class="mb-6 space-y-3" data-profile-form>
-          <p class="text-sm text-blue-100/80">Members of your groups see this name instead of your email.</p>
-          <div>
-            <label for="display-name" class="mb-1 block text-sm text-blue-100/80">
-              Display name
-            </label>
-            <input
-              id="display-name"
-              name="displayName"
-              type="text"
-              autocomplete="nickname"
-              value={currentName}
-              placeholder="Up to 40 characters"
-              aria-invalid={nameError ? "true" : undefined}
-              aria-describedby={nameError ? "display-name-error" : undefined}
-              class:list={[
-                "w-full rounded-lg border bg-white/10 px-3 py-2 text-white placeholder-white/40 transition-colors focus:ring-2 focus:outline-none",
-                nameError ? "border-red-400/60 focus:ring-red-400" : "border-white/20 focus:ring-purple-400",
-              ]}
-            />
-            <p class="mt-1 text-xs text-blue-100/60">Leave it empty to show your email again.</p>
-          </div>
-          {nameError && (
-            <p
-              id="display-name-error"
-              role="alert"
-              class="rounded-lg border border-red-500/30 bg-red-900/30 px-3 py-2 text-sm text-red-300"
-            >
-              {nameError}
-            </p>
-          )}
-          {nameSaved && !nameError && (
-            <p
-              role="status"
-              class="rounded-lg border border-green-500/30 bg-green-900/30 px-3 py-2 text-sm text-green-300"
-            >
-              Saved
-            </p>
-          )}
-          <button
-            type="submit"
-            class="w-full rounded-lg bg-purple-600 px-4 py-2 font-medium text-white transition-colors hover:bg-purple-500 disabled:opacity-60"
-          >
-            Save name
-          </button>
-        </form>
-      )}
-      <p class="mb-4 text-sm text-blue-100/80">
-        Members who owe you money see this number so they can copy it into their banking. Nobody else sees it.
-      </p>
-      {profile ? (
-        <form method="POST" action="/api/profile/account" class="space-y-3" data-profile-form>
-          <div>
-            <label for="account-number" class="mb-1 block text-sm text-blue-100/80">
-              Bank account number (NRB)
+<Layout title="Profil">
+  <BackHeader href="/dashboard" label="Twoje grupy" />
+  <main class="flex flex-1 flex-col gap-5 px-6 pt-3 pb-6">
+    <div class="flex items-center gap-3.5">
+      <Avatar label={currentName || email} isViewer size="md" />
+      <div class="min-w-0">
+        <h1 class="text-[26px] font-extrabold tracking-[-0.02em]">Profil</h1>
+        <p class="truncate text-sm text-ink-muted">{email}</p>
+      </div>
+    </div>
+
+    {profile && (
+      <form
+        method="POST"
+        action="/api/profile/display-name"
+        class="card flex flex-col gap-3 rounded-panel p-[18px]"
+        data-profile-form
+      >
+        <h2 class="text-[17px] font-extrabold">Nazwa wyświetlana</h2>
+        <p class="text-sm text-ink-muted">Członkowie Twoich grup widzą ją zamiast Twojego adresu e-mail.</p>
+        <div class="flex flex-col gap-1.5">
+          <label for="display-name" class="field-label">
+            Nazwa
+          </label>
+          <input
+            id="display-name"
+            name="displayName"
+            type="text"
+            autocomplete="nickname"
+            value={currentName}
+            placeholder="np. Ola"
+            aria-invalid={nameError ? "true" : undefined}
+            aria-describedby={nameError ? "display-name-error" : "display-name-hint"}
+            class="field"
+          />
+          <p id="display-name-hint" class="field-hint">
+            Do 40 znaków. Zostaw puste, aby znów pokazywać e-mail.
+          </p>
+        </div>
+        {nameError && <Alert id="display-name-error">{nameError}</Alert>}
+        {nameSaved && !nameError && <Alert variant="success">Zapisano</Alert>}
+        <button type="submit" class="btn-secondary w-full">
+          Zapisz nazwę
+        </button>
+      </form>
+    )}
+
+    {profile ? (
+      <form method="POST" action="/api/profile/account" class="flex flex-1 flex-col gap-4" data-profile-form>
+        <section class="card flex flex-col gap-3 rounded-panel p-[18px]">
+          <h2 class="text-[17px] font-extrabold">Konto bankowe</h2>
+          <p class="text-sm text-ink-muted">
+            Ten numer widzą tylko osoby, które są Ci winne pieniądze — aby skopiować go do swojej bankowości. Nikt inny
+            go nie zobaczy.
+          </p>
+          <div class="flex flex-col gap-1.5">
+            <label for="account-number" class="field-label">
+              Numer konta (NRB)
             </label>
             <input
               id="account-number"
@@ -96,50 +96,27 @@ const current = profile?.accountNumber ?? null;
               inputmode="numeric"
               autocomplete="off"
               value={current ? current.label() : ""}
-              placeholder="26 digits, e.g. 61 1090 1014 0000 0712 1981 2874"
+              placeholder="np. 61 1090 1014 0000 0712 1981 2874"
               aria-invalid={error ? "true" : undefined}
-              aria-describedby={error ? "account-number-error" : undefined}
-              class:list={[
-                "w-full rounded-lg border bg-white/10 px-3 py-2 text-white placeholder-white/40 transition-colors focus:ring-2 focus:outline-none",
-                error ? "border-red-400/60 focus:ring-red-400" : "border-white/20 focus:ring-purple-400",
-              ]}
+              aria-describedby={error ? "account-number-error" : "account-number-hint"}
+              class="field tabular-nums"
             />
-            <p class="mt-1 text-xs text-blue-100/60">Leave it empty to remove your number.</p>
+            <p id="account-number-hint" class="field-hint">
+              26 cyfr. Zostaw puste, aby usunąć numer.
+            </p>
           </div>
-          {error && (
-            <p
-              id="account-number-error"
-              role="alert"
-              class="rounded-lg border border-red-500/30 bg-red-900/30 px-3 py-2 text-sm text-red-300"
-            >
-              {error}
-            </p>
-          )}
-          {saved && !error && (
-            <p
-              role="status"
-              class="rounded-lg border border-green-500/30 bg-green-900/30 px-3 py-2 text-sm text-green-300"
-            >
-              Saved
-            </p>
-          )}
-          <button
-            type="submit"
-            class="w-full rounded-lg bg-purple-600 px-4 py-2 font-medium text-white transition-colors hover:bg-purple-500 disabled:opacity-60"
-          >
-            Save
-          </button>
-        </form>
-      ) : (
-        <p role="alert" class="rounded-lg border border-red-500/30 bg-red-900/30 px-3 py-2 text-sm text-red-300">
-          Couldn't load your profile, try again
-        </p>
-      )}
-      <a href="/dashboard" class="mt-6 inline-block text-sm text-purple-300 hover:underline">
-        Back to dashboard
-      </a>
-    </div>
-  </div>
+          {error && <Alert id="account-number-error">{error}</Alert>}
+          {saved && !error && <Alert variant="success">Zapisano</Alert>}
+        </section>
+        <div class="flex-1"></div>
+        <button type="submit" class="btn-primary w-full">
+          Zapisz
+        </button>
+      </form>
+    ) : (
+      <Alert>Nie udało się wczytać Twojego profilu, spróbuj ponownie</Alert>
+    )}
+  </main>
 </Layout>
 
 <script>

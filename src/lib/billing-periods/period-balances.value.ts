@@ -42,6 +42,11 @@ export class PeriodBalances {
     readonly debts: readonly PairDebt[],
   ) {}
 
+  /** The balance of `userId`; zero for someone who is not a member of the period. */
+  balanceOf(userId: string): Money {
+    return this.members.find((member) => member.userId === userId)?.balance ?? Money.ofGrosze(0);
+  }
+
   static of(input: {
     memberIds: readonly string[];
     expenses: readonly PaidExpense[];
