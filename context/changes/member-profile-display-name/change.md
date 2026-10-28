@@ -1,7 +1,7 @@
 ---
 change_id: member-profile-display-name
 title: Member profile with a display name (S-10)
-status: implementing
+status: implemented
 created: 2026-10-28
 updated: 2026-10-28
 ---

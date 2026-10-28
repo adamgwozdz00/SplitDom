@@ -299,9 +299,9 @@ Expand only: a new nullable column, one additive key in `get_my_member_profile`,
 
 #### Automated
 
-- [x] 3.1 Smoke passes against local Supabase and a running dev server: `npm run smoke`
-- [x] 3.2 Full check passes: `npm test && npx astro check && npm run lint && npm run build`
+- [x] 3.1 Smoke passes against local Supabase and a running dev server: `npm run smoke` — 316dc1a
+- [x] 3.2 Full check passes: `npm test && npx astro check && npm run lint && npm run build` — 316dc1a
 
 #### Manual
 
-- [x] 3.3 CLAUDE.md and the roadmap describe the display name and the leftover accurately
+- [x] 3.3 CLAUDE.md and the roadmap describe the display name and the leftover accurately — 316dc1a
