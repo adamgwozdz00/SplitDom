@@ -211,8 +211,10 @@ export class BillingPeriodService {
   /**
    * The host `userId` closes the group's open period `periodId` (the id the form carried) and opens the next one
    * in the same write. The clock is read once, and the host is the group's. Idempotent per period: when the open
-   * period is no longer `periodId`, the close already happened and the result is a success without a write. A
-   * close that lost a race is retried once on the reloaded period under the same checks; a second lost race gives
+   * period is no longer `periodId`, the close already happened and the result is a success without a write. That
+   * also holds for an id this group never had (a hand-built POST): it is a success without a write too, before
+   * the host is checked, and leaks nothing, because a non-host gets `not_group_host` only for the real open id,
+   * which the page shows to the host alone. A close that lost a race is retried once on the reloaded period under the same checks; a second lost race gives
    * `period_changed`.
    */
   async closePeriod(input: { group: Group; userId: string; periodId: string }): Promise<Result<void>> {

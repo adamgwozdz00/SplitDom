@@ -847,6 +847,16 @@ describe("BillingPeriodService.closePeriod", () => {
     expect(repository.stored(GROUP_ID)?.id).toBe("november");
   });
 
+  it("succeeds without a write for a period id the group never had, even for a non-host", async () => {
+    const repository = await repositoryWithPendingPayment();
+
+    const forged = await closeService(repository).closePeriod({ ...close, userId: memberId(1), periodId: "not-mine" });
+
+    expect(forged).toEqual({ data: undefined });
+    expect(repository.closeCalls).toHaveLength(0);
+    expect(repository.stored(GROUP_ID)?.id).toBe(PERIOD_ID);
+  });
+
   it("succeeds after a conflict when the reloaded period shows the close already happened", async () => {
     const repository = await repositoryWithPendingPayment();
     repository.closeConflicts = 1;

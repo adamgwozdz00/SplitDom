@@ -271,6 +271,7 @@ Teach `BillingMonth` about month order, add opening debts to the balances, give 
   - Then: insert the next period (version 0), insert the opening debts, and `update payments set period_id = p_next_period_id where id = any(p_moved)`.
   - A unique violation (one open period per group, or `(group_id, month)`) surfaces as `23505`.
   - Setup: `security definer`, `set search_path = ''`, a "Persistence only" comment, execute revoked from `public, anon` and granted to `authenticated`.
+  - Addendum (impl review F7, 2026-10-28): the two payment-set backstops run right after the version-guarded update, not before it, so a payment written concurrently gives `false` (conflict, retry) instead of `42501`; a raise there rolls the bump back, so nothing is stored. Addendum (F4): two timestamp backstops also run before the bump (`p_closed_at` not before the period's `opened_at`, `p_next_opened_at` not before `p_closed_at`); the aggregate opens the next period at the closing time.
 - Then `npm run db:reset && npm run db:types`.
 
 #### 7. Repository
@@ -581,32 +582,32 @@ None. A close writes one period update, one insert, at most n·(n−1)/2 opening
 
 #### Automated
 
-- [x] 1.1 Migration applies on a fresh database: `npm run db:reset` — fb11323
-- [x] 1.2 Generated types are up to date: `npm run db:types` leaves no diff — fb11323
-- [x] 1.3 No source or smoke reference to a dropped function: `grep -rnE "\b(create_group|add_expense|list_period_expenses|save_billing_period|save_billing_period_changes|save_billing_period_with_payments|create_group_invite|get_group_invite|redeem_group_invite|get_my_group|list_my_groups)\b" src scripts` finds nothing — fb11323
-- [x] 1.4 Type checking passes: `npx astro check` — fb11323
-- [x] 1.5 Unit tests pass: `npm test` — fb11323
-- [x] 1.6 Smoke passes, including the app-key gate and backstop steps: `npm run smoke` — fb11323
+- [x] 1.1 Migration applies on a fresh database: `npm run db:reset` — dd97fed
+- [x] 1.2 Generated types are up to date: `npm run db:types` leaves no diff — dd97fed
+- [x] 1.3 No source or smoke reference to a dropped function: `grep -rnE "\b(create_group|add_expense|list_period_expenses|save_billing_period|save_billing_period_changes|save_billing_period_with_payments|create_group_invite|get_group_invite|redeem_group_invite|get_my_group|list_my_groups)\b" src scripts` finds nothing — dd97fed
+- [x] 1.4 Type checking passes: `npx astro check` — dd97fed
+- [x] 1.5 Unit tests pass: `npm test` — dd97fed
+- [x] 1.6 Smoke passes, including the app-key gate and backstop steps: `npm run smoke` — dd97fed
 
 #### Manual
 
-- [x] 1.7 In Supabase Studio, none of the dropped functions is listed in schema `public` — fb11323
+- [x] 1.7 In Supabase Studio, none of the dropped functions is listed in schema `public` — dd97fed
 
 ### Phase 2: Closing in the domain and persistence (test-first)
 
 #### Automated
 
-- [x] 2.1 Unit tests pass, including the close, carry-forward, moved-payment and oldest-first lock cases: `npm test` — c1e1ee9
-- [x] 2.2 Migration applies on a fresh database: `npm run db:reset` — c1e1ee9
-- [x] 2.3 Generated types are up to date: `npm run db:types` leaves no diff — c1e1ee9
-- [x] 2.4 Type checking passes: `npx astro check` — c1e1ee9
-- [x] 2.5 Linting passes: `npm run lint` — c1e1ee9
-- [x] 2.6 Existing smoke flows still pass: `npm run smoke` — c1e1ee9
+- [x] 2.1 Unit tests pass, including the close, carry-forward, moved-payment and oldest-first lock cases: `npm test` — b058c56
+- [x] 2.2 Migration applies on a fresh database: `npm run db:reset` — b058c56
+- [x] 2.3 Generated types are up to date: `npm run db:types` leaves no diff — b058c56
+- [x] 2.4 Type checking passes: `npx astro check` — b058c56
+- [x] 2.5 Linting passes: `npm run lint` — b058c56
+- [x] 2.6 Existing smoke flows still pass: `npm run smoke` — b058c56
 
 #### Manual
 
-- [x] 2.7 In Supabase Studio, `opening_debts` has RLS on, no policies and no grants for `anon`/`authenticated`, and `close_billing_period` is executable by `authenticated` only — c1e1ee9
-- [x] 2.8 Test names read as the rules (host only, month must have ended, host's posted debts block, balances unchanged across the close, pending payments move, oldest-first lock) — c1e1ee9
+- [x] 2.7 In Supabase Studio, `opening_debts` has RLS on, no policies and no grants for `anon`/`authenticated`, and `close_billing_period` is executable by `authenticated` only — b058c56
+- [x] 2.8 Test names read as the rules (host only, month must have ended, host's posted debts block, balances unchanged across the close, pending payments move, oldest-first lock) — b058c56
 
 ### Phase 3: Close endpoint, group page and smoke
 

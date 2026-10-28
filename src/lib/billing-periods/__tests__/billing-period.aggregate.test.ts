@@ -1067,6 +1067,20 @@ describe("BillingPeriod.close", () => {
       expect(code(closeAs(period))).toBe("billing_period_closed");
     });
 
+    it("records a close that a skewed clock places before the opening at the opening, and opens the next period then", () => {
+      const snapshot = octoberPeriod().toSnapshot();
+      const period = BillingPeriod.restore({ ...snapshot, openedAt: "2026-11-01T10:00:00.000Z" }, [HOST, MEMBER]);
+      const skewed = new Date("2026-11-01T09:59:59.900Z");
+
+      const next = closeAs(period, { now: skewed });
+
+      if ("error" in next) {
+        throw new Error(next.error.code);
+      }
+      expect(period.closedAt).toEqual(new Date("2026-11-01T10:00:00.000Z"));
+      expect(next.data.openedAt).toEqual(period.closedAt);
+    });
+
     it("keeps balances unchanged across the close: the pending and posted balances of both periods match", () => {
       const period = threeWay();
 

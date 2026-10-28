@@ -151,11 +151,14 @@ export class BillingPeriod {
       OpeningDebt.of({ debtorId: debt.debtorId, creditorId: debt.creditorId, amount: debt.amount }),
     );
     const pending = this.payments.filter((payment) => payment.isPending());
+    // Clocks of separate Worker isolates can differ by milliseconds, so an early close is recorded at `openedAt`,
+    // and the next period opens when this one closed.
+    const closedAt = input.now.getTime() < this.openedAt.getTime() ? this.openedAt : input.now;
     const next = new BillingPeriod({
       id: input.nextPeriodId,
       groupId: this.groupId,
       month: this.month.next(),
-      openedAt: input.now,
+      openedAt: closedAt,
       closedAt: null,
       version: 0,
       participants: this.participants,
@@ -163,8 +166,7 @@ export class BillingPeriod {
       payments: pending,
       openingDebts,
     });
-    // Clocks of separate Worker isolates can differ by milliseconds, so an early close is recorded at `openedAt`.
-    this.closedAtValue = input.now.getTime() < this.openedAt.getTime() ? this.openedAt : input.now;
+    this.closedAtValue = closedAt;
     this.closedHere = true;
     this.moved.push(...pending.map((payment) => payment.id));
     return { data: next };

@@ -161,6 +161,19 @@ begin
     raise exception 'the next period must cover the month after the closed one' using errcode = '42501';
   end if;
 
+  -- The period closes no earlier than it opened, and the next one opens no earlier than this one closed.
+  if p_closed_at is null
+    or p_next_opened_at is null
+    or p_next_opened_at < p_closed_at
+    or p_closed_at < (
+      select p.opened_at
+      from public.billing_periods p
+      where p.id = p_period_id
+        and p.group_id = p_group_id
+    ) then
+    raise exception 'the period must close after it opened, and the next one open after it closed' using errcode = '42501';
+  end if;
+
   if exists (
     select 1
     from jsonb_to_recordset(p_opening) as o (debtor_id uuid, creditor_id uuid, amount integer)

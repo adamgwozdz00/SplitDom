@@ -92,7 +92,9 @@ export function createSupabaseBillingPeriodRepository(client: SupabaseClient<Dat
         })),
         p_moved: [...closed.movedPaymentIds()],
       });
-      // The group got another open period, or a period for the same month, from a concurrent write.
+      // The group got another open period, or a period for the same month, from a concurrent write. Every other
+      // refusal is judged in `fromDbError`: "group not found" after a close attempt means a backstop of the
+      // function tripped (host, next month, timestamps, opening debts or moved payments), not a missing group.
       if (error?.code === "23505") {
         return { data: "conflict" };
       }
