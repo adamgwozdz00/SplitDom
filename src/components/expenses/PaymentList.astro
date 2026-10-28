@@ -1,10 +1,12 @@
 ---
 import type { BillingPeriod, Payment } from "@/lib/billing-periods";
 import type { Group } from "@/lib/groups";
+import type { DisplayNames } from "@/lib/member-profiles";
 import { memberLabel } from "@/components/expenses/member-label";
 
 interface Props {
   group: Group;
+  displayNames: DisplayNames;
   /** The period's payments, newest first. */
   payments: readonly Payment[];
   viewerId: string;
@@ -13,7 +15,7 @@ interface Props {
   period: BillingPeriod;
 }
 
-const { group, payments, viewerId, periodOpen, period } = Astro.props;
+const { group, displayNames, payments, viewerId, periodOpen, period } = Astro.props;
 const previousMonthLabel = period.month.previous().label();
 
 const groupPath = `/api/groups/${encodeURIComponent(group.id)}/payments`;
@@ -24,8 +26,8 @@ const rows = payments.map((payment) => {
   const paymentPath = `${groupPath}/${encodeURIComponent(payment.id)}`;
   return {
     id: payment.id,
-    sender: memberLabel(group.members, payment.senderId, viewerId),
-    recipient: memberLabel(group.members, payment.recipientId, viewerId),
+    sender: memberLabel(group.members, payment.senderId, viewerId, displayNames),
+    recipient: memberLabel(group.members, payment.recipientId, viewerId, displayNames),
     amountLabel: payment.amount.label(),
     sentOn: payment.sentOnLabel(),
     carried: period.isCarried(payment),

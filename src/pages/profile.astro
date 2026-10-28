@@ -19,6 +19,10 @@ const profile = loaded && "data" in loaded ? loaded.data : null;
 const errorCode = Astro.url.searchParams.get("error");
 const error = errorCode ? memberProfileErrorMessage(errorCode) : null;
 const saved = Astro.url.searchParams.get("saved") === "1";
+const nameErrorCode = Astro.url.searchParams.get("nameError");
+const nameError = nameErrorCode ? memberProfileErrorMessage(nameErrorCode) : null;
+const nameSaved = Astro.url.searchParams.get("saved") === "name";
+const currentName = profile?.displayName?.value ?? "";
 const current = profile?.accountNumber ?? null;
 ---
 
@@ -28,11 +32,60 @@ const current = profile?.accountNumber ?? null;
       <h1 class="mb-4 bg-gradient-to-r from-blue-200 to-purple-200 bg-clip-text text-3xl font-bold text-transparent">
         Profile
       </h1>
+      {profile && (
+        <form method="POST" action="/api/profile/display-name" class="mb-6 space-y-3" data-profile-form>
+          <p class="text-sm text-blue-100/80">Members of your groups see this name instead of your email.</p>
+          <div>
+            <label for="display-name" class="mb-1 block text-sm text-blue-100/80">
+              Display name
+            </label>
+            <input
+              id="display-name"
+              name="displayName"
+              type="text"
+              autocomplete="nickname"
+              maxlength="80"
+              value={currentName}
+              placeholder="Up to 40 characters"
+              aria-invalid={nameError ? "true" : undefined}
+              aria-describedby={nameError ? "display-name-error" : undefined}
+              class:list={[
+                "w-full rounded-lg border bg-white/10 px-3 py-2 text-white placeholder-white/40 transition-colors focus:ring-2 focus:outline-none",
+                nameError ? "border-red-400/60 focus:ring-red-400" : "border-white/20 focus:ring-purple-400",
+              ]}
+            />
+            <p class="mt-1 text-xs text-blue-100/60">Leave it empty to show your email again.</p>
+          </div>
+          {nameError && (
+            <p
+              id="display-name-error"
+              role="alert"
+              class="rounded-lg border border-red-500/30 bg-red-900/30 px-3 py-2 text-sm text-red-300"
+            >
+              {nameError}
+            </p>
+          )}
+          {nameSaved && !nameError && (
+            <p
+              role="status"
+              class="rounded-lg border border-green-500/30 bg-green-900/30 px-3 py-2 text-sm text-green-300"
+            >
+              Saved
+            </p>
+          )}
+          <button
+            type="submit"
+            class="w-full rounded-lg bg-purple-600 px-4 py-2 font-medium text-white transition-colors hover:bg-purple-500 disabled:opacity-60"
+          >
+            Save name
+          </button>
+        </form>
+      )}
       <p class="mb-4 text-sm text-blue-100/80">
         Members who owe you money see this number so they can copy it into their banking. Nobody else sees it.
       </p>
       {profile ? (
-        <form method="POST" action="/api/profile/account" class="space-y-3" data-account-form>
+        <form method="POST" action="/api/profile/account" class="space-y-3" data-profile-form>
           <div>
             <label for="account-number" class="mb-1 block text-sm text-blue-100/80">
               Bank account number (NRB)
@@ -92,7 +145,7 @@ const current = profile?.accountNumber ?? null;
 
 <script>
   // Progressive enhancement: a double tap must not send the form twice. Without JavaScript it still submits.
-  for (const form of document.querySelectorAll<HTMLFormElement>("form[data-account-form]")) {
+  for (const form of document.querySelectorAll<HTMLFormElement>("form[data-profile-form]")) {
     const button = form.querySelector<HTMLButtonElement>("button[type=submit]");
     form.addEventListener("submit", () => {
       if (button) button.disabled = true;

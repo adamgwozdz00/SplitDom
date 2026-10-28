@@ -269,31 +269,31 @@ Expand only: a new nullable column, one additive key in `get_my_member_profile`,
 
 #### Automated
 
-- [x] 1.1 Migration applies and types regenerate with no diff left over: `npm run db:reset && npm run db:types`
-- [x] 1.2 Unit tests pass: `npm test`
-- [x] 1.3 Type check passes: `npx astro check`
-- [x] 1.4 Lint passes: `npm run lint`
+- [x] 1.1 Migration applies and types regenerate with no diff left over: `npm run db:reset && npm run db:types` — 3c7191f
+- [x] 1.2 Unit tests pass: `npm test` — 3c7191f
+- [x] 1.3 Type check passes: `npx astro check` — 3c7191f
+- [x] 1.4 Lint passes: `npm run lint` — 3c7191f
 
 #### Manual
 
-- [x] 1.5 In local Supabase Studio or `psql`, an anonymous call to `get_group_member_display_names` is refused and a non-member's call returns an empty array
+- [x] 1.5 In local Supabase Studio or `psql`, an anonymous call to `get_group_member_display_names` is refused and a non-member's call returns an empty array — 3c7191f
 
 ### Phase 2: Profile form and group labels
 
 #### Automated
 
-- [ ] 2.1 Unit tests pass: `npm test`
-- [ ] 2.2 Type check passes: `npx astro check`
-- [ ] 2.3 Lint passes: `npm run lint`
-- [ ] 2.4 Build passes: `npm run build`
+- [x] 2.1 Unit tests pass: `npm test`
+- [x] 2.2 Type check passes: `npx astro check`
+- [x] 2.3 Lint passes: `npm run lint`
+- [x] 2.4 Build passes: `npm run build`
 
 #### Manual
 
-- [ ] 2.5 User A sets the name "Ania" on `/profile`; after reload the field shows "Ania" and "Saved" appears
-- [ ] 2.6 User B, in the same group, sees "Ania" (not A's email) in the balances, the debt sentence, the expense list ("Paid by Ania"), the Payments list and the transfer details
-- [ ] 2.7 A sees themselves as "You"
-- [ ] 2.8 Clearing the name makes B see A's email again
-- [ ] 2.9 An invalid name shows the error on the name form only and leaves the account number untouched
+- [x] 2.5 User A sets the name "Ania" on `/profile`; after reload the field shows "Ania" and "Saved" appears
+- [x] 2.6 User B, in the same group, sees "Ania" (not A's email) in the balances, the debt sentence, the expense list ("Paid by Ania"), the Payments list and the transfer details
+- [x] 2.7 A sees themselves as "You"
+- [x] 2.8 Clearing the name makes B see A's email again
+- [x] 2.9 An invalid name shows the error on the name form only and leaves the account number untouched
 
 ### Phase 3: Smoke test and documentation
 

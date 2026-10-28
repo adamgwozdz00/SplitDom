@@ -1,17 +1,19 @@
 ---
 import type { BillingMonth, BillingPeriod, Expense } from "@/lib/billing-periods";
 import type { Group } from "@/lib/groups";
+import type { DisplayNames } from "@/lib/member-profiles";
 import { memberLabel } from "@/components/expenses/member-label";
 
 interface Props {
   group: Group;
+  displayNames: DisplayNames;
   period: BillingPeriod;
   month: BillingMonth;
   expenses: readonly Expense[];
   viewerId: string;
 }
 
-const { group, period, month, expenses, viewerId } = Astro.props;
+const { group, displayNames, period, month, expenses, viewerId } = Astro.props;
 ---
 
 <div data-expense-list>
@@ -27,7 +29,8 @@ const { group, period, month, expenses, viewerId } = Astro.props;
             <span class="shrink-0 font-semibold text-white">{expense.amount.label()}</span>
           </div>
           <div class="text-blue-100/70">
-            Paid by {memberLabel(group.members, expense.payerId, viewerId)} · {expense.purchasedOn.label()}
+            Paid by {memberLabel(group.members, expense.payerId, viewerId, displayNames)} ·{" "}
+            {expense.purchasedOn.label()}
             {period.isOpen() && expense.payerId === viewerId && period.isLocked(expense) && (
               <>
                 {" · "}
