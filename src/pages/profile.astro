@@ -22,6 +22,10 @@ const profile = loaded && "data" in loaded ? loaded.data : null;
 const errorCode = Astro.url.searchParams.get("error");
 const error = errorCode ? memberProfileErrorMessage(errorCode) : null;
 const saved = Astro.url.searchParams.get("saved") === "1";
+const nameErrorCode = Astro.url.searchParams.get("nameError");
+const nameError = nameErrorCode ? memberProfileErrorMessage(nameErrorCode) : null;
+const nameSaved = Astro.url.searchParams.get("saved") === "name";
+const currentName = profile?.displayName?.value ?? "";
 const current = profile?.accountNumber ?? null;
 const email = user.email ?? "";
 ---
@@ -30,15 +34,51 @@ const email = user.email ?? "";
   <BackHeader href="/dashboard" label="Twoje grupy" />
   <main class="flex flex-1 flex-col gap-5 px-6 pt-3 pb-6">
     <div class="flex items-center gap-3.5">
-      <Avatar label={email} isViewer size="md" />
+      <Avatar label={currentName || email} isViewer size="md" />
       <div class="min-w-0">
         <h1 class="text-[26px] font-extrabold tracking-[-0.02em]">Profil</h1>
         <p class="truncate text-sm text-ink-muted">{email}</p>
       </div>
     </div>
 
+    {profile && (
+      <form
+        method="POST"
+        action="/api/profile/display-name"
+        class="card flex flex-col gap-3 rounded-panel p-[18px]"
+        data-profile-form
+      >
+        <h2 class="text-[17px] font-extrabold">Nazwa wyświetlana</h2>
+        <p class="text-sm text-ink-muted">Członkowie Twoich grup widzą ją zamiast Twojego adresu e-mail.</p>
+        <div class="flex flex-col gap-1.5">
+          <label for="display-name" class="field-label">
+            Nazwa
+          </label>
+          <input
+            id="display-name"
+            name="displayName"
+            type="text"
+            autocomplete="nickname"
+            value={currentName}
+            placeholder="np. Ola"
+            aria-invalid={nameError ? "true" : undefined}
+            aria-describedby={nameError ? "display-name-error" : "display-name-hint"}
+            class="field"
+          />
+          <p id="display-name-hint" class="field-hint">
+            Do 40 znaków. Zostaw puste, aby znów pokazywać e-mail.
+          </p>
+        </div>
+        {nameError && <Alert id="display-name-error">{nameError}</Alert>}
+        {nameSaved && !nameError && <Alert variant="success">Zapisano</Alert>}
+        <button type="submit" class="btn-secondary w-full">
+          Zapisz nazwę
+        </button>
+      </form>
+    )}
+
     {profile ? (
-      <form method="POST" action="/api/profile/account" class="flex flex-1 flex-col gap-4" data-account-form>
+      <form method="POST" action="/api/profile/account" class="flex flex-1 flex-col gap-4" data-profile-form>
         <section class="card flex flex-col gap-3 rounded-panel p-[18px]">
           <h2 class="text-[17px] font-extrabold">Konto bankowe</h2>
           <p class="text-sm text-ink-muted">
@@ -81,7 +121,7 @@ const email = user.email ?? "";
 
 <script>
   // Progressive enhancement: a double tap must not send the form twice. Without JavaScript it still submits.
-  for (const form of document.querySelectorAll<HTMLFormElement>("form[data-account-form]")) {
+  for (const form of document.querySelectorAll<HTMLFormElement>("form[data-profile-form]")) {
     const button = form.querySelector<HTMLButtonElement>("button[type=submit]");
     form.addEventListener("submit", () => {
       if (button) button.disabled = true;

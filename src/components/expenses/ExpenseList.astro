@@ -1,19 +1,21 @@
 ---
 import type { BillingPeriod, Expense } from "@/lib/billing-periods";
 import type { Group } from "@/lib/groups";
+import type { DisplayNames } from "@/lib/member-profiles";
 import { memberLabel } from "@/components/expenses/member-label";
 import EmptyState from "@/components/ui/EmptyState.astro";
 import Icon from "@/components/ui/Icon.astro";
 
 interface Props {
   group: Group;
+  displayNames: DisplayNames;
   period: BillingPeriod;
   /** The period's expenses, newest first. */
   expenses: readonly Expense[];
   viewerId: string;
 }
 
-const { group, period, expenses, viewerId } = Astro.props;
+const { group, displayNames, period, expenses, viewerId } = Astro.props;
 
 // Consecutive expenses of one purchase day share a heading; the list is already newest first.
 const days: { label: string; expenses: Expense[] }[] = [];
@@ -32,7 +34,7 @@ const rows = days.map((day) => ({
     expense,
     // Icons alternate green and blue down the list, as in the design.
     tone: position++ % 2 === 0 ? "bg-brand-soft text-brand" : "bg-sky-soft text-sky",
-    payer: memberLabel(group.members, expense.payerId, viewerId),
+    payer: memberLabel(group.members, expense.payerId, viewerId, displayNames),
     locked: period.isOpen() && expense.payerId === viewerId && period.isLocked(expense),
     editHref: period.canEdit(expense, viewerId)
       ? `/groups/${encodeURIComponent(group.id)}/expenses/${encodeURIComponent(expense.id)}/edit`

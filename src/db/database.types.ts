@@ -229,18 +229,21 @@ export type Database = {
       member_profiles: {
         Row: {
           account_number: string | null
+          display_name: string | null
           updated_at: string
           user_id: string
           version: number
         }
         Insert: {
           account_number?: string | null
+          display_name?: string | null
           updated_at?: string
           user_id: string
           version?: number
         }
         Update: {
           account_number?: string | null
+          display_name?: string | null
           updated_at?: string
           user_id?: string
           version?: number
@@ -392,6 +395,10 @@ export type Database = {
         Args: { p_group_id: string; p_user_ids: string[] }
         Returns: Json
       }
+      get_group_member_display_names: {
+        Args: { p_group_id: string; p_user_ids: string[] }
+        Returns: Json
+      }
       get_invite_preview: { Args: { p_token_hash: string }; Returns: Json }
       get_my_member_profile: { Args: never; Returns: Json }
       list_my_group_aggregates: { Args: never; Returns: Json }
@@ -433,6 +440,14 @@ export type Database = {
       }
       save_my_member_profile: {
         Args: { p_account_number?: string; p_expected_version: number }
+        Returns: boolean
+      }
+      save_my_member_profile_with_display_name: {
+        Args: {
+          p_account_number?: string
+          p_display_name?: string
+          p_expected_version: number
+        }
         Returns: boolean
       }
     }

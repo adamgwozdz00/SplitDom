@@ -1,6 +1,7 @@
 ---
 import type { PeriodBalances } from "@/lib/billing-periods";
 import type { Group } from "@/lib/groups";
+import type { DisplayNames } from "@/lib/member-profiles";
 import { memberLabel } from "@/components/expenses/member-label";
 import SignedAmount from "@/components/expenses/SignedAmount.astro";
 import Avatar from "@/components/ui/Avatar.astro";
@@ -9,16 +10,18 @@ import Icon from "@/components/ui/Icon.astro";
 
 interface Props {
   group: Group;
+  displayNames: DisplayNames;
   balances: PeriodBalances;
   viewerId: string;
 }
 
-const { group, balances, viewerId } = Astro.props;
+const { group, displayNames, balances, viewerId } = Astro.props;
 
 // "Oddajesz X", "X oddaje Tobie", "X oddaje Y": the viewer is named in the case the sentence needs.
 const debts = balances.debts.map((debt) => {
-  const debtor = memberLabel(group.members, debt.debtorId, viewerId);
-  const creditor = debt.creditorId === viewerId ? "Tobie" : memberLabel(group.members, debt.creditorId, viewerId);
+  const debtor = memberLabel(group.members, debt.debtorId, viewerId, displayNames);
+  const creditor =
+    debt.creditorId === viewerId ? "Tobie" : memberLabel(group.members, debt.creditorId, viewerId, displayNames);
   return {
     sentence: debt.debtorId === viewerId ? `Oddajesz ${creditor}` : `${debtor} oddaje ${creditor}`,
     amountLabel: debt.amount.label(),
@@ -33,10 +36,16 @@ const debts = balances.debts.map((debt) => {
     {balances.members.map((member) => (
       <li class="flex min-h-14 items-center gap-3 border-b border-line last:border-b-0">
         <Avatar
-          label={group.members.find((known) => known.userId === member.userId)?.email ?? "?"}
+          label={
+            displayNames.get(member.userId)?.value ??
+            group.members.find((known) => known.userId === member.userId)?.email ??
+            "?"
+          }
           isViewer={member.userId === viewerId}
         />
-        <span class="min-w-0 flex-1 font-bold break-words">{memberLabel(group.members, member.userId, viewerId)}</span>
+        <span class="min-w-0 flex-1 font-bold break-words">
+          {memberLabel(group.members, member.userId, viewerId, displayNames)}
+        </span>
         <SignedAmount amount={member.balance} />
       </li>
     ))}

@@ -27,6 +27,7 @@ export function createSupabaseMemberProfileRepository(client: SupabaseClient<Dat
           data: MemberProfile.restore({
             userId: asString(row.user_id, "profile.user_id"),
             accountNumber: row.account_number === null ? null : asString(row.account_number, "profile.account_number"),
+            displayName: row.display_name == null ? null : asString(row.display_name, "profile.display_name"),
             version: asInteger(row.version, "profile.version"),
           }),
         };
@@ -37,8 +38,9 @@ export function createSupabaseMemberProfileRepository(client: SupabaseClient<Dat
 
     async save(profile) {
       const snapshot = profile.toSnapshot();
-      const { data, error } = await client.rpc("save_my_member_profile", {
+      const { data, error } = await client.rpc("save_my_member_profile_with_display_name", {
         p_account_number: snapshot.accountNumber ?? undefined,
+        p_display_name: snapshot.displayName ?? undefined,
         p_expected_version: snapshot.version,
       });
       if (error) {
@@ -65,6 +67,32 @@ export function createSupabaseMemberProfileRepository(client: SupabaseClient<Dat
             return {
               userId: asString(row.user_id, "account_number.user_id"),
               accountNumber: asString(row.account_number, "account_number.account_number"),
+            };
+          }),
+        };
+      } catch {
+        return memberProfileError("unexpected");
+      }
+    },
+
+    async displayNames(groupId, userIds) {
+      const { data, error } = await client.rpc("get_group_member_display_names", {
+        p_group_id: groupId,
+        p_user_ids: userIds,
+      });
+      if (error) {
+        return fromDbError(error);
+      }
+      try {
+        if (!Array.isArray(data)) {
+          throw new TypeError("display names: expected an array");
+        }
+        return {
+          data: data.map((value) => {
+            const row = asObject(value, "display_name");
+            return {
+              userId: asString(row.user_id, "display_name.user_id"),
+              displayName: asString(row.display_name, "display_name.display_name"),
             };
           }),
         };

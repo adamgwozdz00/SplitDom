@@ -1,4 +1,5 @@
 import { AccountNumber } from "@/lib/member-profiles/account-number.value";
+import { DisplayName } from "@/lib/member-profiles/display-name.value";
 import { memberProfileError } from "@/lib/member-profiles/member-profile-error.messages";
 import type { MemberProfileSnapshot, Result } from "@/lib/member-profiles/types";
 
@@ -10,24 +11,30 @@ export class MemberProfile {
   private constructor(
     readonly userId: string,
     private account: AccountNumber | null,
+    private name: DisplayName | null,
     readonly version: number,
   ) {}
 
   /** A profile that has never been stored. */
   static empty(userId: string): MemberProfile {
-    return new MemberProfile(userId, null, 0);
+    return new MemberProfile(userId, null, null, 0);
   }
 
   static restore(snapshot: MemberProfileSnapshot): MemberProfile {
     return new MemberProfile(
       snapshot.userId,
       snapshot.accountNumber === null ? null : AccountNumber.fromStored(snapshot.accountNumber),
+      snapshot.displayName === null ? null : DisplayName.fromStored(snapshot.displayName),
       snapshot.version,
     );
   }
 
   get accountNumber(): AccountNumber | null {
     return this.account;
+  }
+
+  get displayName(): DisplayName | null {
+    return this.name;
   }
 
   /** Sets the owner's account number from raw input; `by` must be the owner. */
@@ -51,7 +58,33 @@ export class MemberProfile {
     return { data: undefined };
   }
 
+  /** Sets the owner's display name from raw input; `by` must be the owner. */
+  setDisplayName(by: string, raw: string): Result<void> {
+    if (by !== this.userId) {
+      return memberProfileError("not_owner");
+    }
+    const parsed = DisplayName.parse(raw);
+    if ("error" in parsed) {
+      return parsed;
+    }
+    this.name = parsed.data;
+    return { data: undefined };
+  }
+
+  clearDisplayName(by: string): Result<void> {
+    if (by !== this.userId) {
+      return memberProfileError("not_owner");
+    }
+    this.name = null;
+    return { data: undefined };
+  }
+
   toSnapshot(): MemberProfileSnapshot {
-    return { userId: this.userId, accountNumber: this.account?.digits ?? null, version: this.version };
+    return {
+      userId: this.userId,
+      accountNumber: this.account?.digits ?? null,
+      displayName: this.name?.value ?? null,
+      version: this.version,
+    };
   }
 }

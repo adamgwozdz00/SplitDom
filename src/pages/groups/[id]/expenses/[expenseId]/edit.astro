@@ -69,7 +69,8 @@ const deleteAction = `/api/groups/${encodeURIComponent(groupId)}/expenses/${enco
           period={editable.period}
           error={error}
           expense={editable.expense}
-          payerLabel={memberLabel(group.members, editable.expense.payerId, user.id)}
+          // Only the payer edits an expense, so the label is always the viewer's and needs no display names.
+          payerLabel={memberLabel(group.members, editable.expense.payerId, user.id, new Map())}
         />
 
         <details class="group">

@@ -69,6 +69,16 @@ const isHost = group?.isHost(user.id) ?? false;
 const closeRefusal =
   group && open && isHost ? open.period.closeRefusal({ userId: user.id, hostId: group.hostId, now }) : null;
 
+// The display names of all members, one call. A failed lookup falls back to emails rather than breaking the page.
+const names =
+  group && supabase
+    ? await createMemberProfileService(supabase).displayNamesFor({
+        groupId: group.id,
+        userIds: group.members.map((member) => member.userId),
+      })
+    : null;
+const displayNames = names && "data" in names ? names.data : new Map();
+
 // Only the creditors of the viewer's own debts have their account numbers requested. A failed lookup shows
 // the "no number yet" state rather than breaking the page.
 const creditorIds = open ? creditorIdsOf(open.balances, user.id) : [];
@@ -152,7 +162,13 @@ const initialTab = expenseError ? "wydatki" : "";
               data-panel="wydatki"
             >
               <h2 class="sr-only">Wydatki</h2>
-              <ExpenseList group={group} period={open.period} expenses={open.expenses} viewerId={user.id} />
+              <ExpenseList
+                group={group}
+                displayNames={displayNames}
+                period={open.period}
+                expenses={open.expenses}
+                viewerId={user.id}
+              />
               <section
                 id="nowy-wydatek"
                 class="card-dashed flex scroll-mt-4 flex-col gap-3 p-[18px]"
@@ -176,14 +192,16 @@ const initialTab = expenseError ? "wydatki" : "";
               <h2 class="sr-only">Długi</h2>
               <TransferPanel
                 group={group}
+                displayNames={displayNames}
                 balances={open.balances}
                 viewerId={user.id}
                 monthLabel={open.period.month.label()}
                 accountNumbers={accountNumbers}
               />
-              <BalancesPanel group={group} balances={open.balances} viewerId={user.id} />
+              <BalancesPanel group={group} displayNames={displayNames} balances={open.balances} viewerId={user.id} />
               <OpeningDebtList
                 group={group}
+                displayNames={displayNames}
                 openingDebts={open.openingDebts}
                 viewerId={user.id}
                 previousMonthLabel={open.period.month.previous().label()}
@@ -200,6 +218,7 @@ const initialTab = expenseError ? "wydatki" : "";
               <h2 class="sr-only">Wpłaty</h2>
               <PaymentList
                 group={group}
+                displayNames={displayNames}
                 payments={open.payments}
                 viewerId={user.id}
                 periodOpen={open.period.isOpen()}

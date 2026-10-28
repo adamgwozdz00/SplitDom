@@ -1,22 +1,24 @@
 ---
 import type { OpeningDebt } from "@/lib/billing-periods";
 import type { Group } from "@/lib/groups";
+import type { DisplayNames } from "@/lib/member-profiles";
 import { memberLabel } from "@/components/expenses/member-label";
 import Icon from "@/components/ui/Icon.astro";
 
 interface Props {
   group: Group;
+  displayNames: DisplayNames;
   openingDebts: readonly OpeningDebt[];
   viewerId: string;
   /** e.g. "wrzesień 2026": the month the debts come from. */
   previousMonthLabel: string;
 }
 
-const { group, openingDebts, viewerId, previousMonthLabel } = Astro.props;
+const { group, displayNames, openingDebts, viewerId, previousMonthLabel } = Astro.props;
 
 const rows = openingDebts.map((debt) => ({
-  debtor: memberLabel(group.members, debt.debtorId, viewerId),
-  creditor: memberLabel(group.members, debt.creditorId, viewerId),
+  debtor: memberLabel(group.members, debt.debtorId, viewerId, displayNames),
+  creditor: memberLabel(group.members, debt.creditorId, viewerId, displayNames),
   amountLabel: debt.amount.label(),
 }));
 ---

@@ -3,7 +3,7 @@ project: SplitDom
 version: 1
 status: draft
 created: 2026-09-26
-updated: 2026-10-27
+updated: 2026-10-28
 prd_version: 1
 main_goal: speed
 top_blocker: time
@@ -53,7 +53,7 @@ People who share household costs — partners or roommates — settle shared exp
 | S-07 | mark-transfer-sent          | debtor can record a transfer as a payment that counts in the balances (pending)       | F-02          | FR-008                 | done        |
 | S-08 | confirm-debt-paid           | creditor can confirm or reject a payment, which makes it final (posted)               | F-02          | FR-009                 | in-progress |
 | S-09 | host-closes-period          | host can close a finished period, which freezes it and opens the next one             | S-05, S-08    | US-02, FR-015          | in-progress |
-| S-10 | member-profile-display-name | member can set a display name that the group shows instead of their email             | S-04          | — (supports US-01)     | proposed    |
+| S-10 | member-profile-display-name | member can set a display name that the group shows instead of their email             | S-04          | — (supports US-01)     | in-progress |
 
 ## Streams
 
@@ -265,7 +265,7 @@ Foundations below assume these are present and do NOT re-scaffold them.
   - Is the display name per user (one name in every group) or per group membership? — Owner: user. Block: no.
   - ~~Should the profile also hold the bank account number that S-06 needs?~~ Resolved 2026-10-19 (S-06 planning): yes, S-06 creates `member_profiles` with the account number; S-10 extends it with the display name.
 - **Risk:** Low logic risk, provided S-04 keeps the member-labelling rule in one place, so this slice changes the label source without touching the balance views. Added 2026-10-05 during S-04 planning. Design note (2026-10-06): the display name belongs to the person across all their groups, so it fits a separate per-user aggregate (`MemberProfile`, shared with S-06) rather than `Group`.
-- **Status:** proposed
+- **Status:** in-progress
 
 ## Backlog Handoff
 
